@@ -15,7 +15,8 @@ _shellfunx_dir=$(CDPATH= cd -- "$(dirname -- "$_shellfunx_file")" && pwd -P) || 
 }
 
 # Add one explicit source entry here for each new function module.
-if . "$_shellfunx_dir/functions/dwork.sh"; then
+if . "$_shellfunx_dir/functions/dwork.sh" &&
+   . "$_shellfunx_dir/functions/got.sh"; then
     unset _shellfunx_file _shellfunx_dir
 else
     unset _shellfunx_file _shellfunx_dir

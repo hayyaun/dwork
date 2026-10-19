@@ -33,6 +33,9 @@ Each function lives in its own file under [`functions/`](functions/README.md).
 - [dwork](docs/shell/dwork/README.md): switch existing Docker Compose containers
   between projects, with previews, options, shared-project exclusions, and limits.
 
+- [got](docs/shell/got/README.md): stage changes, commit with a subject and optional
+  body, and push.
+
 When no default Compose config exists, `dwork` can discover projects in immediate
 subdirectories and ask for confirmation before switching them together.
 

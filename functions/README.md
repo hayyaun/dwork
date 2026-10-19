@@ -12,6 +12,9 @@ to itself, so loading works from any working directory.
   containers between projects. See the [dwork guide](../docs/shell/dwork/README.md)
   for requirements, examples, confirmation, and limits.
 
+- [`got.sh`](got.sh): defines `got` to stage, commit, and push. See the
+  [got guide](../docs/shell/got/README.md) for messages and failure behavior.
+
 ## Add a function
 
 1. Create `functions/<name>.sh` containing the function definition.

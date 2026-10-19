@@ -11,6 +11,7 @@ Source this entry point from either shell's startup file to load the functions.
 - [`.shell_functions`](../../.shell_functions): resolves the repository location
   and sources each function module.
 - [`functions/dwork.sh`](../../functions/dwork.sh): defines `dwork`.
+- [`functions/got.sh`](../../functions/got.sh): defines `got`.
 - [`functions/README.md`](../../functions/README.md): lists modules and explains
   how to add another function.
 
@@ -22,7 +23,7 @@ or copying the repository.
 
 Sourcing executes the file in the current shell, so functions become available as
 commands in that shell. It does not launch Docker or switch projects until you
-run `dwork`.
+invoke a function such as `dwork` or `got`.
 
 Bash and Zsh normally read different startup files. Each startup file sources
 this same shared file, so the function definitions stay in one place.
@@ -65,12 +66,15 @@ already-open terminal.
 - [dwork](dwork/README.md): stop other Compose projects and start existing stopped
   containers belonging to the current project.
 
+- [got](got/README.md): stage changes, commit with a subject and optional body,
+  and push.
+
 ## Remove
 
 Remove the sourcing line from your shell startup files and open a new terminal.
 To remove the function from your current shell:
 
 ```sh
-unset -f dwork
+unset -f dwork got
 ```
 
