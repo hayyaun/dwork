@@ -1,106 +1,23 @@
-# Shared functions for Bash and Zsh.
-# dwork [--dry-run] [Docker Compose global options]
-# Optional shared projects: export DWORK_KEEP_PROJECTS=infra,monitoring
-dwork() (
-    # Keep options and temporary variables out of the calling shell.
-    set -o pipefail
-    dwork_preview=0
-    case "${1:-}" in
-        --help|-h)
-            printf '%s\n' \
-                'Usage: dwork [--dry-run] [Docker Compose global options]' \
-                'Stop other Compose projects and start existing stopped containers here.' \
-                'Never creates, rebuilds, recreates, or removes containers.' \
-                'Pass -f, -p, --profile, or --env-file as needed.' \
-                'DWORK_KEEP_PROJECTS: comma-separated project names to leave running.' \
-                'Containers without Compose project labels are left running.'
-            return 0 ;;
-        --dry-run) dwork_preview=1; shift ;;
-    esac
-    command -v docker >/dev/null 2>&1 || {
-        printf '%s\n' 'dwork: docker is not available.' >&2
-        return 1
-    }
-    command -v python3 >/dev/null 2>&1 || {
-        printf '%s\n' 'dwork: python3 is required to read Compose JSON.' >&2
-        return 1
-    }
+# Source this file from Bash or Zsh to load shellfunx functions.
+# Resolve paths relative to this file, independently of the current directory.
+if [ -n "${BASH_VERSION:-}" ]; then
+    _shellfunx_file="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _shellfunx_file="${(%):-%x}"
+else
+    printf "%s\n" "shellfunx: Bash or Zsh is required." >&2
+    return 1
+fi
 
-    # Read project identity and service names without resolving runtime values.
-    # Existing containers retain their environment; starting them needs no env file.
-    dwork_config=$(docker compose "$@" config --no-interpolate --no-env-resolution --format json) || {
-        printf '%s\n' 'dwork: cannot read Compose configuration; nothing changed.' >&2
-        return 1
-    }
-    dwork_target=$(
-        printf '%s\n' "$dwork_config" |
-        python3 -c 'import json,re,sys; name=json.load(sys.stdin).get("name",""); assert re.fullmatch(r"[a-z0-9][a-z0-9_-]*",name), "Missing or invalid Compose project name"; print(name)'
-    ) || {
-        printf '%s\n' 'dwork: cannot identify the current project; nothing changed.' >&2
-        return 1
-    }
-    dwork_services=$(
-        printf '%s\n' "$dwork_config" |
-        python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin).get("services",{})))'
-    ) || return 1
-    dwork_containers=$(
-        docker ps --all --filter label=com.docker.compose.project \
-            --format '{{.ID}} {{.Label "com.docker.compose.project"}} {{.Label "com.docker.compose.service"}} {{.State}}'
-    ) || return 1
+_shellfunx_dir=$(CDPATH= cd -- "$(dirname -- "$_shellfunx_file")" && pwd -P) || {
+    unset _shellfunx_file _shellfunx_dir
+    return 1
+}
 
-    printf 'Current Compose project: %s\n' "$dwork_target"
-    # Report services with no existing containers, including optional profile services.
-    while IFS= read -r dwork_service; do
-        [ -n "$dwork_service" ] || continue
-        dwork_found=0
-        while read -r dwork_id dwork_project dwork_existing_service dwork_state; do
-            if [ "$dwork_project" = "$dwork_target" ] && [ "$dwork_existing_service" = "$dwork_service" ]; then
-                dwork_found=1
-                break
-            fi
-        done <<EOF
-$dwork_containers
-EOF
-        if [ "$dwork_found" -eq 0 ]; then
-            printf 'Warning: service "%s" has no container; create it manually if needed (it may be profile-specific).\n' "$dwork_service" >&2
-        fi
-    done <<EOF
-$dwork_services
-EOF
-
-    while read -r dwork_id dwork_project dwork_service dwork_state; do
-        [ -n "$dwork_id" ] || continue
-        [ "$dwork_project" != "$dwork_target" ] || continue
-        case "$dwork_state" in running|restarting) ;; *) continue ;; esac
-        case ",${DWORK_KEEP_PROJECTS:-}," in *,"$dwork_project",*) continue ;; esac
-        if [ "$dwork_preview" -eq 1 ]; then
-            printf 'Would stop: %s (%s)\n' "$dwork_id" "$dwork_project"
-        else
-            printf 'Stopping: %s (%s)\n' "$dwork_id" "$dwork_project"
-            docker stop "$dwork_id" || {
-                printf '%s\n' 'dwork: stop failed; target was not started.' >&2
-                return 1
-            }
-        fi
-    done <<EOF
-$dwork_containers
-EOF
-
-    while read -r dwork_id dwork_project dwork_service dwork_state; do
-        [ -n "$dwork_id" ] || continue
-        [ "$dwork_project" = "$dwork_target" ] || continue
-        case "$dwork_state" in
-            created|exited)
-                if [ "$dwork_preview" -eq 1 ]; then
-                    printf 'Would start existing: %s (%s)\n' "$dwork_id" "$dwork_service"
-                else
-                    printf 'Starting existing: %s (%s)\n' "$dwork_id" "$dwork_service"
-                    docker start "$dwork_id" || return 1
-                fi ;;
-            running|restarting) ;;
-            *) printf 'Warning: container %s is %s; handle it manually.\n' "$dwork_id" "$dwork_state" >&2 ;;
-        esac
-    done <<EOF
-$dwork_containers
-EOF
-)
+# Add one explicit source entry here for each new function module.
+if . "$_shellfunx_dir/functions/dwork.sh"; then
+    unset _shellfunx_file _shellfunx_dir
+else
+    unset _shellfunx_file _shellfunx_dir
+    return 1
+fi
