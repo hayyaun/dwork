@@ -69,11 +69,11 @@ def install(args):
         raise InstallError("Install location cannot be inside copied source documentation/examples.")
     previous = ownership(data, launcher, prefix)
     # Do not follow user-added links while updating managed code or environments.
-    for name in ("lib", "docs", "examples", "venv", "venv/bin", "README.md", "requirements.txt", MARKER):
+    for name in ("lib", "docs", "examples", "completions", "venv", "venv/bin", "README.md", "requirements.txt", MARKER):
         path = data / name
         if path.is_symlink():
             raise InstallError("Refusing to update a linked install path: " + str(path))
-    for name in ("lib", "docs", "examples"):
+    for name in ("lib", "docs", "examples", "completions"):
         path = data / name
         if path.is_dir() and any(item.is_symlink() for item in path.rglob("*")):
             raise InstallError("Refusing to update an install tree containing links: " + str(path))
@@ -103,6 +103,12 @@ def install(args):
         shutil.copy2(SOURCE / "lib/dwork.py", data / "lib/dwork.py")
         shutil.copy2(SOURCE / "requirements.txt", data / "requirements.txt")
         shutil.copy2(SOURCE / "README.md", data / "README.md")
+        completions = data / "completions"
+        completions.mkdir(exist_ok=True)
+        for shell, filename in (("bash", "dwork.bash"), ("zsh", "_dwork")):
+            script = subprocess.check_output([sys.executable, str(SOURCE / "lib/dwork.py"),
+                                              "completion", shell], text=True)
+            (completions / filename).write_text(script)
         for name in ("examples", "docs"):
             if (SOURCE / name).is_dir():
                 shutil.copytree(SOURCE / name, data / name, dirs_exist_ok=True)
@@ -124,6 +130,10 @@ def install(args):
             print("  export PATH=" + shlex.quote(bindir) + ':"$PATH"')
         print("If you previously sourced dwork.sh, remove that startup line and run: unset -f dwork")
         print("Examples: " + str(data / "examples"))
+        print("Enable Bash completion by adding this to ~/.bashrc:")
+        print("  source " + shlex.quote(str(runtime_data / "completions/dwork.bash")))
+        print("For Zsh, add this after compinit in ~/.zshrc:")
+        print("  source " + shlex.quote(str(runtime_data / "completions/_dwork")))
     return 0
 
 def uninstall(args):

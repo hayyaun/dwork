@@ -109,6 +109,24 @@ locked: true
 
 It still appears in `dwork list` and can be activated normally.
 
+Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`,
+`ps` = `status`, and `up` activates the current workspace.
+
+## Tab completion
+
+Enable once in your shell startup file:
+
+```sh
+# Bash (~/.bashrc)
+source <(dwork completion bash)
+
+# Zsh (~/.zshrc, after compinit)
+source <(dwork completion zsh)
+```
+
+Then use `dwork <Tab>` for commands and `dwork sw <Tab>` for registered workspaces.
+[Setup and completion details →](docs/completion/README.md)
+
 > [!NOTE]
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
 > Complete your project's initial setup and migrations first.
@@ -135,6 +153,9 @@ terminals:
 
 Each terminal asks `(y/N)`. Set `confirm: false` on a task to explicitly skip its
 prompt. Missing containers and failed health checks block dependent terminals.
+
+Set `window: none` on a task to run it silently in the background without opening
+a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/README.md#detached-background-tasks)
 
 [Copy an example →](examples/README.md) Backend, full-stack, Compose-only, or host-only.
 

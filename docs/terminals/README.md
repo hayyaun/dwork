@@ -110,6 +110,45 @@ Reference: [Windows Terminal window selection](https://learn.microsoft.com/en-us
 
 ## Commands and startup
 
+## Detached background tasks
+
+```yaml
+version: 1
+compose:
+  enabled: false
+terminals:
+  - title: Worker
+    command: [make, worker]
+    window: none
+```
+
+`window: none` runs the task detached without opening a window or tab. It works in
+headless Linux/WSL sessions and does not require a GUI, Windows Terminal, PowerShell,
+or a native terminal emulator. The task's `launcher` and `DWORK_TERMINAL` are not used.
+An available Bash or Zsh shell and the command executable are still required.
+
+The command runs in its configured directory through a noninteractive login shell
+(`-lc`). Arguments are quoted as with visible tasks. It inherits the environment,
+but interactive shell startup files/aliases are not loaded just to launch it. Ensure
+the executable is on PATH or use an existing script that initializes its environment.
+
+All health gates pass first, and the task still asks `(y/N)` unless it explicitly
+sets `confirm: false`. The prompt says "Run background task"; previews say "Would
+run detached". Declining or previewing never starts it.
+
+Input, standard output, and standard error are redirected to the null device.
+dwork starts a new process session, reports its PID, and returns after a short
+immediate-failure check. A command that exits unsuccessfully immediately is reported
+as a failure; run it manually to inspect its output. A successful launch does not
+guarantee later readiness or success, and there is no implicit log file.
+
+These are host processes: dwork does not supervise, deduplicate, or stop them.
+Every activation starts another copy if approved. `dwork down` remains container-only
+and does not terminate background tasks; manage their lifecycle with the project's
+normal tools. The reported PID can help identify the launched process.
+
+## Commands and startup
+
 Each adapter passes the command through your configured Bash or Zsh login and
 interactive shell. Shell startup loads your normal environment; command arguments
 are quoted rather than evaluated as shell snippets. The configured working

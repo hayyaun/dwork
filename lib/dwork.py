@@ -19,6 +19,8 @@ LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
 LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
 
 FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
+COMMANDS = ("register", "scan", "list", "switch", "forget", "down", "status", "doctor", "completion")
+ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "activate", "ps": "status"}
 SCAN_IGNORED_DIRS = frozenset({
     ".git", ".hg", ".svn", "node_modules", "bower_components", "vendor",
     ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
@@ -35,6 +37,91 @@ SCAN_REPO_MARKERS = frozenset({
 
 class DworkError(Exception):
     pass
+
+
+def completion_script(shell):
+    """Generate portable shell integrations; dynamic names use the public names API."""
+    commands = " ".join((*COMMANDS, *ALIASES))
+    if shell == "bash":
+        script = r'''# Bash completion for dwork. Source this file from ~/.bashrc.
+_dwork_complete() {
+    local cur="${COMP_WORDS[COMP_CWORD]}" prev="${COMP_WORDS[COMP_CWORD-1]}"
+    local cmd="${COMP_WORDS[1]}" choices candidate
+    COMPREPLY=()
+    if (( COMP_CWORD == 1 )); then
+        choices='@COMMANDS@ --help --dry-run'
+    elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
+        while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -f -- "$cur")
+        return
+    elif [[ "$prev" == --project-directory ]]; then
+        while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -d -- "$cur")
+        return
+    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm ]]; then
+        if (( COMP_CWORD == 2 )) && [[ "$cur" != -* ]]; then
+            while IFS= read -r candidate; do
+                [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
+            done < <(dwork list --names 2>/dev/null)
+            return
+        fi
+        choices='--help'
+        [[ "$cmd" == switch || "$cmd" == sw ]] && choices+=' --dry-run'
+    elif [[ "$cmd" == completion ]] && (( COMP_CWORD == 2 )); then
+        choices='bash zsh'
+    else
+        case "$cmd" in
+            list|ls) choices='--names --help' ;;
+            scan|down) choices='--dry-run --help' ;;
+            completion) choices='--help' ;;
+            register|reg|status|ps|doctor) choices='--help -f --file -p --project-name --project-directory --env-file --profile' ;;
+            *) choices='--dry-run --help -f --file -p --project-name --project-directory --env-file --profile' ;;
+        esac
+    fi
+    COMPREPLY=( $(compgen -W "$choices" -- "$cur") )
+}
+complete -o bashdefault -o default -F _dwork_complete dwork
+'''
+    elif shell == "zsh":
+        script = r'''#compdef dwork
+# Source this file after compinit in ~/.zshrc.
+_dwork() {
+    local cmd="${words[2]}" prev="${words[CURRENT-1]}"
+    local -a names choices
+    if (( CURRENT == 2 )); then
+        choices=(@COMMANDS@ --help --dry-run)
+    elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
+        _files
+        return
+    elif [[ "$prev" == --project-directory ]]; then
+        _files -/
+        return
+    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm ]]; then
+        if (( CURRENT == 3 )) && [[ "$PREFIX" != -* ]]; then
+            names=("${(@f)$(dwork list --names 2>/dev/null)}")
+            (( ${#names} )) && compadd -- "${names[@]}"
+            return
+        fi
+        choices=(--help)
+        [[ "$cmd" == switch || "$cmd" == sw ]] && choices+=(--dry-run)
+    elif [[ "$cmd" == completion ]] && (( CURRENT == 3 )); then
+        choices=(bash zsh)
+    else
+        case "$cmd" in
+            list|ls) choices=(--names --help) ;;
+            scan|down) choices=(--dry-run --help) ;;
+            completion) choices=(--help) ;;
+            register|reg|status|ps|doctor) choices=(--help -f --file -p --project-name --project-directory --env-file --profile) ;;
+            *) choices=(--dry-run --help -f --file -p --project-name --project-directory --env-file --profile) ;;
+        esac
+    fi
+    compadd -- "${choices[@]}"
+}
+if (( $+functions[compdef] )); then
+    compdef _dwork dwork
+fi
+'''
+    else:
+        raise DworkError("Usage: dwork completion bash|zsh")
+    return script.replace("@COMMANDS@", commands)
 
 
 def color(value, style, stream=None):
@@ -667,8 +754,8 @@ def load_workspace(directory, options=()):
         cwd = (directory / cwd).resolve()
         if not cwd.is_dir():
             raise DworkError("Terminal working directory does not exist: " + str(cwd))
-        if window not in ("new", "current"):
-            raise DworkError("terminal.window must be new or current.")
+        if window not in ("new", "current", "none"):
+            raise DworkError("terminal.window must be new, current, or none.")
         wait = mapping(task.get("wait_for", {}), ("healthy", "timeout"), "terminal.wait_for")
         healthy = strings(wait["healthy"], "wait_for.healthy") if "healthy" in wait else []
         timeout = wait.get("timeout", 180)
@@ -837,8 +924,10 @@ def linux_terminal_arguments(task, launcher):
 def preflight_terminals(tasks):
     windows = False
     for task in tasks:
-        launcher = choose_launcher(task)
-        if launcher == "windows-terminal":
+        launcher = None if task.window == "none" else choose_launcher(task)
+        if task.window == "none":
+            command_shell()
+        elif launcher == "windows-terminal":
             terminal_arguments(task)
             if not shutil.which("powershell.exe"):
                 raise DworkError("Windows terminal tasks require Windows PowerShell and Windows Terminal.")
@@ -857,7 +946,8 @@ def preflight_terminals(tasks):
 def confirm_terminal(task):
     if not task.confirm:
         return True
-    prompt = ("Open terminal " + colored_name(task.title, repr(task.title)) + " running "
+    label = "Run background task " if task.window == "none" else "Open terminal "
+    prompt = (label + colored_name(task.title, repr(task.title)) + " running "
               + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + "? (y/N) ")
     try:
         answer = input(prompt)
@@ -866,6 +956,18 @@ def confirm_terminal(task):
     return answer.strip().lower() == "y"
 
 def open_terminal(task):
+    if task.window == "none":
+        process = subprocess.Popen([command_shell(), "-lc", "exec " + shlex.join(task.command)],
+                                   cwd=task.cwd, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   start_new_session=True)
+        try:
+            code = process.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            return process.pid
+        if code:
+            raise DworkError("Background task " + task.title + " exited immediately (exit " + str(code) + "). Run the command manually to inspect its output.")
+        return process.pid
     launcher = choose_launcher(task)
     if launcher == "windows-terminal":
         encoded = base64.b64encode(powershell_script(task).encode("utf-16le")).decode("ascii")
@@ -990,8 +1092,8 @@ def report_failure(completed, pending, step, containers):
 
 def main():
     options = list(sys.argv[1:])
-    commands = ("register", "scan", "list", "switch", "forget", "down", "status", "doctor")
-    mode = options.pop(0) if options and options[0] in commands else "activate"
+    command = options.pop(0) if options and options[0] in (*COMMANDS, *ALIASES) else "activate"
+    mode = ALIASES.get(command, command)
     preview = bool(options and options[0] == "--dry-run")
     if preview:
         options = options[1:]
@@ -1003,6 +1105,8 @@ def main():
         print("       dwork switch NAME [--dry-run]")
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
+        print("       dwork list --names | completion bash|zsh")
+        print("Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status.")
         print("register: remember without switching; list: show remembered directories and status.")
         print("scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories.")
         print("switch: activate a remembered workspace; forget: remove only its registration.")
@@ -1021,11 +1125,20 @@ def main():
         print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()
+    if mode == "completion":
+        if preview or len(options) != 1:
+            raise DworkError("Usage: dwork completion bash|zsh")
+        print(completion_script(options[0]), end="")
+        return 0
     if mode == "doctor":
         return doctor(directory, options)
     if mode == "list":
+        if options == ["--names"] and not preview:
+            for entry in sorted(read_registry(), key=lambda e: e["name"]):
+                print(entry["name"])
+            return 0
         if options or preview:
-            raise DworkError("Usage: dwork list")
+            raise DworkError("Usage: dwork list [--names]")
         return list_registrations(read_registry())
     if mode == "status":
         return switch_workspace(directory, options, mode, preview, [])
@@ -1198,7 +1311,8 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         if task.healthy:
             print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
         confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
-        print("Would open terminal: " + colored_name(task.title) + " -> " + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + confirmation)
+        label = "Would run detached: " if task.window == "none" else "Would open terminal: "
+        print(label + colored_name(task.title) + " -> " + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + confirmation)
     if not stops and not starts and not tasks:
         print("No container changes needed.")
     if preview:
@@ -1238,7 +1352,8 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         actions.append(("wait for healthy " + ", ".join(ids),
                         lambda ids=ids, timeout=timeout: wait_healthy(ids, timeout)))
     completed = []
-    pending = [label for label, _ in actions] + ["terminal " + task.title for task in tasks]
+    pending = [label for label, _ in actions] + [
+        ("background task " if task.window == "none" else "terminal ") + task.title for task in tasks]
     step = "before execution"
     try:
         for label, operation in actions:
@@ -1252,14 +1367,17 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             completed.append(label)
             pending.pop(0)
         for task in tasks:
-            step = "terminal " + task.title
+            background = task.window == "none"
+            step = ("background task " if background else "terminal ") + task.title
             if not confirm_terminal(task):
-                print("Skipped terminal: " + colored_name(task.title), flush=True)
+                print(("Skipped background task: " if background else "Skipped terminal: ") + colored_name(task.title), flush=True)
                 pending.pop(0)
                 continue
-            print("Opening terminal: " + colored_name(task.title), flush=True)
-            open_terminal(task)
-            completed.append("launched terminal " + task.title)
+            print(("Starting background task: " if background else "Opening terminal: ") + colored_name(task.title), flush=True)
+            pid = open_terminal(task)
+            if background:
+                print("Started background task: " + colored_name(task.title) + " (PID " + str(pid) + ")", flush=True)
+            completed.append(("launched background task " if background else "launched terminal ") + task.title)
             pending.pop(0)
     except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
         report_failure(completed, pending, step, containers)

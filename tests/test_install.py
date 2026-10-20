@@ -34,6 +34,8 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Usage: dwork", result.stdout)
         self.assertTrue((self.prefix / "share/dwork/examples/full-stack.yml").is_file())
+        self.assertIn("complete -o", (self.prefix / "share/dwork/completions/dwork.bash").read_text())
+        self.assertIn("compdef _dwork dwork", (self.prefix / "share/dwork/completions/_dwork").read_text())
         result = subprocess.run(["make", "uninstall", "PREFIX=" + str(self.prefix),
                                  "PYTHON=" + sys.executable], cwd=REPO,
                                 text=True, capture_output=True)

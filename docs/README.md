@@ -5,6 +5,7 @@
 - [Install dwork](installation/README.md)
 - [Install the agent skill](skills/README.md)
 - [Use dwork](usage/README.md)
+- [Enable Bash or Zsh completion](completion/README.md)
 - [Register, scan, list, switch, and forget workspaces](workspaces/README.md)
 - [Configure dwork.yml](configuration/README.md)
 - [Terminal launchers](terminals/README.md)

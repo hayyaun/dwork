@@ -140,12 +140,15 @@ run `dwork register NAME` with the intended options before switching again.
 
 - `command`: a required, nonempty list of executable and argument strings, such as
   `[make, run]`. Commands use the user's Bash/Zsh login and interactive startup
-  environment. Arguments are quoted; this is not an arbitrary shell snippet.
+  environment for visible terminals, and a noninteractive login shell for `window: none`.
+  Arguments are quoted; this is not an arbitrary shell snippet.
 - `title`: an optional nonempty title. Defaults to `dwork: <project>`.
 - `cwd`: an optional working directory relative to `dwork.yml`, defaulting to `.`.
   It must exist.
 - `window`: `new` opens a new window; `current` requests an existing-window tab
-  using the selected emulator's rules. Defaults to `new`. xterm supports `new` only.
+  using the selected emulator's rules; `none` runs detached in the background without
+  a GUI, with input/output discarded. Defaults to `new`. xterm supports `new` only
+  for visible terminals; `none` does not use a terminal launcher.
   On Windows Terminal, `current` means the most recently used window, not necessarily
   the one containing your shell. See [troubleshooting current](../terminals/README.md#troubleshoot-current-on-windows-terminal--wsl).
 - `launcher`: defaults to `auto`. Supported values are `auto`, `windows-terminal`,
@@ -156,10 +159,13 @@ run `dwork register NAME` with the intended options before switching again.
   Strings such as `"false"` and numbers are rejected.
 - `wait_for`: optional health prerequisites described below.
 
-Commands run in the foreground of their new terminal. dwork checks dependencies
+Visible commands run in the foreground of their new terminal. dwork checks dependencies
 and reports immediate launcher failures; it does not supervise later GUI startup,
 the command, or its eventual exit status. Every invocation launches the configured tasks again. It does not detect
 already-running host processes or close terminals from previous projects.
+
+For detached execution, use `window: none`; `confirm` and health gates still apply.
+`launcher` is not used in that mode. See [background task behavior](../terminals/README.md#detached-background-tasks).
 
 For pipelines or compound commands, put the command in a script and invoke that
 script. Terminal values cannot contain newlines, NUL, or semicolons (Windows
