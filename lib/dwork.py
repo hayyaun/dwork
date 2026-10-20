@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 
 LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
 LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
@@ -21,6 +22,28 @@ FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compo
 
 class DworkError(Exception):
     pass
+
+
+def color(value, style, stream=None):
+    """Keep pipes/logs plain; color is presentation only, never stored in plans."""
+    stream = sys.stdout if stream is None else stream
+    text = str(value)
+    if not stream.isatty() or os.environ.get("NO_COLOR") or os.environ.get("TERM") == "dumb":
+        return text
+    codes = {"start": "32", "stop": "31", "warning": "33", "bold": "1", "dim": "2"}
+    return "\033[" + codes.get(style, style) + "m" + text + "\033[0m"
+
+
+def colored_name(value, display=None, stream=None):
+    # Python's hash() is randomized between invocations; CRC32 keeps names stable.
+    palette = ("36", "35", "34", "96", "95", "94")
+    code = palette[zlib.crc32(str(value).encode("utf-8")) % len(palette)]
+    return color(value if display is None else display, code, stream)
+
+
+def container_name(item):
+    labels = item.get("Config", {}).get("Labels") or {}
+    return labels.get("com.docker.compose.project", "?") + "/" + labels.get("com.docker.compose.service", "?")
 
 
 COMPOSE_ENV = ("COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES",
@@ -149,13 +172,13 @@ def check_ownership(entries, candidate):
                              + " or forget the old registration; nothing changed.")
 
 
-def registered_services(entries, target):
+def registered_services(entries, target, require_directories=True):
     managed = {}
     for entry in entries:
-        if entry["target"] != target or not Path(entry["path"]).is_dir():
+        if entry["target"] != target or (require_directories and not Path(entry["path"]).is_dir()):
             continue
         for member in entry["members"]:
-            if member["enabled"] and Path(member["directory"]).is_dir():
+            if member["enabled"] and (not require_directories or Path(member["directory"]).is_dir()):
                 project = member["project"]
                 if project in managed:
                     raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
@@ -164,7 +187,7 @@ def registered_services(entries, target):
 
 
 def confirm_registration(entry):
-    print("Register workspace " + repr(entry["name"]) + " at " + entry["path"] + "?")
+    print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
     print("Future switches may stop its managed containers. Unregistered projects stay running.")
     try:
         return input("Register and switch? (y/N) ").strip().lower() == "y"
@@ -182,13 +205,15 @@ def list_registrations(entries):
             target = docker_target()
             containers = inventory()
         except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
-            print("Warning: Docker status unavailable: " + str(error), file=sys.stderr)
+            print(color("Warning: Docker status unavailable: " + str(error), "warning", sys.stderr), file=sys.stderr)
     for entry in sorted(entries, key=lambda e: e["name"]):
+        style = "warning"
         if not Path(entry["path"]).is_dir() or any(
                 not Path(m["directory"]).is_dir() for m in entry["members"]):
             state = "unavailable directory"
         elif entry["target"] is None:
             state = "host-only; sessions not tracked"
+            style = "dim"
         elif target is None:
             state = "Docker status unavailable"
         elif entry["target"] != target:
@@ -199,7 +224,57 @@ def list_registrations(entries):
                         and (m["services"] is None or (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service") in m["services"])]
             running = sum(c["State"]["Status"] in ("running", "restarting") for c in selected)
             state = str(running) + "/" + str(len(selected)) + " containers running"
-        print(entry["name"] + "  " + entry["path"] + "  [" + state + "]")
+            style = "start" if running else "stop"
+        print(colored_name(entry["name"]) + "  " + entry["path"] + "  [" + color(state, style) + "]")
+    return 0
+
+
+def down_workspaces(entries, preview):
+    """Stop all registered container workloads on this target, without deleting them."""
+    if not any(e["target"] is not None for e in entries):
+        print("No registered Compose workspaces to stop.")
+        return 0
+    target = docker_target()
+    managed = registered_services(entries, target, require_directories=False)
+    show_target()
+    keep = {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
+    containers = inventory() if managed else []
+    selected = []
+    for item in containers:
+        labels = item.get("Config", {}).get("Labels") or {}
+        project = labels.get("com.docker.compose.project")
+        service = labels.get("com.docker.compose.service")
+        if (project in managed and project not in keep
+                and (managed[project] is None or service in managed[project])
+                and item["State"]["Status"] in ("running", "restarting", "paused")):
+            selected.append(item)
+    print("Down plan: " + str(len(selected)) + " container(s) to stop across registered workspaces.")
+    print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
+    for item in selected:
+        print(color("Would stop: ", "stop") + item["Id"][:12] + " (" + colored_name(container_name(item)) + ")")
+    if not selected:
+        print("No registered containers need stopping.")
+        return 0
+    if preview:
+        return 0
+    print(color("Stopping registered workspace containers...", "stop"), flush=True)
+    try:
+        # Docker accepts multiple IDs; let its supported stop command handle the batch.
+        docker("stop", *(item["Id"] for item in selected))
+    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
+        print(color("Down incomplete; the batch may have partially stopped containers.", "warning", sys.stderr), file=sys.stderr)
+        try:
+            current = {c["Id"]: c for c in inventory()}
+            for item in selected:
+                state = current.get(item["Id"], {}).get("State", {}).get("Status", "not found; inspect manually")
+                style = "stop" if state == "exited" else "warning"
+                print(color(container_name(item) + " / " + item["Id"][:12] + ": " + state, style, sys.stderr), file=sys.stderr)
+        except (DworkError, OSError, ValueError, KeyError, TypeError):
+            print("Could not refresh state; check docker ps --all before retrying.", file=sys.stderr)
+        raise
+    for item in selected:
+        print(color("Stopped: " + container_name(item) + " / " + item["Id"][:12], "stop"), flush=True)
+    print("Stopped " + str(len(selected)) + " container(s). Registrations, containers, networks, and volumes were kept.")
     return 0
 
 @dataclass
@@ -525,8 +600,8 @@ def preflight_terminals(tasks):
 def confirm_terminal(task):
     if not task.confirm:
         return True
-    prompt = ("Open terminal " + repr(task.title) + " running "
-              + shlex.join(task.command) + " in " + str(task.cwd) + "? (y/N) ")
+    prompt = ("Open terminal " + colored_name(task.title, repr(task.title)) + " running "
+              + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + "? (y/N) ")
     try:
         answer = input(prompt)
     except EOFError:
@@ -554,7 +629,7 @@ def open_terminal(task):
 
 def show_target():
     context = docker("context", "show").strip()
-    print("Docker context: " + context)
+    print("Docker context: " + colored_name(context))
     # DOCKER_HOST can override the endpoint associated with the displayed context.
     if os.environ.get("DOCKER_HOST") and not os.environ.get("DOCKER_CONTEXT"):
         print("Docker endpoint override: DOCKER_HOST is set (value hidden).")
@@ -562,7 +637,7 @@ def show_target():
 
 def show_status(workspaces, containers):
     for workspace in workspaces:
-        print("Workspace: " + workspace.name + " (" + str(workspace.directory) + ")")
+        print("Workspace: " + colored_name(workspace.name) + " (" + str(workspace.directory) + ")")
         if not workspace.enabled:
             print("  Compose disabled; host command state is not tracked.")
             continue
@@ -574,11 +649,13 @@ def show_status(workspaces, containers):
             state = item["State"]
             health = state.get("Health", {}).get("Status", "no health check")
             managed = "managed" if workspace.manages(service) else "unmanaged"
-            print("  " + service + " / " + item["Id"][:12] + ": "
-                  + state["Status"] + ", " + health + " (" + managed + ")")
+            style = ("stop" if health == "unhealthy" or state["Status"] in ("exited", "dead")
+                     else "start" if state["Status"] == "running" and health != "starting" else "warning")
+            print("  " + colored_name(service) + " / " + item["Id"][:12] + ": "
+                  + color(state["Status"] + ", " + health, style) + " (" + managed + ")")
         for service in workspace.services:
             if workspace.manages(service) and not service_containers(containers, workspace.name, service):
-                print("  " + service + ": missing container; run the project's initial setup manually.")
+                print("  " + colored_name(service) + color(": missing container; run the project's initial setup manually.", "warning"))
     if any(w.terminals for w in workspaces):
         print("Host terminal commands are configured; running sessions are not tracked.")
 
@@ -589,11 +666,11 @@ def doctor(directory, options):
     def check(label, operation, hint):
         try:
             value = operation()
-            print("OK: " + label)
+            print(color("OK: ", "start") + label)
             return value
         except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
             failures.append(label)
-            print("FAIL: " + label + ": " + str(error), file=sys.stderr)
+            print(color("FAIL: " + label + ": " + str(error), "stop", sys.stderr), file=sys.stderr)
             print("  Fix: " + hint, file=sys.stderr)
             return None
 
@@ -632,7 +709,7 @@ def doctor(directory, options):
 
 
 def report_failure(completed, pending, step, containers):
-    print("Switch incomplete at: " + step, file=sys.stderr)
+    print(color("Switch incomplete at: " + step, "warning", sys.stderr), file=sys.stderr)
     print("Completed: " + ("; ".join(completed) or "none"), file=sys.stderr)
     print("Not confirmed complete: " + ("; ".join(pending) or "none"), file=sys.stderr)
     print("The interrupted or failed operation may have changed state; inspect before retrying.", file=sys.stderr)
@@ -655,7 +732,7 @@ def report_failure(completed, pending, step, containers):
 
 def main():
     options = list(sys.argv[1:])
-    commands = ("register", "list", "switch", "forget", "status", "doctor")
+    commands = ("register", "list", "switch", "forget", "down", "status", "doctor")
     mode = options.pop(0) if options and options[0] in commands else "activate"
     preview = bool(options and options[0] == "--dry-run")
     if preview:
@@ -665,9 +742,11 @@ def main():
         print("       dwork register [NAME] [Docker Compose global options]")
         print("       dwork list | forget NAME")
         print("       dwork switch NAME [--dry-run]")
+        print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("register: remember without switching; list: show remembered directories and status.")
         print("switch: activate a remembered workspace; forget: remove only its registration.")
+        print("down: stop all registered workspace containers on this Docker target; respect exclusions.")
         print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
@@ -678,6 +757,7 @@ def main():
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
         print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
+        print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()
     if mode == "doctor":
@@ -688,6 +768,13 @@ def main():
         return list_registrations(read_registry())
     if mode == "status":
         return switch_workspace(directory, options, mode, preview, [])
+    if mode == "down":
+        if options:
+            raise DworkError("Usage: dwork down [--dry-run]")
+        if preview:
+            return down_workspaces(read_registry(), True)
+        with registry_lock():
+            return down_workspaces(read_registry(), False)
     name = None
     if mode in ("switch", "forget"):
         if not options or options[0].startswith("-"):
@@ -717,7 +804,7 @@ def registry_command(directory, options, mode, preview, name, entries):
             raise DworkError("Unknown workspace: " + str(name) + ". Run dwork list.")
         if mode == "forget":
             save_registry([e for e in entries if e is not entry])
-            print("Forgot " + name + ". Containers, terminals, and project files were left alone.")
+            print("Forgot " + colored_name(name) + ". Containers, terminals, and project files were left alone.")
             return 0
         directory = Path(entry["path"])
         if not directory.is_dir():
@@ -771,7 +858,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     check_ownership(entries, candidate)
     if mode == "register":
         save_registry([e for e in entries if e["path"] != candidate["path"]] + [candidate])
-        print("Registered " + name + " at " + str(directory) + ". No containers or terminals changed.")
+        print("Registered " + colored_name(name) + " at " + str(directory) + ". No containers or terminals changed.")
         return 0
     if existing and candidate != existing:
         raise DworkError("Workspace configuration or Docker target changed since registration."
@@ -825,28 +912,28 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     if discovered:
         print("Projects found in immediate subdirectories:")
         for w in workspaces:
-            print("  " + str(w.directory.relative_to(directory)) + " -> " + w.name)
+            print("  " + str(w.directory.relative_to(directory)) + " -> " + colored_name(w.name))
     else:
-        print("Current Compose project: " + workspaces[0].name if active
-              else "Current workspace: " + workspaces[0].name + " (Compose disabled)")
+        print("Current Compose project: " + colored_name(workspaces[0].name) if active
+              else "Current workspace: " + colored_name(workspaces[0].name) + " (Compose disabled)")
     for warning in warnings:
-        print("Warning: " + warning, file=sys.stderr)
+        print(color("Warning: " + warning, "warning", sys.stderr), file=sys.stderr)
     print("Switch plan: " + str(len(stops)) + " stop(s), " + str(len(starts))
           + " start(s), " + str(len(tasks)) + " terminal task(s).")
     if active:
         print("Scope: only other registered workspaces on this Docker target may be stopped.")
     if existing is None:
-        print("Would register workspace: " + name + " -> " + str(directory))
+        print("Would register workspace: " + colored_name(name) + " -> " + str(directory))
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
     for identifier, project in stops:
-        print("Would stop: " + identifier[:12] + " (" + project + ")")
+        print(color("Would stop: ", "stop") + identifier[:12] + " (" + colored_name(project) + ")")
     for identifier, project, service in starts:
-        print("Would start existing: " + identifier[:12] + " (" + project + "/" + service + ")")
+        print(color("Would start existing: ", "start") + identifier[:12] + " (" + colored_name(project + "/" + service) + ")")
     for task in tasks:
         if task.healthy:
             print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
         confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
-        print("Would open terminal: " + task.title + " -> " + shlex.join(task.command) + " in " + str(task.cwd) + confirmation)
+        print("Would open terminal: " + colored_name(task.title) + " -> " + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + confirmation)
     if not stops and not starts and not tasks:
         print("No container changes needed.")
     if preview:
@@ -864,7 +951,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             print("Cancelled; no workspace registered and no containers or terminals changed.")
             return 0
         save_registry(entries + [candidate])
-        print("Registered " + name + " at " + str(directory) + ".")
+        print("Registered " + colored_name(name) + " at " + str(directory) + ".")
     actions = []
     for identifier, project in stops:
         actions.append(("stop " + identifier + " (" + project + ")",
@@ -881,17 +968,21 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     try:
         for label, operation in actions:
             step = label
-            print("Executing: " + label, flush=True)
+            style = "stop" if label.startswith("stop ") else "start" if label.startswith("start ") else "warning"
+            print("Executing: " + color(label, style), flush=True)
             operation()
+            if label.startswith(("stop ", "start ")):
+                verb, detail = label.split(" ", 1)
+                print(color(("Stopped: " if verb == "stop" else "Started: ") + detail, style), flush=True)
             completed.append(label)
             pending.pop(0)
         for task in tasks:
             step = "terminal " + task.title
             if not confirm_terminal(task):
-                print("Skipped terminal: " + task.title, flush=True)
+                print("Skipped terminal: " + colored_name(task.title), flush=True)
                 pending.pop(0)
                 continue
-            print("Opening terminal: " + task.title, flush=True)
+            print("Opening terminal: " + colored_name(task.title), flush=True)
             open_terminal(task)
             completed.append("launched terminal " + task.title)
             pending.pop(0)
@@ -905,7 +996,7 @@ def cli():
     try:
         return main()
     except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
-        print("dwork: " + str(error), file=sys.stderr)
+        print(color("dwork: " + str(error), "stop", sys.stderr), file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\ndwork: cancelled.", file=sys.stderr)

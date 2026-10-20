@@ -145,6 +145,28 @@ Unavailable registered directories are shown in `list` and are excluded from sto
 plans. Restore the directory or forget and re-register it; dwork does not guess its
 new location.
 
+## Stop all workspaces
+
+```sh
+dwork down --dry-run
+dwork down
+```
+
+Stops all registered container workloads on the current Docker target together,
+including workloads from unavailable directories. It respects recorded service
+selections and `DWORK_KEEP_PROJECTS`. Unregistered projects and other Docker targets
+are untouched. Containers, networks, volumes, and registrations are retained.
+
+`down` works from any directory without loading workspace files or opening terminals.
+It does not close host terminal sessions or stop their processes. The Docker daemon
+and WSL VM remain running; this command releases the stopped workloads' resources,
+not a guaranteed amount of host-visible memory.
+
+Docker receives one `stop` call with all selected container IDs. If it fails or is
+interrupted, dwork refreshes the selected containers' states and reports partial
+completion when possible. Preview first to inspect the scope; the explicit `down`
+command proceeds without another confirmation prompt.
+
 ## Forget
 
 ```sh
@@ -164,7 +186,7 @@ paths, selection options, and resolved project identities. They are local state,
 not a portable project configuration.
 
 Updates replace the registry atomically. A per-user file lock prevents concurrent
-registrations, forget operations, and switches from interleaving; a second mutating
+registrations, forget operations, switches, and shutdowns from interleaving; a second mutating
 invocation reports that another operation is in progress. Read-only commands do not
 create registry or lock files. A malformed registry blocks registry operations and
 switching without overwriting the file; restore or repair it before retrying.

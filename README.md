@@ -85,11 +85,15 @@ dwork register my-app       # Remember this directory; start/stop nothing
 dwork list                  # Show remembered directories and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
+dwork down                  # Stop all registered workspace containers
 dwork forget my-app         # Forget it; leave containers and files alone
 ```
 
 `switch` uses the saved directory and Compose options; your current shell stays
 where it is. [Workspace registration and switching →](docs/workspaces/README.md)
+
+Use `dwork down --dry-run` to preview shutdown. `down` respects
+`DWORK_KEEP_PROJECTS` and keeps containers, networks, and volumes for next time.
 
 > [!NOTE]
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
@@ -125,6 +129,7 @@ prompt. Missing containers and failed health checks block dependent terminals.
 - Keep shared infrastructure running: `DWORK_KEEP_PROJECTS=infra,monitoring dwork`.
 - Choose your Linux terminal: `DWORK_TERMINAL=konsole dwork`.
 - Run from a monorepo root: immediate child workspaces are listed for confirmation.
+- Names and status messages are colored in terminals; set `NO_COLOR=1` for plain text.
 
 ## More
 

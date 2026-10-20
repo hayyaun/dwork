@@ -120,6 +120,8 @@ run `dwork register NAME` with the intended options before switching again.
   It must exist.
 - `window`: `new` opens a new window; `current` requests an existing-window tab
   using the selected emulator's rules. Defaults to `new`. xterm supports `new` only.
+  On Windows Terminal, `current` means the most recently used window, not necessarily
+  the one containing your shell. See [troubleshooting current](../terminals/README.md#troubleshoot-current-on-windows-terminal--wsl).
 - `launcher`: defaults to `auto`. Supported values are `auto`, `windows-terminal`,
   `gnome-terminal`, `konsole`, `xfce4-terminal`, and `xterm`. An explicit task
   setting overrides `DWORK_TERMINAL`; otherwise platform/desktop selection applies.

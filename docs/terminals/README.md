@@ -78,6 +78,36 @@ confirmation policy without asking or opening terminals. See
 Existing-window selection follows each terminal application's documented rules.
 This does not guarantee the window containing the dwork invocation is the target.
 
+### Troubleshoot `current` on Windows Terminal / WSL
+
+The task setting is **`window: current`**, under `terminals`:
+
+```yaml
+terminals:
+  - title: Backend
+    command: [make, run]
+    window: current
+```
+
+`terminal: current` is not a supported configuration field. `current` opens a new
+tab in an existing window; it does not run inside or replace the tab containing
+your shell.
+
+dwork passes `wt.exe -w 0 new-tab ...`. Microsoft's documented meaning of `0` is
+**the most recently used Windows Terminal window**, not the window containing the
+calling shell. If another window becomes most recently used while dwork waits for
+health checks or confirmation, the new tab can open there. If no eligible window
+exists, Windows Terminal can create a new one.
+
+For the existing behavior, make the intended Windows Terminal window active before
+accepting the task prompt. When invoking dwork from an IDE terminal or another
+terminal application, `current` still refers to a Windows Terminal window.
+The documented CLI supports explicit window IDs/names, but this dwork adapter
+currently exposes only `new` and `current`; it does not guarantee exact calling-window
+targeting.
+
+Reference: [Windows Terminal window selection](https://learn.microsoft.com/en-us/windows/terminal/command-line-arguments#options-and-commands).
+
 ## Commands and startup
 
 Each adapter passes the command through your configured Bash or Zsh login and

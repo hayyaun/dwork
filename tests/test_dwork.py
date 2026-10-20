@@ -45,12 +45,13 @@ elif args[0] == "ps":
     print("\n".join(c["Id"] for c in containers))
 elif args[0] == "inspect":
     calls = [json.loads(line) for line in Path(os.environ["DWORK_TEST_LOG"]).read_text().splitlines()]
-    started = {call[1] for call in calls if call[0] == "start"}
-    stopped = {call[1] for call in calls if call[0] == "stop"}
+    started = {identifier for call in calls if call[0] == "start" for identifier in call[1:]}
+    stopped = {identifier for call in calls if call[0] == "stop" for identifier in call[1:]}
+    partial = set(json.loads(os.environ.get("DWORK_TEST_STOPPED", "[]")))
     for item in containers:
         if item["Id"] in started and os.environ.get("DWORK_TEST_FAIL") != "start":
             item["State"]["Status"] = "running"
-        elif item["Id"] in stopped and os.environ.get("DWORK_TEST_FAIL") != "stop":
+        elif item["Id"] in stopped and (os.environ.get("DWORK_TEST_FAIL") != "stop" or item["Id"] in partial):
             item["State"]["Status"] = "exited"
     print(json.dumps([item for item in containers if item["Id"] in args[3:]]))
 elif args[0] in ("stop", "start"):
@@ -104,7 +105,7 @@ class DworkTests(unittest.TestCase):
                            input="", text=True, capture_output=True, env=env, check=True)
         # Existing behavior tests exercise already-registered workspaces. Registry
         # tests disable this setup to exercise the first-run consent path itself.
-        if register_current and not args.startswith(("register", "list", "switch", "forget")):
+        if register_current and not args.startswith(("register", "list", "switch", "forget", "down")):
             words = shlex.split(args)
             if words and words[0] in ("--dry-run", "status", "doctor"):
                 words.pop(0)

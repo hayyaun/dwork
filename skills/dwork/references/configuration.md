@@ -39,6 +39,9 @@ The first normal run asks before registering a new directory. `dwork register NA
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
 list, activate, and forget remembered directories. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.
+`dwork down` stops all registered container workloads on the current Docker target,
+respecting service selections and `DWORK_KEEP_PROJECTS`, without removing containers
+or volumes. `dwork down --dry-run` previews without stopping anything.
 With Compose disabled for all selected workspaces, no Docker commands run.
 
 ## Terminal tasks
@@ -50,6 +53,8 @@ Each item in `terminals` supports:
 - `title`: optional nonempty string, default `dwork: <project>`.
 - `cwd`: optional existing directory relative to `dwork.yml`, default `.`.
 - `window`: `new` (default) or `current` (request an existing-window tab).
+  On Windows Terminal, `current` selects the most recently used window, not
+  necessarily the calling shell's window. The field is `window`, not `terminal`.
 - `launcher`: `auto` (default), `windows-terminal`, `gnome-terminal`, `konsole`,
   `xfce4-terminal`, or `xterm`. xterm supports new windows only. Explicit task
   settings override `DWORK_TERMINAL`.

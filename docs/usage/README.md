@@ -59,6 +59,7 @@ dwork register my-app     # Save this workspace without starting or stopping any
 dwork list               # Registered names, directory paths, and container status
 dwork switch my-app      # Activate the saved workspace from anywhere
 dwork switch my-app --dry-run
+dwork down                # Stop all registered workloads on this Docker target
 dwork forget my-app      # Remove only the registration
 ```
 
@@ -67,6 +68,37 @@ or the directory name for a host-only workspace or a group of child workspaces.
 `switch` uses saved Compose options and does not change your calling shell's directory.
 See [workspace registration](../workspaces/README.md) for naming, Docker targets,
 configuration changes, shared infrastructure, and moved directories.
+
+### Stop all registered workloads
+
+```sh
+dwork down --dry-run
+dwork down
+```
+
+Run from any directory. `down` stops running, restarting, and paused containers
+managed by all registered workspaces on the current Docker target in one Docker
+stop call. Registered service selections and `DWORK_KEEP_PROJECTS` still apply;
+unregistered projects stay running. It does not remove containers, networks,
+volumes, or registrations, and it does not stop host terminal commands or the
+Docker daemon/WSL VM. Docker's normal stop signal and timeout behavior apply.
+
+Unlike a workspace switch, explicit `down` also stops registered workloads whose
+directories have moved or disappeared. It uses the saved ownership, without
+loading project configs or requiring terminal dependencies. A batch error or
+interruption reports the refreshed state of each selected container when available;
+some containers may already have stopped. No rollback is attempted.
+
+### Colored output
+
+Workspace and terminal-task names have consistent colors across invocations.
+Starts and healthy running states are green, stops and failures red, and warnings
+or pending health states yellow. Status words remain visible so color is optional.
+Terminal prompts highlight the task title and command while keeping `(y/N)` consent.
+
+Colors are automatic only when the output stream is a terminal. Pipes, captured
+output, and logs stay plain. Set `NO_COLOR=1` to disable colors; `TERM=dumb` also
+disables them. Standard output and standard error are checked independently.
 
 ### dwork.yml
 
