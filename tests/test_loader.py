@@ -1,4 +1,4 @@
-"""Loader checks for both supported shells; no Docker daemon is used."""
+"""Check the public source entry point in Bash and Zsh; no Docker is used."""
 from pathlib import Path
 import shlex
 import shutil
@@ -13,15 +13,15 @@ class LoaderTests(unittest.TestCase):
         for shell in ("bash", "zsh"):
             if not shutil.which(shell):
                 continue
-            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="shellfunx loader ") as temp:
+            with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="dwork loader ") as temp:
                 root = Path(temp) / "repo with spaces"
                 root.mkdir()
-                shutil.copy2(REPO / ".shell_functions", root / ".shell_functions")
-                shutil.copytree(REPO / "functions", root / "functions")
-                source = ". " + shlex.quote(str(root / ".shell_functions"))
+                shutil.copy2(REPO / "dwork.sh", root / "dwork.sh")
+                shutil.copytree(REPO / "lib", root / "lib")
+                source = ". " + shlex.quote(str(root / "dwork.sh"))
                 script = source + "\n" + source + r"""
 command -v dwork >/dev/null || exit 21
-[ -z "${_shellfunx_file+set}${_shellfunx_dir+set}" ] || exit 22
+[ -z "${_dwork_file+set}${_dwork_dir+set}" ] || exit 22
 printf 'WORKDIR:%s\n' "$PWD"
 dwork --help
 """
@@ -37,32 +37,42 @@ dwork --help
                 continue
             with self.subTest(shell=shell):
                 result = subprocess.run(
-                    [shell, "-c", ". ./.shell_functions\ndwork --help"],
+                    [shell, "-c", ". ./dwork.sh\ndwork --help"],
                     cwd=REPO, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("Usage: dwork", result.stdout)
 
-    def test_module_can_be_sourced_directly(self):
+    def test_legacy_entry_point_loads_dwork(self):
         for shell in ("bash", "zsh"):
             if not shutil.which(shell):
                 continue
             with self.subTest(shell=shell):
                 result = subprocess.run(
-                    [shell, "-c", ". " + shlex.quote(str(REPO / "functions/dwork.sh")) + "\ndwork --help"],
+                    [shell, "-c", ". " + shlex.quote(str(REPO / ".shell_functions")) + "\ndwork --help"],
                     cwd="/tmp", capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_missing_module_is_an_error(self):
+    def test_missing_runtime_is_an_error_when_invoked(self):
         for shell in ("bash", "zsh"):
             if not shutil.which(shell):
                 continue
             with self.subTest(shell=shell), tempfile.TemporaryDirectory() as temp:
-                source = Path(temp) / ".shell_functions"
-                shutil.copy2(REPO / ".shell_functions", source)
+                source = Path(temp) / "dwork.sh"
+                shutil.copy2(REPO / "dwork.sh", source)
                 result = subprocess.run(
-                    [shell, "-c", ". " + shlex.quote(str(source))],
+                    [shell, "-c", ". " + shlex.quote(str(source)) + "\ndwork --help"],
                     capture_output=True, text=True)
                 self.assertNotEqual(result.returncode, 0)
+
+    def test_does_not_replace_unrelated_user_functions(self):
+        for shell in ("bash", "zsh"):
+            if not shutil.which(shell):
+                continue
+            with self.subTest(shell=shell):
+                script = "got() { printf personal; }\n. " + shlex.quote(str(REPO / "dwork.sh")) + "\ngot"
+                result = subprocess.run([shell, "-c", script], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "personal")
 
 if __name__ == "__main__":
     unittest.main()

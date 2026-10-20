@@ -1,11 +1,13 @@
 # dwork
 
-[Project home](../../../README.md) · [Shell setup](../README.md)
+[Project home](../../README.md) · [Installation](../installation/README.md)
 
-Switch between existing Docker Compose projects from your current project
-directory.
+Switch development workspaces from your current directory: existing Compose
+containers by default, or a [dwork.yml configuration](../configuration/README.md)
+with optional health-gated terminal commands.
 
-Implementation: [`functions/dwork.sh`](../../../functions/dwork.sh).
+Implementation: [shell function](../../dwork.sh) and
+[Python runtime](../../lib/dwork.py).
 
 ## Requirements
 
@@ -16,7 +18,10 @@ Implementation: [`functions/dwork.sh`](../../../functions/dwork.sh).
 - Python 3, available as `python3`.
 
 Checked with Docker Compose v5.0.0 on Ubuntu in WSL2, using both Bash and Zsh.
-First follow the [shell setup instructions](../README.md#install).
+First follow the [installation instructions](../installation/README.md).
+
+Optional YAML and terminal requirements are covered in the
+[configuration guide](../configuration/README.md#requirements).
 
 ## Usage
 
@@ -27,7 +32,8 @@ dwork --dry-run
 dwork
 ```
 
-The preview reads Docker and Compose state without changing containers.
+The preview reads configuration and container state without changing containers,
+waiting for health checks, or opening terminals.
 
 `dwork`:
 
@@ -42,6 +48,13 @@ It uses `docker stop` and `docker start`. It never calls `docker compose up`,
 creates containers, pulls images, builds images, recreates containers, or removes
 containers, networks, or volumes. Current-project containers already running are
 left running. Containers without a Compose project label are left alone.
+
+### dwork.yml
+
+A workspace can define its own Compose toggle, service selection, and terminal
+commands in `dwork.yml`. For example, start an existing database container and
+open `make run` in a new terminal only after its health check passes.
+See the [schema, examples, and defaults](../configuration/README.md).
 
 ### Compose options
 
@@ -72,8 +85,8 @@ containers.
 
 ### Run from a repository root
 
-If there is no default Compose config in the current directory or its parents,
-`dwork` checks each **immediate subdirectory** for a standard Compose filename:
+If there is no default dwork/Compose config in the current directory or its parents,
+`dwork` checks each **immediate subdirectory** for `dwork.yml` or a standard Compose filename:
 `compose.yaml`, `compose.yml`, `docker-compose.yaml`, or `docker-compose.yml`.
 
 For example, from a repository containing `backend/compose.yaml` and
@@ -150,16 +163,7 @@ dwork --help
 
 ## Development checks
 
-From the repository root:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
-```
-
-The tests exercise Bash and Zsh when installed, using a fake Docker executable.
-They cover grouped switching, confirmation and cancellation, one-level discovery,
-configuration failures, shared-project exclusions, and existing-container-only
-starts. They never contact a Docker daemon.
+See [development and tests](../development/README.md).
 
 ## Docker references
 

@@ -1,43 +1,91 @@
-# shellfunx
+# dwork
 
-Reusable shell functions for Bash and Zsh. Each function adds a focused command
-for everyday development tasks.
+**Switch your development workspace with one command.**
 
-## Quick start
-
-Clone the repository somewhere permanent:
+`dwork` is a Bash/Zsh function that stops other projects' Docker Compose containers
+and resumes the existing containers for your current project. Add a `dwork.yml` to
+choose services, wait for healthy dependencies, and open your development commands
+in new terminals.
 
 ```sh
-git clone https://github.com/hayyaun/shellfunx.git "$HOME/projects/foss/shellfunx"
+cd your-project
+dwork --dry-run   # See the plan
+dwork             # Switch the workspace
+```
+
+## What it does
+
+- Uses Docker Compose by default; configuration is optional.
+- Starts existing stopped containers and warns about containers you need to create.
+- Keeps designated shared projects running.
+- Reads `dwork.yml` to enable or disable Compose and select services.
+- Opens configured commands in Windows Terminal after Docker health checks pass.
+- Discovers immediate child workspaces and asks `(y/N)` before switching them together.
+
+It never creates, rebuilds, or removes containers. Normal project setup and
+migrations remain explicit steps.
+
+## Install
+
+Clone somewhere permanent:
+
+```sh
+git clone https://github.com/hayyaun/dwork.git "$HOME/projects/foss/dwork"
 ```
 
 Add this line to `~/.bashrc` for Bash and/or `~/.zshrc` for Zsh:
 
 ```sh
-[ -r "$HOME/projects/foss/shellfunx/.shell_functions" ] && . "$HOME/projects/foss/shellfunx/.shell_functions"
+[ -r "$HOME/projects/foss/dwork/dwork.sh" ] && . "$HOME/projects/foss/dwork/dwork.sh"
 ```
 
-Adjust the path if you cloned elsewhere. Open a new terminal, or load it now:
+Load it in your current terminal:
 
 ```sh
-. "$HOME/projects/foss/shellfunx/.shell_functions"
+. "$HOME/projects/foss/dwork/dwork.sh"
 ```
 
-Each function lives in its own file under [`functions/`](functions/README.md).
-[`.shell_functions`](.shell_functions) loads the function modules for both shells.
+Adjust the path if you clone elsewhere. Keep `dwork.sh` and `lib/` together.
+Sourcing defines the function; it does not start anything.
+
+**Requirements:** Bash or Zsh and Python 3. Compose mode needs Docker and Docker
+Compose. YAML configs additionally need PyYAML. Opening terminals currently
+requires **WSL2, Windows Terminal, and Windows PowerShell**; Compose-only usage is
+not tied to Windows. Verified on Ubuntu/WSL2 with Bash and Zsh.
+
+## Example: database first, backend next
+
+Place this `dwork.yml` beside your Compose file:
+
+```yaml
+version: 1
+compose:
+  enabled: true
+  services: [postgres]
+
+terminals:
+  - title: Backend
+    command: [make, run]
+    wait_for:
+      healthy: [postgres]
+      timeout: 180
+```
+
+When you invoke `dwork`, it starts your existing PostgreSQL container if stopped,
+waits for Docker to report it healthy, then opens `make run` in a new terminal
+window in this directory.
+
+The Compose service must be named `postgres` and have a health check. Create its
+container and complete your project's setup first. Each invocation opens the
+configured commands again; stop an already-running backend before launching another.
 
 ## Documentation
 
-- [Shell functions](docs/shell/README.md): setup, how sourcing works, updates,
-  and removal.
-- [dwork](docs/shell/dwork/README.md): switch existing Docker Compose containers
-  between projects, with previews, options, shared-project exclusions, and limits.
+- [Installation](docs/installation/README.md): requirements, sourcing, updates, and removal.
+- [Usage](docs/usage/README.md): switching, previews, shared services, and limits.
+- [Configuration](docs/configuration/README.md): the complete `dwork.yml` format.
+- [Examples](examples/README.md): Compose-only, backend, full-stack, and host-only workspaces.
+- [Development](docs/development/README.md): source layout and tests.
+- [Sharing dwork](docs/promotion/README.md): a short introduction you can adapt.
 
-- [got](docs/shell/got/README.md): stage changes, commit with a subject and optional
-  body, and push.
-
-When no default Compose config exists, `dwork` can discover projects in immediate
-subdirectories and ask for confirmation before switching them together.
-
-`dwork` stops other Compose projects and starts only existing stopped containers
-for the current project. It warns about missing containers; it never creates them.
+Start with `dwork --dry-run` or `dwork --help`.

@@ -1,0 +1,13 @@
+# Copy to a workspace containing a Compose service named postgres.
+version: 1
+compose:
+  enabled: true
+  services: [postgres]
+terminals:
+  - title: Backend
+    command: [make, run]
+    cwd: .
+    window: new
+    wait_for:
+      healthy: [postgres]
+      timeout: 180

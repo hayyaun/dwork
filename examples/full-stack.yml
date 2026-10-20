@@ -1,0 +1,20 @@
+# Put dwork.yml at the repository root, beside compose.yaml.
+# Expected folders: backend/ (make run), frontend/ (npm run dev).
+version: 1
+compose:
+  enabled: true
+  services: [postgres]
+
+terminals:
+  - title: Backend
+    command: [make, run]
+    cwd: backend
+    window: new
+    wait_for:
+      healthy: [postgres]
+      timeout: 180
+
+  - title: Frontend
+    command: [npm, run, dev]
+    cwd: frontend
+    window: new

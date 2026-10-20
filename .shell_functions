@@ -1,24 +1,19 @@
-# Source this file from Bash or Zsh to load shellfunx functions.
-# Resolve paths relative to this file, independently of the current directory.
+# Compatibility entry point. New installations should source dwork.sh.
 if [ -n "${BASH_VERSION:-}" ]; then
-    _shellfunx_file="${BASH_SOURCE[0]}"
+    _dwork_loader_file="${BASH_SOURCE[0]}"
 elif [ -n "${ZSH_VERSION:-}" ]; then
-    _shellfunx_file="${(%):-%x}"
+    _dwork_loader_file="${(%):-%x}"
 else
-    printf "%s\n" "shellfunx: Bash or Zsh is required." >&2
+    printf "%s\n" "dwork: Bash or Zsh is required." >&2
     return 1
 fi
-
-_shellfunx_dir=$(CDPATH= cd -- "$(dirname -- "$_shellfunx_file")" && pwd -P) || {
-    unset _shellfunx_file _shellfunx_dir
+_dwork_loader_dir=$(CDPATH= cd -- "$(dirname -- "$_dwork_loader_file")" && pwd -P) || {
+    unset _dwork_loader_file _dwork_loader_dir
     return 1
 }
-
-# Add one explicit source entry here for each new function module.
-if . "$_shellfunx_dir/functions/dwork.sh" &&
-   . "$_shellfunx_dir/functions/got.sh"; then
-    unset _shellfunx_file _shellfunx_dir
+if . "$_dwork_loader_dir/dwork.sh"; then
+    unset _dwork_loader_file _dwork_loader_dir
 else
-    unset _shellfunx_file _shellfunx_dir
+    unset _dwork_loader_file _dwork_loader_dir
     return 1
 fi

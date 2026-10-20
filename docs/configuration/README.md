@@ -1,0 +1,167 @@
+# dwork.yml
+
+[Usage](../usage/README.md) · [Examples](../../examples/README.md) · [Project home](../../README.md)
+
+Place `dwork.yml` in the repository or workspace directory. It is dwork's own
+configuration, separate from Docker Compose.
+
+## Example: database plus a host backend
+
+```yaml
+version: 1
+
+compose:
+  enabled: true
+  services:
+    - postgres
+
+terminals:
+  - title: Backend
+    command: [make, run]
+    cwd: .
+    window: new
+    wait_for:
+      healthy: [postgres]
+      timeout: 180
+```
+
+Invoking `dwork` reads the existing Compose model, switches existing containers,
+waits for every existing container of the selected `postgres` service to be
+running and healthy, then opens a Windows Terminal window running `make run`.
+It never creates missing containers.
+
+Preview first:
+
+```sh
+dwork --dry-run
+```
+
+The preview lists container changes, health requirements, and terminal tasks.
+It does not wait, prompt, or open terminals.
+
+## Requirements
+
+Without a config, Compose-only usage needs the existing Python/Docker setup.
+Reading `dwork.yml` additionally requires PyYAML for the `python3` interpreter
+used by dwork. On Ubuntu/WSL:
+
+```sh
+sudo apt install python3-yaml
+```
+
+Terminal tasks currently support **WSL2 with Windows Terminal**, Windows
+PowerShell (`powershell.exe`), and Bash or Zsh as `SHELL`. Compose-only mode remains
+usable on other platforms. Dry runs can describe terminal tasks on other platforms.
+
+## Configuration selection
+
+- The nearest `dwork.yml` in the current directory or its parents takes precedence
+  over automatic Compose selection.
+- `--project-directory`, or the directory of an explicit `-f`/`--file`, determines
+  where to begin looking for `dwork.yml`.
+- With no `dwork.yml`, the original Compose behavior remains: current/parent
+  config first, then immediate-child discovery when no default config is available.
+- Immediate-child discovery recognizes either `dwork.yml` or a standard Compose
+  file. It still asks `(y/N)` before changing anything. Selected children are
+  switched together and never stop one another.
+- A selected but invalid `dwork.yml` fails with an error. It does not fall back to
+  Compose or run part of the configuration.
+
+`dwork.yml` is not merged with another dwork file. Unknown fields, duplicate keys,
+and unsupported versions are errors.
+
+## version
+
+`version: 1` is required.
+
+## compose
+
+```yaml
+compose:
+  enabled: true
+  files: [compose.yaml, compose.dev.yaml]
+  services: [postgres, redis]
+```
+
+- `enabled` is a boolean, defaulting to `true`. When false, dwork does not read
+  Compose or inspect, stop, or start Docker containers for that workspace.
+- `files` is an optional, nonempty list of Compose file paths relative to
+  `dwork.yml`. Without it, Compose uses its normal discovery and overrides.
+  Explicit `-f`/`--file` flags or `COMPOSE_FILE` take precedence over this list.
+- `services` is an optional, nonempty list of Compose service names to manage.
+  Without it, dwork preserves its existing behavior of managing all existing
+  target-project containers. With it, other target-project services remain
+  untouched, and missing-container warnings cover only selected services.
+- Outside projects are still stopped, except those in `DWORK_KEEP_PROJECTS`.
+  When all selected workspaces disable Compose, no Docker commands are run.
+
+When `enabled: false`, omit `files`, `services`, Compose CLI options, and health
+prerequisites.
+
+Reading Compose does not recreate containers or update their stored environment.
+Environment values for existing containers do not need to be supplied again just
+to start them.
+
+## terminals
+
+`terminals` is a list, defaulting to an empty list. Each item supports:
+
+- `command`: a required, nonempty list of executable and argument strings, such as
+  `[make, run]`. Commands use the user's Bash/Zsh login and interactive startup
+  environment. Arguments are quoted; this is not an arbitrary shell snippet.
+- `title`: an optional nonempty title. Defaults to `dwork: <project>`.
+- `cwd`: an optional working directory relative to `dwork.yml`, defaulting to `.`.
+  It must exist.
+- `window`: `new` opens a new window; `current` opens a tab in the most recently
+  used Windows Terminal window. Defaults to `new`.
+- `wait_for`: optional health prerequisites described below.
+
+Commands run in the foreground of their new terminal. dwork confirms the terminal
+launcher succeeded; it does not supervise the command or report its eventual exit
+status. Every invocation launches the configured tasks again. It does not detect
+already-running host processes or close terminals from previous projects.
+
+For pipelines or compound commands, put the command in a script and invoke that
+script. Terminal values cannot contain newlines, NUL, or semicolons (Windows
+Terminal reserves semicolons as command separators).
+
+## wait_for
+
+```yaml
+wait_for:
+  healthy: [postgres]
+  timeout: 180
+```
+
+`healthy` is a nonempty list of service names from this workspace's Compose model.
+When `compose.services` is set, health prerequisites must also appear there.
+`timeout` defaults to 180 seconds and must be greater than zero and at most 3600.
+
+The services must already have containers and Docker health checks. A missing
+required container aborts before other projects are stopped; create it manually.
+A paused, exited, dead, unhealthy, or missing-health-check container blocks terminal
+launch. Containers still starting are polled until healthy or the timeout expires.
+
+All configured health gates pass before any terminal opens. Failed stops, starts,
+health checks, or launcher operations stop further work; completed container changes
+are not rolled back.
+
+## Host-only workspace
+
+Disable Compose to run terminal tasks without Docker:
+
+```yaml
+version: 1
+compose:
+  enabled: false
+terminals:
+  - title: Frontend
+    command: [npm, run, dev]
+```
+
+## Implementation references
+
+- [PyYAML loaders](https://pyyaml.org/wiki/PyYAMLDocumentation)
+- [Docker container health status](https://docs.docker.com/engine/containers/run/)
+- [Windows Terminal CLI](https://learn.microsoft.com/windows/terminal/command-line-arguments)
+- [PowerShell Start-Process argument quoting](https://learn.microsoft.com/powershell/module/microsoft.powershell.management/start-process)

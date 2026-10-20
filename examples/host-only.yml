@@ -1,0 +1,11 @@
+# Run a frontend workspace without reading Compose or touching Docker.
+# package.json in this directory must define a dev script.
+version: 1
+compose:
+  enabled: false
+
+terminals:
+  - title: Frontend
+    command: [npm, run, dev]
+    cwd: .
+    window: current

@@ -1,0 +1,6 @@
+# Use an existing Compose project without launching host commands.
+# Your Compose file must define postgres and redis.
+version: 1
+compose:
+  enabled: true
+  services: [postgres, redis]

@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = Path(__file__).resolve().parents[1] / ".shell_functions"
+SOURCE = Path(__file__).resolve().parents[1] / "dwork.sh"
 FAKE_DOCKER = r"""#!/usr/bin/env python3
 import json, os
 from pathlib import Path
@@ -38,7 +38,12 @@ if args[0] == "compose":
 elif args[0] == "ps":
     print("\n".join(c["Id"] for c in containers))
 elif args[0] == "inspect":
-    print(json.dumps(containers))
+    calls = [json.loads(line) for line in Path(os.environ["DWORK_TEST_LOG"]).read_text().splitlines()]
+    started = {call[1] for call in calls if call[0] == "start"}
+    for item in containers:
+        if item["Id"] in started:
+            item["State"]["Status"] = "running"
+    print(json.dumps([item for item in containers if item["Id"] in args[3:]]))
 elif args[0] in ("stop", "start"):
     if args[0] == os.environ.get("DWORK_TEST_FAIL"):
         sys.exit("simulated Docker failure")
@@ -55,7 +60,7 @@ def container(identifier, project, service="web", state="exited"):
 
 class DworkTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="shellfunx-test-")
+        self.temp = tempfile.TemporaryDirectory(prefix="dwork-test-")
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
         self.root = self.base / "repo"
