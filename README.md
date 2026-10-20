@@ -90,6 +90,11 @@ dwork down                  # Stop all registered workspace containers
 dwork forget my-app         # Forget it; leave containers and files alone
 ```
 
+`scan` skips dependency, cache, and build directories such as `node_modules`,
+`.venv`, and `dist`. It stops descending at repo markers such as `.git`, `dwork.yml`,
+or `package.json`, then moves to the next project.
+[Skip list and repo markers →](docs/workspaces/README.md#scan-a-directory-tree)
+
 `switch` uses the saved directory and Compose options; your current shell stays
 where it is. [Workspace registration and switching →](docs/workspaces/README.md)
 

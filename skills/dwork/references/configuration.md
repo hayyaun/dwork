@@ -51,6 +51,9 @@ use a readable valid config with `locked: false` or omit the field.
 `dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
 checkbox picker for unregistered Compose-only directories. It does not activate
 anything. `dwork scan --dry-run` previews without writing or prompting.
+Scanning stops below repository/project markers such as `.git`, `dwork.yml`,
+Compose files, or project manifests. Start a scan inside a nested directory to
+find workspaces below an existing repository boundary.
 With Compose disabled for all selected workspaces, no Docker commands run.
 
 ## Terminal tasks

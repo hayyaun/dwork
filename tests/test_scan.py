@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import test_dwork as legacy
 from test_dwork_config import runtime
+from test_colors import TTY
 
 
 class ScanTests(unittest.TestCase):
@@ -35,17 +36,112 @@ class ScanTests(unittest.TestCase):
     def entries(self):
         return json.loads(self.state.read_text())["workspaces"]
 
-    def test_recurses_including_root_and_skips_git_and_symlinks(self):
-        self.configured(self.root)
+    def test_recurses_through_container_directories_and_skips_symlinks(self):
+        self.configured(self.root / "first")
         self.configured(self.root / "deep/a/b")
-        self.configured(self.root / ".git/hidden")
         self.configured(self.fixture.base / "outside")
         (self.root / "link").symlink_to(self.fixture.base / "outside", target_is_directory=True)
         result, changes, calls = self.run_cli()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         self.assertEqual(calls, [])
-        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root), str(self.root / "deep/a/b")})
+        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "first"), str(self.root / "deep/a/b")})
+
+    def test_repo_markers_prune_descendants_but_continue_siblings(self):
+        markers = ("package.json", "pyproject.toml", "Cargo.toml", "go.mod", "composer.json",
+                   "Gemfile", "pom.xml", "build.gradle", "mix.exs", "pubspec.yaml", ".git")
+        for index, marker in enumerate(markers):
+            repo = self.root / str(index)
+            self.configured(repo / "nested")
+            (repo / marker).write_text("")
+        self.configured(self.root / "sibling")
+        real_scandir = os.scandir
+        with patch.object(runtime.os, "scandir", side_effect=real_scandir) as scanned:
+            configured, _, errors = runtime.scan_directories(self.root)
+        self.assertEqual(configured, [self.root / "sibling"])
+        self.assertEqual(errors, [])
+        self.assertFalse(any(Path(call.args[0]).name == "nested" for call in scanned.call_args_list))
+
+    def test_root_boundary_is_checked_before_pruning(self):
+        self.configured(self.root)
+        self.configured(self.root / "nested")
+        configured, _, errors = runtime.scan_directories(self.root)
+        self.assertEqual(configured, [self.root])
+        self.assertEqual(errors, [])
+
+    def test_git_directory_and_compose_boundaries_are_detected(self):
+        self.configured(self.root / "git-repo/nested")
+        (self.root / "git-repo/.git").mkdir()
+        self.fixture.model(self.root / "compose-repo", "compose-repo")
+        self.configured(self.root / "compose-repo/nested")
+        configured, compose, errors = runtime.scan_directories(self.root)
+        self.assertEqual(configured, [])
+        self.assertEqual(compose, [self.root / "compose-repo"])
+        self.assertEqual(errors, [])
+
+    def test_dependency_cache_and_build_directories_are_not_traversed(self):
+        ignored = ("node_modules", "vendor", ".venv", "venv", "__pycache__",
+                   ".next", "dist", "build", "target", ".cache")
+        for name in ignored:
+            self.configured(self.root / "project" / name / "hidden")
+        expected = [self.root / "project" / name for name in ("src", "packages", "apps", "infra")]
+        for directory in expected:
+            self.configured(directory)
+        real_scandir = os.scandir
+        with patch.object(runtime.os, "scandir", side_effect=real_scandir) as scanned:
+            configured, compose, errors = runtime.scan_directories(self.root)
+        self.assertEqual(set(configured), set(expected))
+        self.assertEqual(compose, [])
+        self.assertEqual(errors, [])
+        visited = {Path(call.args[0]) for call in scanned.call_args_list}
+        self.assertTrue(all(self.root / "project" / name not in visited for name in ignored))
+
+    def test_explicit_scan_root_is_searched_even_if_its_name_is_ignored(self):
+        root = self.root / "vendor"
+        self.configured(root / "my-project")
+        configured, _, errors = runtime.scan_directories(root)
+        self.assertEqual(configured, [root / "my-project"])
+        self.assertEqual(errors, [])
+
+    def test_progress_shows_last_directory_in_grey_and_leaves_a_clean_line(self):
+        deepest = self.root / "one/two"
+        deepest.mkdir(parents=True)
+        with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
+                patch.object(runtime.shutil, "get_terminal_size", return_value=os.terminal_size((200, 24))), \
+                contextlib.redirect_stdout(TTY()) as output:
+            runtime.scan_directories(self.root)
+        text = output.getvalue()
+        self.assertIn("\033[90mSearching: " + str(self.root), text)
+        self.assertTrue(text.endswith("\033[90mone\033[0m\n\033[90m  two\033[0m\n"))
+
+    def test_progress_clears_parent_rows_when_moving_to_a_sibling_branch(self):
+        directories = [self.root, self.root / "bbb", self.root / "bbb/b2", self.root / "ccc"]
+        walk = [(str(path), [], []) for path in directories]
+        with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
+                patch.object(runtime.os, "walk", return_value=iter(walk)), \
+                patch.object(runtime.time, "monotonic", side_effect=range(10)), \
+                contextlib.redirect_stdout(TTY()) as output:
+            runtime.scan_directories(self.root)
+        text = output.getvalue()
+        self.assertIn("\033[90mbbb\033[0m\n\033[90m  b2\033[0m", text)
+        self.assertEqual(text.rsplit("\033[J", 1)[1], "\033[90mccc\033[0m\n")
+
+    def test_progress_is_omitted_for_redirected_output(self):
+        (self.root / "child").mkdir()
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            runtime.scan_directories(self.root)
+        self.assertEqual(output.getvalue(), "")
+
+    def test_interrupted_scan_finishes_its_progress_line(self):
+        def interrupted(*args, **kwargs):
+            yield str(self.root), [], []
+            raise KeyboardInterrupt
+        with patch.dict(os.environ, {"TERM": "xterm"}), \
+                patch.object(runtime.os, "walk", side_effect=interrupted), \
+                contextlib.redirect_stdout(TTY()) as output:
+            with self.assertRaises(KeyboardInterrupt):
+                runtime.scan_directories(self.root)
+        self.assertTrue(output.getvalue().endswith("\n"))
 
     def test_optional_compose_prompt_defaults_to_no(self):
         self.configured(self.root / "configured")
@@ -107,8 +203,8 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(self.entries()[0]["members"][0]["project"], "app")
         self.assertEqual(changes, [])
 
-    def test_only_selected_compose_directory_is_registered_and_switches_below_parent_config(self):
-        self.configured(self.root)
+    def test_only_selected_compose_directory_is_registered_and_switches(self):
+        self.configured(self.root / "configured")
         child, skipped = self.root / "child", self.root / "skip"
         self.fixture.model(child, "child")
         self.fixture.model(skipped, "skip")
@@ -120,7 +216,7 @@ class ScanTests(unittest.TestCase):
             with runtime.registry_lock():
                 self.assertEqual(runtime.scan_workspaces(self.root, [], False), 0)
         self.assertEqual(picker.call_args.args[0], [child, skipped])
-        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root), str(child)})
+        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "configured"), str(child)})
         for args in ("switch child", ""):
             result, changes, _ = self.run_cli(args, cwd=child, containers=[legacy.container("a", "child")])
             self.assertEqual(result.returncode, 0, result.stderr)

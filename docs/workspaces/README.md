@@ -58,10 +58,43 @@ dwork scan --dry-run
 dwork scan
 ```
 
-Searches the starting directory and all descendants for `dwork.yml`, including
-nested workspaces. `.git` and symlinked directories are skipped; other directories
-are searched without a depth limit. The preview reports configured workspaces and
-Compose candidates without prompting or writing anything.
+Searches the starting directory and descends through collections of projects.
+When it finds a repository/project marker, it checks that directory for `dwork.yml`
+or Compose files, then stops descending there and continues with sibling directories.
+The boundary markers are:
+
+- Version control: `.git` (file or directory), `.hg`, `.svn`.
+- Workspace files: `dwork.yml`, `compose.yaml`, `compose.yml`, `docker-compose.yaml`,
+  `docker-compose.yml`.
+- Project manifests: `package.json`, `pyproject.toml`, `setup.py`, `Cargo.toml`,
+  `go.mod`, `composer.json`, `Gemfile`, `pom.xml`, `build.gradle`, `build.gradle.kts`,
+  `settings.gradle`, `settings.gradle.kts`, `mix.exs`, `pubspec.yaml`.
+
+This is a filename-based heuristic, not proof that a repository has no nested
+workspaces. It also applies to the starting directory. To find workspaces below
+a detected boundary, start another scan from the desired subdirectory.
+
+Symlinked directories and these exact directory names are
+skipped at every depth, without traversing their contents:
+
+- Version control: `.git`, `.hg`, `.svn`.
+- Dependencies and environments: `node_modules`, `bower_components`, `vendor`, `.venv`, `venv`.
+- Caches: `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.tox`, `.nox`,
+  `.cache`, `.npm`, `.pnpm-store`, `.yarn`, `.gradle`.
+- Generated output: `.next`, `.nuxt`, `.svelte-kit`, `.angular`, `build`, `dist`,
+  `out`, `target`, `coverage`, `htmlcov`.
+
+Other directories are searched without a depth limit until a boundary is found. The explicitly chosen
+starting directory is always searched, even if its name is in the skip list;
+run the scan inside a skipped directory if you intentionally keep projects there.
+The preview reports configured workspaces and Compose candidates without prompting
+or writing anything.
+While searching in a terminal, updating grey rows show the current directory's
+parent chain, indented by depth below the scan root. For example, `bbb/b2` shows
+`bbb` and an indented `b2` on separate rows. Old rows are cleared when moving to
+another branch; very deep paths are clipped to the terminal height.
+Updates are limited to ten per second and the final directory is always
+shown. Progress is omitted from redirected output; `NO_COLOR` disables its grey styling.
 
 The normal command registers all valid configured workspaces first. Once that
 phase is saved, it asks whether to review unregistered directories containing a
@@ -87,8 +120,9 @@ project ownership, invalid configs, and unreadable directories are reported;
 valid additions are kept and the command exits with status 1 if any were skipped
 because of an error.
 
-Each newly scanned directory is registered independently, so selecting a nested
-Compose directory does not silently select its parent's `dwork.yml`. Activate it
+Each newly scanned directory is registered independently. When scanning directly
+inside a nested project, selecting its Compose directory does not silently select
+its parent's `dwork.yml`. Activate it
 with `dwork switch NAME` or by running `dwork` in that registered directory. Scanning
 uses each directory's own config and normal Compose discovery, without applying
 the calling shell's Compose-selection environment to every discovered project.

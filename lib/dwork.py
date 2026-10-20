@@ -19,6 +19,19 @@ LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
 LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
 
 FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
+SCAN_IGNORED_DIRS = frozenset({
+    ".git", ".hg", ".svn", "node_modules", "bower_components", "vendor",
+    ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".tox", ".nox", ".cache", ".npm", ".pnpm-store", ".yarn",
+    ".next", ".nuxt", ".svelte-kit", ".angular", ".gradle",
+    "build", "dist", "out", "target", "coverage", "htmlcov",
+})
+SCAN_REPO_MARKERS = frozenset({
+    ".git", ".hg", ".svn", "dwork.yml", "package.json", "pyproject.toml",
+    "setup.py", "Cargo.toml", "go.mod", "composer.json", "Gemfile", "pom.xml",
+    "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+    "mix.exs", "pubspec.yaml",
+}) | frozenset(FILENAMES)
 
 class DworkError(Exception):
     pass
@@ -30,7 +43,7 @@ def color(value, style, stream=None):
     text = str(value)
     if not stream.isatty() or os.environ.get("NO_COLOR") or os.environ.get("TERM") == "dumb":
         return text
-    codes = {"start": "32", "stop": "31", "warning": "33", "bold": "1", "dim": "2"}
+    codes = {"start": "32", "stop": "31", "warning": "33", "bold": "1", "dim": "2", "grey": "90"}
     return "\033[" + codes.get(style, style) + "m" + text + "\033[0m"
 
 
@@ -355,16 +368,50 @@ def compose_environment(values):
 def scan_directories(root):
     configured, compose = [], []
     errors = []
+    interactive = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+    latest, last_update, rendered_rows = None, None, 0
+
+    def progress(path, force=False):
+        nonlocal last_update, rendered_rows
+        now = time.monotonic()
+        if interactive and (force or last_update is None or now - last_update >= 0.1):
+            size = shutil.get_terminal_size()
+            width, height = max(1, size.columns - 1), max(1, size.lines - 2)
+            parts = path.relative_to(root).parts
+            if len(parts) > height:
+                parts = ("...", *parts[-(height - 1):]) if height > 1 else parts[-1:]
+            lines = ["  " * level + part for level, part in enumerate(parts)] or ["Searching: " + str(root)]
+            clipped = []
+            for text in lines:
+                if len(text) > width:
+                    text = "..." + text[-(width - 3):] if width > 3 else text[:width]
+                clipped.append(color(text, "grey"))
+            # Redraw only the current branch; remove stale rows when moving up.
+            previous = "\033[" + str(rendered_rows - 1) + "A" if rendered_rows > 1 else ""
+            print(previous + "\r\033[J" + "\n".join(clipped), end="", flush=True)
+            rendered_rows = len(lines)
+            last_update = now
+
     def unreadable(error):
         errors.append(str(error))
-    for directory, children, files in os.walk(root, followlinks=False, onerror=unreadable):
-        path = Path(directory)
-        children[:] = sorted(name for name in children
-                             if name != ".git" and not (path / name).is_symlink())
-        if "dwork.yml" in files:
-            configured.append(path)
-        elif any(name in files for name in FILENAMES):
-            compose.append(path)
+    try:
+        for directory, children, files in os.walk(root, followlinks=False, onerror=unreadable):
+            path = Path(directory)
+            latest = path
+            progress(path)
+            boundary = bool(SCAN_REPO_MARKERS.intersection(files)
+                            or {".git", ".hg", ".svn"}.intersection(children))
+            children[:] = [] if boundary else sorted(
+                name for name in children
+                if name not in SCAN_IGNORED_DIRS and not (path / name).is_symlink())
+            if "dwork.yml" in files:
+                configured.append(path)
+            elif any(name in files for name in FILENAMES):
+                compose.append(path)
+    finally:
+        if interactive and latest is not None:
+            progress(latest, force=True)
+            print(flush=True)
     return configured, compose, errors
 
 
