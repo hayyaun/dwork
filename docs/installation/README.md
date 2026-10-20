@@ -112,9 +112,6 @@ Adjust the path to your clone. Load it in the current shell with:
 Keep `dwork.sh` and `lib/` together. This method uses the `python3` on your PATH;
 install PyYAML separately for YAML support (Ubuntu: `sudo apt install python3-yaml`).
 
-The compatibility entry point `.shell_functions` loads only dwork. The unrelated
-got function is no longer part of this project.
-
 To remove the source-based setup, remove its startup line and run `unset -f dwork`.
 
 ## Package-maintainer installation

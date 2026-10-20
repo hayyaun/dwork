@@ -42,16 +42,6 @@ dwork --help
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("Usage: dwork", result.stdout)
 
-    def test_legacy_entry_point_loads_dwork(self):
-        for shell in ("bash", "zsh"):
-            if not shutil.which(shell):
-                continue
-            with self.subTest(shell=shell):
-                result = subprocess.run(
-                    [shell, "-c", ". " + shlex.quote(str(REPO / ".shell_functions")) + "\ndwork --help"],
-                    cwd="/tmp", capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_missing_runtime_is_an_error_when_invoked(self):
         for shell in ("bash", "zsh"):
             if not shutil.which(shell):
