@@ -7,8 +7,8 @@ No AUR package, Homebrew formula, or PyPI release is published by `make install`
 
 ## Prepare an upstream release first
 
-1. Choose and add a project LICENSE. The repository does not currently include one.
-   Match package metadata to the license you select.
+1. The project uses the MIT license in `LICENSE`. Use `MIT` in package metadata
+   and include the copyright notice with distributions.
 2. Commit the source, installer, requirements, documentation, and hero image.
 3. Run `make test` and an isolated install/uninstall check.
 4. Choose a version, tag the commit (for example `v0.1.0`), and publish a GitHub release.
