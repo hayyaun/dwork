@@ -106,8 +106,9 @@ The agent checks commands, directories, services, and health prerequisites and,
 when dwork is available, runs `dwork --dry-run`. It reports missing prerequisites
 instead of installing dependencies or starting the workspace. Review its YAML
 and dry-run warnings, then run `dwork` yourself when ready. A normal invocation
-can stop other Compose projects before asking about terminal launches; use
-`DWORK_KEEP_PROJECTS` for projects you want to preserve.
+asks before registering a new directory and can stop other registered workspaces
+on the same Docker target before asking about terminal launches. Unregistered
+projects stay running; use `DWORK_KEEP_PROJECTS` to protect registered shared projects.
 
 ## Update or remove
 

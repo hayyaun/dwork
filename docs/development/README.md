@@ -7,6 +7,8 @@
 - [`dwork.sh`](../../dwork.sh): the Bash/Zsh function and public source entry point.
 - [`lib/dwork.py`](../../lib/dwork.py): configuration, Compose switching, health
   prerequisites, per-session confirmation, and native Linux / Windows Terminal launching.
+  Also owns the versioned user registry, atomic updates and switch lock; read-only
+  diagnostics and previews never write registry state.
 - [`tests/`](../../tests): behavior, loader, YAML, health, and launch-order tests.
 - [`examples/`](../../examples/README.md): configurations developers can adapt.
 
@@ -25,6 +27,9 @@ make test
 Tests use fake Docker and terminal launchers; they do not start containers,
 development servers, or GUI terminals. Shell behavior is checked in Bash and
 Zsh when those shells are installed. PyYAML is needed for configuration tests.
+Registry tests isolate `XDG_STATE_HOME` in temporary directories. Existing switching
+tests explicitly prepare registrations; `test_registry.py` covers first-run consent,
+ownership boundaries, saved selections, target changes, missing directories, and locks.
 
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.

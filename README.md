@@ -19,8 +19,9 @@
 </div>
 
 `dwork` switches your development workspace: resume this project's existing
-containers, stop other projects, wait for healthy dependencies, and ask before
-opening your configured commands in new terminals.
+containers, wait for healthy dependencies, and open your configured commands in
+new terminals. Only other workspaces you have registered with dwork may be stopped.
+Unregistered projects stay running.
 
 ## Install
 
@@ -70,10 +71,25 @@ configuration when dwork is available. The skill is separate from `make install`
 ```sh
 cd your-project
 dwork --dry-run   # Preview the plan
-dwork             # Switch, then confirm each terminal
+dwork             # First run: confirm registration, then switch
 ```
 
 No `dwork.yml`? Your existing Compose project is the default.
+After the first registration, run `dwork` in that project to switch back to it.
+Each configured terminal still asks for confirmation.
+
+Remember a project without switching, give it a name, and return from anywhere:
+
+```sh
+dwork register my-app       # Remember this directory; start/stop nothing
+dwork list                  # Show remembered directories and status
+dwork switch my-app         # Activate it from any directory
+dwork switch my-app --dry-run
+dwork forget my-app         # Forget it; leave containers and files alone
+```
+
+`switch` uses the saved directory and Compose options; your current shell stays
+where it is. [Workspace registration and switching →](docs/workspaces/README.md)
 
 > [!NOTE]
 > dwork starts existing containers. It never creates, rebuilds, or removes them.

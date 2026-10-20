@@ -155,3 +155,11 @@ not relocatable. `VENV=0` does not install Python dependencies; the package mana
 or user must provide them.
 
 See [publishing](../publishing/README.md) for AUR, Homebrew, and PyPI preparation.
+
+## User workspace state
+
+The installer and uninstaller leave remembered workspaces in
+`$XDG_STATE_HOME/dwork/workspaces.json` (default `~/.local/state/dwork/workspaces.json`).
+Use `dwork forget NAME` before uninstalling to remove individual registrations
+without touching their containers or project files.
+See [workspace commands and storage](../workspaces/README.md).

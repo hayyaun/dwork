@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import os
 import unittest
 from unittest.mock import patch
 
@@ -16,6 +17,9 @@ class DiagnosticsTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
         self.fixture.model(self.root, "main")
+        environment = patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")})
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def test_status_is_read_only_and_reports_health_missing_and_unmanaged(self):
         (self.root / "dwork.yml").write_text("version: 1\ncompose:\n  services: [web, db]\n")
@@ -69,7 +73,8 @@ class DiagnosticsTests(unittest.TestCase):
     def test_normal_switch_previews_scope_and_respects_protection(self):
         result, changes, _ = self.fixture.run_dwork("bash", containers=[
             legacy.container("a", "main"), legacy.container("b", "other", state="running"),
-            legacy.container("c", "infra", state="running")], DWORK_KEEP_PROJECTS="infra")
+            legacy.container("c", "infra", state="running")], DWORK_KEEP_PROJECTS="infra",
+            managed_projects=("other", "infra"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"], ["start", "a"]])
         self.assertIn("Protected projects (DWORK_KEEP_PROJECTS): infra", result.stdout)
@@ -79,7 +84,7 @@ class DiagnosticsTests(unittest.TestCase):
         result, changes, _ = self.fixture.run_dwork("bash", containers=[
             legacy.container("a", "main"), legacy.container("b", "other", state="running"),
             legacy.container("c", "infra", state="running")],
-            DWORK_KEEP_PROJECTS="infra", DWORK_TEST_FAIL="start")
+            DWORK_KEEP_PROJECTS="infra", DWORK_TEST_FAIL="start", managed_projects=("other", "infra"))
         self.assertEqual(result.returncode, 1)
         self.assertEqual(changes, [["stop", "b"], ["start", "a"]])
         self.assertIn("Completed: stop b (other)", result.stderr)
@@ -95,6 +100,8 @@ class DiagnosticsTests(unittest.TestCase):
                 patch.object(runtime, "discover", return_value=([workspace], False)), \
                 patch.object(runtime, "inventory", return_value=[item]), \
                 patch.object(runtime, "show_target"), \
+                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(runtime, "confirm_registration", return_value=True), \
                 patch.object(runtime, "docker", side_effect=KeyboardInterrupt), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
             self.assertEqual(runtime.cli(), 130)
@@ -125,6 +132,8 @@ class DiagnosticsTests(unittest.TestCase):
                         runtime.TerminalTask("App", ["echo", "hello"], self.root, ["web"])])], False)), \
                 patch.object(runtime, "inventory", return_value=[item]), \
                 patch.object(runtime, "show_target"), \
+                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(runtime, "confirm_registration", return_value=True), \
                 patch.object(runtime, "preflight_terminals"), \
                 patch.object(runtime, "docker", return_value=json.dumps([item])), \
                 patch.object(runtime, "open_terminal") as launch, \

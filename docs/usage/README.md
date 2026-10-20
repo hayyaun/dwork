@@ -33,21 +33,40 @@ dwork
 ```
 
 The preview reads configuration and container state without changing containers,
-waiting for health checks, or opening terminals.
+waiting for health checks, opening terminals, or registering directories.
 
 `dwork`:
 
 1. Reads the current Compose project name and service definitions, or discovers
    projects in immediate subdirectories when no default config is available.
 2. Reports services that have no existing containers.
-3. Stops running or restarting containers belonging to other Compose projects,
-   except projects you explicitly keep running.
-4. Starts selected-project containers whose state is `created` or `exited`.
+3. On a new workspace, asks before remembering its directory and Compose identity.
+   Declining or end-of-input cancels without switching.
+4. Stops running or restarting managed containers belonging to other registered
+   workspaces on the same Docker target, except projects you explicitly keep running.
+5. Starts selected-project containers whose state is `created` or `exited`.
 
 It uses `docker stop` and `docker start`. It never calls `docker compose up`,
 creates containers, pulls images, builds images, recreates containers, or removes
 containers, networks, or volumes. Current-project containers already running are
 left running. Containers without a Compose project label are left alone.
+Unregistered Compose projects are also left running.
+
+### Remember and switch workspaces
+
+```sh
+dwork register my-app     # Save this workspace without starting or stopping anything
+dwork list               # Registered names, directory paths, and container status
+dwork switch my-app      # Activate the saved workspace from anywhere
+dwork switch my-app --dry-run
+dwork forget my-app      # Remove only the registration
+```
+
+The name is optional for `register`; it defaults to the Compose project name,
+or the directory name for a host-only workspace or a group of child workspaces.
+`switch` uses saved Compose options and does not change your calling shell's directory.
+See [workspace registration](../workspaces/README.md) for naming, Docker targets,
+configuration changes, shared infrastructure, and moved directories.
 
 ### dwork.yml
 
@@ -82,8 +101,9 @@ If configuration cannot load, fix it first and rerun doctor. For host-only
 workspaces Docker checks are skipped. Terminal checks do not open a GUI.
 
 Every normal switch now prints its full plan, affected projects, and the
-`DWORK_KEEP_PROJECTS` exclusions before executing. Existing confirmation rules
-are unchanged; displaying a plan does not add a switch confirmation prompt.
+`DWORK_KEEP_PROJECTS` exclusions before executing. New directories require
+registration consent; already-registered directories do not ask again. Child-group
+switches and individual terminal tasks keep their existing confirmations.
 
 If execution fails or is interrupted, dwork reports confirmed completed actions,
 the failed step and actions not confirmed complete, and refreshes the running
@@ -153,6 +173,10 @@ in that situation.
 
 All selected configs and the container inventory are read before any changes.
 A failed child config or duplicate project name aborts the whole switch.
+The parent directory is remembered as one named workspace with all discovered
+children. On its first activation, both the group-switch prompt and registration
+prompt must be accepted. `dwork register NAME` can remember the group without
+switching or prompting. Later `dwork switch NAME` still confirms the group switch.
 
 ### Keep shared projects running
 
@@ -169,6 +193,10 @@ want it to persist. To keep a project only for one invocation:
 DWORK_KEEP_PROJECTS=infra dwork
 ```
 
+Unregistered infrastructure already stays running. This exclusion also protects
+projects that belong to registered workspaces. Service selections recorded for
+other workspaces are respected: dwork stops only their managed services.
+
 ### Missing containers
 
 A missing service produces a warning. `dwork` still switches existing containers;
@@ -181,9 +209,12 @@ commands and environment, then use `dwork` for subsequent switches.
 ### Limits and behavior
 
 - Uses the Docker daemon/context selected by your Docker CLI. Check that context
-  before switching; all other Compose projects on it are in scope unless kept.
+  before switching; only other registered workspaces on that target are in scope.
 - Matches containers by the standard `com.docker.compose.project` label. Separate
-  repositories sharing a project name are treated as the same project.
+  registered directories cannot claim the same Compose project on the same target.
+  Use distinct Compose project names for repositories and Git worktrees. An
+  unregistered repository using the same name still shares that Docker project;
+  directory registration cannot distinguish containers within a shared project name.
 - Starts containers individually, without Compose dependency ordering or health
   waits. Use your project's normal startup procedure when ordering is required.
 - Starts all existing stopped containers in the target project, including exited

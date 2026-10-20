@@ -1,5 +1,6 @@
 """Workspace switching, optional YAML config, health gates, and WSL terminals."""
 import base64
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import json
 import math
@@ -10,6 +11,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
@@ -19,6 +21,186 @@ FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compo
 
 class DworkError(Exception):
     pass
+
+
+COMPOSE_ENV = ("COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES",
+               "COMPOSE_ENV_FILES", "COMPOSE_PATH_SEPARATOR", "COMPOSE_DISABLE_ENV_FILE")
+
+
+def registry_path():
+    state = Path(os.environ.get("XDG_STATE_HOME", ""))
+    if not state.is_absolute():
+        state = Path.home() / ".local/state"
+    return state / "dwork/workspaces.json"
+
+
+def read_registry():
+    path = registry_path()
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+        if type(data["version"]) is not int or data["version"] != 1 or not isinstance(data["workspaces"], list):
+            raise ValueError()
+        names, paths = set(), set()
+        for entry in data["workspaces"]:
+            if (not isinstance(entry["name"], str) or not entry["name"]
+                    or not isinstance(entry["path"], str) or not Path(entry["path"]).is_absolute()
+                    or entry["name"] in names or entry["path"] in paths
+                    or not isinstance(entry["options"], list)
+                    or any(not isinstance(v, str) for v in entry["options"])
+                    or not isinstance(entry["environment"], dict)
+                    or any(k not in COMPOSE_ENV or not isinstance(v, str)
+                           for k, v in entry["environment"].items())
+                    or not isinstance(entry["members"], list) or not entry["members"]):
+                raise ValueError()
+            target = entry["target"]
+            if target is not None and (not isinstance(target, dict) or set(target) != {"context", "daemon"}
+                    or any(not isinstance(v, str) or not v for v in target.values())):
+                raise ValueError()
+            for member in entry["members"]:
+                if (not isinstance(member["project"], str) or not member["project"]
+                        or not isinstance(member["directory"], str)
+                        or not Path(member["directory"]).is_absolute()
+                        or type(member["enabled"]) is not bool
+                        or (member["services"] is not None and
+                            (not isinstance(member["services"], list) or
+                             any(not isinstance(s, str) for s in member["services"])))):
+                    raise ValueError()
+            if (target is not None) != any(m["enabled"] for m in entry["members"]):
+                raise ValueError()
+            names.add(entry["name"])
+            paths.add(entry["path"])
+        return data["workspaces"]
+    except (ValueError, KeyError, TypeError):
+        raise DworkError("Invalid workspace registry: " + str(path)
+                         + ". Restore or repair it before switching; nothing changed.")
+
+
+@contextmanager
+def registry_lock():
+    # Serialize registry updates and switches; never hold a lock in read-only modes.
+    import fcntl
+    path = registry_path()
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (path.parent / "workspaces.lock").open("a") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise DworkError("Another dwork registration or switch is in progress; try again when it finishes.")
+        yield
+
+
+def save_registry(entries):
+    path = registry_path()
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump({"version": 1, "workspaces": entries}, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def docker_target():
+    target = {"context": docker("context", "show").strip(),
+              "daemon": docker("info", "--format", "{{.ID}}").strip()}
+    if not all(target.values()):
+        raise DworkError("Cannot identify the Docker target; nothing changed.")
+    return target
+
+
+def registration_directory(directory, options, discovered):
+    # Preserve the invocation directory for relative CLI/environment file paths.
+    if options or os.environ.get("COMPOSE_FILE") or os.environ.get("COMPOSE_ENV_FILES") or discovered:
+        return directory
+    ancestors = (directory, *directory.parents)
+    for parent in ancestors:
+        if (parent / "dwork.yml").is_file():
+            return parent
+    for parent in ancestors:
+        if any((parent / f).is_file() for f in FILENAMES):
+            return parent
+    return directory
+
+
+def registration(directory, options, workspaces, target, name):
+    return {"name": name, "path": str(directory.resolve()), "options": list(options),
+            "environment": {key: os.environ[key] for key in COMPOSE_ENV if key in os.environ},
+            "target": target,
+            "members": [{"project": w.name, "directory": str(w.directory.resolve()),
+                         "enabled": w.enabled, "services": w.selected} for w in workspaces]}
+
+
+def check_ownership(entries, candidate):
+    projects = {m["project"] for m in candidate["members"] if m["enabled"]}
+    for entry in entries:
+        if entry["path"] == candidate["path"]:
+            continue
+        if entry["target"] == candidate["target"] and projects.intersection(
+                m["project"] for m in entry["members"] if m["enabled"]):
+            raise DworkError("Compose project already registered to " + entry["name"]
+                             + " (" + entry["path"] + "). Use a distinct Compose project name"
+                             + " or forget the old registration; nothing changed.")
+
+
+def registered_services(entries, target):
+    managed = {}
+    for entry in entries:
+        if entry["target"] != target or not Path(entry["path"]).is_dir():
+            continue
+        for member in entry["members"]:
+            if member["enabled"] and Path(member["directory"]).is_dir():
+                project = member["project"]
+                if project in managed:
+                    raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
+                managed[project] = member["services"]
+    return managed
+
+
+def confirm_registration(entry):
+    print("Register workspace " + repr(entry["name"]) + " at " + entry["path"] + "?")
+    print("Future switches may stop its managed containers. Unregistered projects stay running.")
+    try:
+        return input("Register and switch? (y/N) ").strip().lower() == "y"
+    except EOFError:
+        return False
+
+
+def list_registrations(entries):
+    if not entries:
+        print("No registered workspaces. Run dwork register in a project to remember it.")
+        return 0
+    containers, target = [], None
+    if any(e["target"] is not None for e in entries):
+        try:
+            target = docker_target()
+            containers = inventory()
+        except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
+            print("Warning: Docker status unavailable: " + str(error), file=sys.stderr)
+    for entry in sorted(entries, key=lambda e: e["name"]):
+        if not Path(entry["path"]).is_dir() or any(
+                not Path(m["directory"]).is_dir() for m in entry["members"]):
+            state = "unavailable directory"
+        elif entry["target"] is None:
+            state = "host-only; sessions not tracked"
+        elif target is None:
+            state = "Docker status unavailable"
+        elif entry["target"] != target:
+            state = "different Docker target (" + entry["target"]["context"] + ")"
+        else:
+            selected = [c for c in containers for m in entry["members"] if m["enabled"]
+                        and (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") == m["project"]
+                        and (m["services"] is None or (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service") in m["services"])]
+            running = sum(c["State"]["Status"] in ("running", "restarting") for c in selected)
+            state = str(running) + "/" + str(len(selected)) + " containers running"
+        print(entry["name"] + "  " + entry["path"] + "  [" + state + "]")
+    return 0
 
 @dataclass
 class TerminalTask:
@@ -472,19 +654,27 @@ def report_failure(completed, pending, step, containers):
 
 
 def main():
-    options = sys.argv[1:]
-    mode = options.pop(0) if options and options[0] in ("status", "doctor") else "switch"
+    options = list(sys.argv[1:])
+    commands = ("register", "list", "switch", "forget", "status", "doctor")
+    mode = options.pop(0) if options and options[0] in commands else "activate"
     preview = bool(options and options[0] == "--dry-run")
     if preview:
         options = options[1:]
     if options and options[0] in ("--help", "-h"):
-        print("Usage: dwork [--dry-run | status | doctor] [Docker Compose global options]")
+        print("Usage: dwork [--dry-run] [Docker Compose global options]")
+        print("       dwork register [NAME] [Docker Compose global options]")
+        print("       dwork list | forget NAME")
+        print("       dwork switch NAME [--dry-run]")
+        print("       dwork status | doctor [Docker Compose global options]")
+        print("register: remember without switching; list: show remembered directories and status.")
+        print("switch: activate a remembered workspace; forget: remove only its registration.")
         print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
         print("Each terminal asks (y/N) unless that task sets confirm: false in dwork.yml.")
         print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
+        print("Only other registered workspaces on this Docker target may be stopped.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
         print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
@@ -492,18 +682,107 @@ def main():
     directory = Path.cwd()
     if mode == "doctor":
         return doctor(directory, options)
+    if mode == "list":
+        if options or preview:
+            raise DworkError("Usage: dwork list")
+        return list_registrations(read_registry())
+    if mode == "status":
+        return switch_workspace(directory, options, mode, preview, [])
+    name = None
+    if mode in ("switch", "forget"):
+        if not options or options[0].startswith("-"):
+            raise DworkError("Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else ""))
+        name = options.pop(0)
+        if mode == "switch" and options == ["--dry-run"]:
+            preview, options = True, []
+        if options or (mode == "forget" and preview):
+            raise DworkError("Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else ""))
+    elif mode == "register":
+        if preview:
+            raise DworkError("Use dwork --dry-run to preview; register only saves a workspace.")
+        if options and not options[0].startswith("-"):
+            name = options.pop(0)
+    if mode == "activate" and options and not options[0].startswith("-"):
+        raise DworkError("Unknown command: " + options[0] + ". See dwork --help.")
+    if preview:
+        return registry_command(directory, options, mode, preview, name, read_registry())
+    with registry_lock():
+        return registry_command(directory, options, mode, preview, name, read_registry())
+
+
+def registry_command(directory, options, mode, preview, name, entries):
+    if mode in ("switch", "forget"):
+        entry = next((e for e in entries if e["name"] == name), None)
+        if entry is None:
+            raise DworkError("Unknown workspace: " + str(name) + ". Run dwork list.")
+        if mode == "forget":
+            save_registry([e for e in entries if e is not entry])
+            print("Forgot " + name + ". Containers, terminals, and project files were left alone.")
+            return 0
+        directory = Path(entry["path"])
+        if not directory.is_dir():
+            raise DworkError("Workspace directory unavailable: " + str(directory)
+                             + ". Forget it and register the new location after a move.")
+        old_environment = {key: os.environ.get(key) for key in COMPOSE_ENV}
+        original = Path.cwd()
+        try:
+            os.chdir(directory)
+            for key in COMPOSE_ENV:
+                os.environ.pop(key, None)
+            os.environ.update(entry["environment"])
+            return switch_workspace(directory, entry["options"], mode, preview, entries, name)
+        finally:
+            os.chdir(original)
+            for key, value in old_environment.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+    return switch_workspace(directory, options, mode, preview, entries, name)
+
+
+def switch_workspace(directory, options, mode, preview, entries, name=None):
     workspaces, discovered = discover(directory, options)
+    root = registration_directory(directory, options, discovered)
+    if root != directory:
+        directory = root
+        workspaces, discovered = discover(directory, options)
     active = {w.name: w for w in workspaces if w.enabled}
     if len(active) != sum(w.enabled for w in workspaces):
         raise DworkError("Child directories resolve to the same Compose project; use explicit Compose options.")
     if active and not shutil.which("docker"):
         raise DworkError("docker is not available.")
+    if mode == "status":
+        containers = inventory() if active else []
+        if active:
+            show_target()
+        show_status(workspaces, containers)
+        return 0
+    target = docker_target() if active else None
+    existing = next((e for e in entries if e["path"] == str(directory)), None)
+    default_name = workspaces[0].name if len(workspaces) == 1 else directory.name
+    name = name or (existing["name"] if existing else default_name)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+        raise DworkError("Workspace name must contain letters, digits, dots, underscores, or hyphens"
+                         + " and start with a letter or digit. Use dwork register NAME.")
+    candidate = registration(directory, options, workspaces, target, name)
+    if any(e["name"] == name and e["path"] != candidate["path"] for e in entries):
+        raise DworkError("Workspace name already registered: " + name + ". Use dwork register NAME with a unique name.")
+    check_ownership(entries, candidate)
+    if mode == "register":
+        save_registry([e for e in entries if e["path"] != candidate["path"]] + [candidate])
+        print("Registered " + name + " at " + str(directory) + ". No containers or terminals changed.")
+        return 0
+    if existing and candidate != existing:
+        raise DworkError("Workspace configuration or Docker target changed since registration."
+                         + " Review dwork --dry-run after running dwork register " + name
+                         + " with the intended Compose options; nothing changed.")
+    if mode == "switch" and not existing:
+        raise DworkError("Workspace registration no longer matches its directory; register it again.")
+    managed = registered_services(entries, target)
     containers = inventory() if active else []
     if active:
         show_target()
-    if mode == "status":
-        show_status(workspaces, containers)
-        return 0
     keep = {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
     stops, starts, warnings = [], [], []
     for c in containers:
@@ -520,7 +799,8 @@ def main():
                 starts.append((identifier, project, service))
             elif state not in ("running", "restarting"):
                 warnings.append("Container " + identifier[:12] + " is " + state + "; handle it manually.")
-        elif project not in keep and state in ("running", "restarting"):
+        elif (project in managed and project not in keep and state in ("running", "restarting")
+              and (managed[project] is None or service in managed[project])):
             stops.append((identifier, project))
     gates, tasks = [], []
     for w in workspaces:
@@ -554,7 +834,9 @@ def main():
     print("Switch plan: " + str(len(stops)) + " stop(s), " + str(len(starts))
           + " start(s), " + str(len(tasks)) + " terminal task(s).")
     if active:
-        print("Scope: other Compose projects on this Docker target may be stopped.")
+        print("Scope: only other registered workspaces on this Docker target may be stopped.")
+    if existing is None:
+        print("Would register workspace: " + name + " -> " + str(directory))
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
     for identifier, project in stops:
         print("Would stop: " + identifier[:12] + " (" + project + ")")
@@ -577,6 +859,12 @@ def main():
         if answer.strip().lower() != "y":
             print("Cancelled; nothing changed.")
             return 0
+    if existing is None:
+        if not confirm_registration(candidate):
+            print("Cancelled; no workspace registered and no containers or terminals changed.")
+            return 0
+        save_registry(entries + [candidate])
+        print("Registered " + name + " at " + str(directory) + ".")
     actions = []
     for identifier, project in stops:
         actions.append(("stop " + identifier + " (" + project + ")",

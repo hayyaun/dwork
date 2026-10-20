@@ -1,7 +1,7 @@
 # dwork
 
 Switch development workspaces on Linux and WSL2: resume existing Compose
-containers, stop other projects, wait for healthy dependencies, and confirm
+containers, stop other registered workspaces, wait for healthy dependencies, and confirm
 before opening configured development terminals.
 
 The Python distribution is **dwork-cli**. The installed command is **dwork**.
@@ -27,6 +27,19 @@ cd your-project
 dwork --dry-run
 dwork
 ```
+
+The first run asks before remembering the workspace. Unregistered projects stay
+running. To remember without activating and switch from anywhere:
+
+```sh
+dwork register my-app
+dwork list
+dwork switch my-app
+dwork forget my-app
+```
+
+`forget` removes only the registration. See
+[remembered workspaces](https://github.com/hayyaun/dwork/blob/main/docs/workspaces/README.md).
 
 Without a dwork.yml file, dwork uses your Compose configuration. It only starts
 containers that already exist: it never creates, rebuilds, or removes them.

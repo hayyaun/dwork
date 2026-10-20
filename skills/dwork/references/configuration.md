@@ -32,9 +32,13 @@ Only these top-level fields are supported:
 
 dwork starts existing containers; it does not create them or apply new Compose
 settings to them. Initial container creation, migrations, and rebuilds are
-separate setup steps. Other running Compose projects are stopped unless listed
-in the comma-separated `DWORK_KEEP_PROJECTS` environment variable. This also
-applies when `services` selects only a subset of the current project's services.
+separate setup steps. Only other registered workspaces on the same Docker target
+may be stopped, respecting their registered service selections and the comma-separated
+`DWORK_KEEP_PROJECTS` environment variable. Unregistered projects stay running.
+The first normal run asks before registering a new directory. `dwork register NAME`
+remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
+list, activate, and forget remembered directories. Changed Compose identity,
+selection options, or managed services requires explicit re-registration.
 With Compose disabled for all selected workspaces, no Docker commands run.
 
 ## Terminal tasks

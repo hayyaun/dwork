@@ -1,0 +1,176 @@
+# Remembered workspaces
+
+[Project home](../../README.md) · [Usage](../usage/README.md) · [Configuration](../configuration/README.md)
+
+dwork switches between workspaces you have registered. It leaves unregistered
+Compose projects and containers without Compose labels running.
+
+## First use
+
+Run `dwork --dry-run` in your project to preview its plan. Run `dwork` when ready.
+If the directory is new, dwork shows the proposed name and absolute path, explains
+that future switches may stop its managed containers, and asks:
+
+```text
+Register and switch? (y/N)
+```
+
+Only `y` or `Y` accepts. Any other response or end-of-input cancels without
+registering the workspace, changing containers, or opening terminals. The usual
+terminal confirmations are separate. Once remembered, the directory does not
+require registration consent again.
+If activation later fails, an accepted registration remains remembered; use
+`dwork forget NAME` if you no longer want dwork to manage it.
+
+Registrations belong to your user account; dwork does not write them into the repo.
+There is no migration that automatically claims all your existing Docker projects.
+
+## Register without activating
+
+```sh
+cd ~/projects/my-app
+dwork register
+# Or choose your own short name:
+dwork register app
+```
+
+`register` reads and validates the configuration, resolves its Compose identity and
+Docker target when enabled, and saves it. It does not start or stop containers,
+wait for health checks, check GUI dependencies, or open terminals. Running the
+explicit command authorizes registration without another prompt.
+
+Names are unique across the registry. They may contain letters, digits, dots,
+underscores, and hyphens, and must start with a letter or digit. The default is the
+Compose project name for a single Compose workspace, otherwise the directory name.
+For directories whose default names contain spaces, choose a name explicitly.
+Registering an existing directory updates its entry and can rename it.
+
+Ordinary parent-config discovery remembers the configuration directory, so running
+from a nested directory or a symlink does not create another registration. Explicit
+Compose options or file-selection environment variables preserve the invocation
+directory so relative paths keep their meaning.
+
+## List
+
+```sh
+dwork list
+```
+
+Shows each name, absolute directory path, and a count of running/restarting managed
+containers on the current Docker target. Host-only sessions are not tracked. Missing
+directories, other Docker targets, and unavailable Docker status are identified.
+Listing still works when Docker is offline; it never registers, switches, or opens
+terminals. It does not change Docker contexts to inspect other targets.
+
+## Switch from anywhere
+
+```sh
+dwork switch app --dry-run
+dwork switch app
+```
+
+The saved directory, Compose CLI options, and Compose-selection environment are
+used. Configuration files are read again, so terminal commands and health gates
+come from the current files. All existing health and terminal confirmations apply.
+Your calling shell's working directory stays unchanged.
+
+For example, remember a custom Compose selection once:
+
+```sh
+dwork register app -p my-app -f compose.yaml -f compose.dev.yaml
+```
+
+Later `dwork switch app` reuses that selection. The saved environment covers
+`COMPOSE_FILE`, `COMPOSE_PROJECT_NAME`, `COMPOSE_PROFILES`, `COMPOSE_ENV_FILES`,
+`COMPOSE_PATH_SEPARATOR`, and `COMPOSE_DISABLE_ENV_FILE`. dwork stores selection
+values and file paths, not the contents of environment files or your shell's full
+environment. Keep sensitive values out of CLI arguments. Your other current
+environment settings, including `DWORK_KEEP_PROJECTS` and `DWORK_TERMINAL`, still apply.
+
+`switch` accepts a name and optional `--dry-run`; change the saved Compose options
+by running `register` again in the intended directory with those options.
+
+When immediate child workspaces are discovered from a parent directory, the parent
+is registered as one workspace containing those children. Switching it activates
+the group together and retains the group confirmation prompt. A child Compose
+project cannot also be claimed by a separate registration on the same Docker target.
+
+## What can stop
+
+dwork identifies a Docker target using the context name and Docker daemon ID.
+Only other registered workspaces on that same target, with available directories,
+are eligible to stop. Their registered `compose.services` selection is respected;
+when omitted, all containers in that Compose project are managed.
+
+Use unique Compose project names across repositories and Git worktrees. Registering
+two directories that claim the same project on the same target fails before any
+container changes. Docker identifies project membership through its Compose label;
+if an unregistered repo deliberately shares that project name, its containers are
+part of the same project and cannot be separated by directory registration.
+
+Unregistered shared infrastructure already stays running. To protect a registered
+project as well, use the existing exclusion:
+
+```sh
+export DWORK_KEEP_PROJECTS=infra,monitoring
+```
+
+Put this in your shell startup file to make the policy persistent. It protects those
+projects during switches; it does not prevent explicitly activating them.
+
+When all selected workspaces disable Compose, no Docker calls run and no other
+workspace containers are stopped. Existing terminal processes from other workspaces
+are not stopped or supervised.
+
+## Configuration or location changes
+
+A changed Compose identity, Docker target, workspace membership, service selection,
+or selection options requires explicit re-registration before switching. dwork
+stops with an explanation instead of silently accepting new ownership. Run
+`dwork register NAME` with the intended options, then preview again.
+
+Switching never silently selects a saved Docker context. Select the intended target
+using your normal Docker configuration first. Registering the same directory on a
+different target replaces its old registration; there is one entry per directory.
+
+After moving a directory:
+
+```sh
+dwork forget app
+cd ~/projects/new-location
+dwork register app
+```
+
+Unavailable registered directories are shown in `list` and are excluded from stop
+plans. Restore the directory or forget and re-register it; dwork does not guess its
+new location.
+
+## Forget
+
+```sh
+dwork forget app
+```
+
+Removes only that registration. It never stops containers, closes terminals, or
+changes project files. Future switches no longer manage that workspace until it
+is registered again. An unknown name fails with a suggestion to run `dwork list`.
+
+## Storage and concurrent invocations
+
+The registry is `$XDG_STATE_HOME/dwork/workspaces.json`, defaulting to
+`~/.local/state/dwork/workspaces.json`. Relative `XDG_STATE_HOME` values are ignored
+according to the XDG directory rules. Registrations contain canonical absolute
+paths, selection options, and resolved project identities. They are local state,
+not a portable project configuration.
+
+Updates replace the registry atomically. A per-user file lock prevents concurrent
+registrations, forget operations, and switches from interleaving; a second mutating
+invocation reports that another operation is in progress. Read-only commands do not
+create registry or lock files. A malformed registry blocks registry operations and
+switching without overwriting the file; restore or repair it before retrying.
+`status` and `doctor` remain usable independently to inspect the current directory.
+
+Uninstalling dwork leaves this user state in place for a later reinstall.
+
+References: [Docker daemon information](https://docs.docker.com/reference/cli/docker/system/info/),
+[XDG state directories](https://specifications.freedesktop.org/basedir/0.8/).

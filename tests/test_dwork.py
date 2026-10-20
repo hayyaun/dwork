@@ -19,6 +19,8 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
 containers = json.loads(os.environ.get("DWORK_TEST_CONTAINERS", "[]"))
 if args[:2] == ["context", "show"]:
     print(os.environ.get("DWORK_TEST_CONTEXT", "default"))
+elif args[0] == "info":
+    print(os.environ.get("DWORK_TEST_DAEMON", "test-daemon"))
 elif args[0] == "compose":
     if "config" not in args:
         sys.exit("Forbidden Compose mutation")
@@ -86,12 +88,28 @@ class DworkTests(unittest.TestCase):
         (directory / "compose.yaml").write_text(json.dumps({
             "name": name, "services": {"web": {}}, **extra}))
 
-    def run_dwork(self, shell, args="", answer="", containers=(), cwd=None, **overrides):
+    def run_dwork(self, shell, args="", answer="", containers=(), cwd=None,
+                  register_current=True, managed_projects=(), **overrides):
         env = {k: v for k, v in os.environ.items() if not k.startswith(("COMPOSE_", "DWORK_"))}
         env.update(PATH=str(self.bin) + os.pathsep + env["PATH"],
                    DWORK_TEST_LOG=str(self.log),
+                   XDG_STATE_HOME=str(self.base / "state"),
                    DWORK_TEST_CONTAINERS=json.dumps(containers))
         env.update(overrides)
+        source = ". " + shlex.quote(str(SOURCE)) + "\ndwork "
+        for project in managed_projects:
+            directory = self.base / ("registered-" + project)
+            self.model(directory, project)
+            subprocess.run([shell, "-c", source + "register"], cwd=directory,
+                           input="", text=True, capture_output=True, env=env, check=True)
+        # Existing behavior tests exercise already-registered workspaces. Registry
+        # tests disable this setup to exercise the first-run consent path itself.
+        if register_current and not args.startswith(("register", "list", "switch", "forget")):
+            words = shlex.split(args)
+            if words and words[0] in ("--dry-run", "status", "doctor"):
+                words.pop(0)
+            subprocess.run([shell, "-c", source + "register " + shlex.join(words)],
+                           cwd=cwd or self.root, input="", text=True, capture_output=True, env=env)
         self.log.write_text("")
         result = subprocess.run(
             [shell, "-c", ". " + shlex.quote(str(SOURCE)) + "\ndwork " + args],
@@ -110,7 +128,8 @@ class DworkTests(unittest.TestCase):
         for shell in self.shells:
             with self.subTest(shell=shell):
                 result, changes, _ = self.run_dwork(
-                    shell, answer="Y\n", containers=inventory, DWORK_KEEP_PROJECTS="infra")
+                    shell, answer="Y\n", containers=inventory, DWORK_KEEP_PROJECTS="infra",
+                    managed_projects=("outside", "infra"))
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(changes, [["stop", "d"], ["start", "a"], ["start", "b"]])
                 self.assertIn("(y/N)", result.stdout)
@@ -154,7 +173,7 @@ class DworkTests(unittest.TestCase):
             result, changes, _ = self.run_dwork(shell, containers=inventory)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertNotIn("(y/N)", result.stdout)
-            self.assertEqual(changes, [["stop", "b"], ["start", "a"]])
+            self.assertEqual(changes, [["start", "a"]])
 
     def test_parent_config_takes_precedence(self):
         self.model(self.root, "main")
@@ -224,7 +243,7 @@ class DworkTests(unittest.TestCase):
             result, changes, _ = self.run_dwork(
                 shell, containers=[container("a", "main"),
                                    container("b", "other", state="running")],
-                DWORK_TEST_FAIL="stop")
+                DWORK_TEST_FAIL="stop", managed_projects=("other",))
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [["stop", "b"]])
 

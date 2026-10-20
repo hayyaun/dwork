@@ -6,8 +6,9 @@ description: Create, review, or update dwork.yml for a project's development wor
 # Configure a dwork workspace
 
 Help the user configure **their project**, not the dwork source repository.
-dwork resumes existing Compose containers, stops other Compose projects unless
-excluded, checks health prerequisites, and opens host commands in terminals.
+dwork resumes existing Compose containers, stops other registered workspaces on
+the same Docker target unless excluded, checks health prerequisites, and opens
+host commands in terminals. Unregistered projects stay running.
 It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
@@ -38,7 +39,7 @@ invent service names, commands, health checks, or folders.
   services, and health prerequisites. With Compose enabled, omit `files` when
   normal Compose discovery suffices; otherwise preserve the project's file order.
 - Limit `compose.services` only when the user's workflow calls for a subset.
-  A service filter does not prevent other Compose projects from being stopped.
+  A service filter does not prevent other registered workspaces from being stopped.
 - Represent each terminal command as an executable/argument list and set `cwd`
   relative to `dwork.yml` when needed. Prefer existing scripts for compound shell
   commands; explain any additional script needed before creating it.
@@ -69,6 +70,11 @@ do not install anything or claim runtime validation. If the installed dwork
 rejects a field, check its version/docs rather than bypassing validation.
 
 Explain the chosen commands, services, prerequisites, and verification result.
-Tell the user that a normal `dwork` invocation can stop other Compose projects
-before terminal confirmation; `DWORK_KEEP_PROJECTS` can preserve shared projects.
+Tell the user that a normal `dwork` invocation asks before registering a new
+directory and can stop other registered workspaces before terminal confirmation;
+`DWORK_KEEP_PROJECTS` can preserve registered shared projects. `dwork register NAME`
+remembers without activating, `dwork list` shows remembered directories,
+`dwork switch NAME` activates from anywhere, and `dwork forget NAME` removes only
+the registration. Changed Compose identity or service selection requires explicit
+re-registration. Generating config does not authorize changing the user's registry.
 Leave running `dwork` to the user unless they explicitly ask you to switch.

@@ -94,7 +94,9 @@ compose:
   Without it, dwork preserves its existing behavior of managing all existing
   target-project containers. With it, other target-project services remain
   untouched, and missing-container warnings cover only selected services.
-- Outside projects are still stopped, except those in `DWORK_KEEP_PROJECTS`.
+- Only other registered workspaces on the same Docker target may be stopped,
+  respecting their registered service selections and `DWORK_KEEP_PROJECTS`.
+  Unregistered projects stay running. See [remembered workspaces](../workspaces/README.md).
   When all selected workspaces disable Compose, no Docker commands are run.
 
 When `enabled: false`, omit `files`, `services`, Compose CLI options, and health
@@ -103,6 +105,8 @@ prerequisites.
 Reading Compose does not recreate containers or update their stored environment.
 Environment values for existing containers do not need to be supplied again just
 to start them.
+After changing project identity, Compose selection, or managed services, explicitly
+run `dwork register NAME` with the intended options before switching again.
 
 ## terminals
 
