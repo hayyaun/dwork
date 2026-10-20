@@ -56,6 +56,43 @@ commands in `dwork.yml`. For example, start an existing database container and
 open `make run` in a new terminal only after its health check passes.
 See the [schema, examples, and defaults](../configuration/README.md).
 
+### Inspect and diagnose
+
+```sh
+dwork status
+dwork doctor
+dwork status -f compose.dev.yaml -p my-project
+```
+
+Both commands are read-only: they never stop/start containers, wait for health,
+prompt, or launch terminal tasks. They use the same workspace discovery and
+Compose options as switching.
+
+`status` shows the Docker context, selected workspaces, container states and
+health, unmanaged target services, and missing managed services. Host command
+sessions are not tracked. When `DOCKER_HOST` overrides the context endpoint,
+dwork reports the override without printing its potentially sensitive value.
+
+`doctor` checks configuration and required Compose flags, Docker access, and each
+configured command's shell and terminal dependencies. It reports fixes and exits
+with status 1 on failed checks (0 when checks pass). Missing containers and health
+states are displayed; required health services must exist and have health checks.
+Passing doctor is not a guarantee that stopped services will become healthy.
+If configuration cannot load, fix it first and rerun doctor. For host-only
+workspaces Docker checks are skipped. Terminal checks do not open a GUI.
+
+Every normal switch now prints its full plan, affected projects, and the
+`DWORK_KEEP_PROJECTS` exclusions before executing. Existing confirmation rules
+are unchanged; displaying a plan does not add a switch confirmation prompt.
+
+If execution fails or is interrupted, dwork reports confirmed completed actions,
+the failed step and actions not confirmed complete, and refreshes the running
+Compose container inventory when possible. It suggests inspection, retry-preview,
+and recovery commands; it never rolls back automatically. An operation that
+failed or was interrupted may still have changed state. Recovery commands are
+suggestions only, and should use the same Docker target and Compose options.
+Exit status remains 1 for failures and 130 for interruption.
+
 ### Compose options
 
 Pass Compose global options after `dwork` (and after `--dry-run`, if used):

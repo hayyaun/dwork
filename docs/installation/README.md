@@ -46,6 +46,24 @@ Claude Code, Cursor, and other agents through the skills CLI or manual copying.
 If dependency setup is interrupted, retry `make install` with the same prefix.
 A marked partial installation can also be removed with `make uninstall`.
 
+## Python, Homebrew, and Debian packages
+
+These channels are prepared in [packaging/](../../packaging/README.md); they are
+not advertised as published registry packages yet.
+
+- Python: install this checkout using `pipx install .` or `uv tool install .`.
+  The distribution is named `dwork-cli`, while the command remains `dwork`.
+  Registry installation by name must wait for publication.
+- Homebrew: test the formula in a local tap using the
+  [Homebrew guide](../../packaging/homebrew/README.md). A public tap is separate.
+- Debian/Ubuntu: build with `python3 scripts/build-deb.py`, then install the
+  verified local `.deb` with apt. See the
+  [Debian guide](../../packaging/debian/README.md) for build prerequisites.
+
+Use one installation method at a time. Remove an old sourced function when
+switching to an executable, as described below. The optional agent skill is
+installed separately for every distribution method.
+
 ## Runtime dependencies
 
 - Docker and Docker Compose for Compose workspaces. Compose must support

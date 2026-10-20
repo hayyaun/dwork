@@ -17,7 +17,9 @@ args = sys.argv[1:]
 with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
     stream.write(json.dumps(args) + "\n")
 containers = json.loads(os.environ.get("DWORK_TEST_CONTAINERS", "[]"))
-if args[0] == "compose":
+if args[:2] == ["context", "show"]:
+    print(os.environ.get("DWORK_TEST_CONTEXT", "default"))
+elif args[0] == "compose":
     if "config" not in args:
         sys.exit("Forbidden Compose mutation")
     directory = Path.cwd()
@@ -36,13 +38,18 @@ if args[0] == "compose":
         sys.exit("invalid Compose config")
     print(json.dumps(model))
 elif args[0] == "ps":
+    if os.environ.get("DWORK_TEST_FAIL") == "ps":
+        sys.exit("Cannot connect to Docker daemon")
     print("\n".join(c["Id"] for c in containers))
 elif args[0] == "inspect":
     calls = [json.loads(line) for line in Path(os.environ["DWORK_TEST_LOG"]).read_text().splitlines()]
     started = {call[1] for call in calls if call[0] == "start"}
+    stopped = {call[1] for call in calls if call[0] == "stop"}
     for item in containers:
-        if item["Id"] in started:
+        if item["Id"] in started and os.environ.get("DWORK_TEST_FAIL") != "start":
             item["State"]["Status"] = "running"
+        elif item["Id"] in stopped and os.environ.get("DWORK_TEST_FAIL") != "stop":
+            item["State"]["Status"] = "exited"
     print(json.dumps([item for item in containers if item["Id"] in args[3:]]))
 elif args[0] in ("stop", "start"):
     if args[0] == os.environ.get("DWORK_TEST_FAIL"):

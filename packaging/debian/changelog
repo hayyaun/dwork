@@ -1,0 +1,5 @@
+dwork (0.2.0-1) unstable; urgency=medium
+
+  * Prepare Debian/Ubuntu packaging using the network-free staged installer.
+
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Tue, 20 Oct 2026 05:46:11 +0330

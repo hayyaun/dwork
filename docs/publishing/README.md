@@ -2,155 +2,45 @@
 
 [Project home](../../README.md) · [Installation](../installation/README.md)
 
-This is a release guide, not a claim that marketplace packages already exist.
-No AUR package, Homebrew formula, or PyPI release is published by `make install`.
+Packaging support is implemented; external publication is a separate step.
+`make install` never publishes to a registry, apt repository, or Homebrew tap.
 
-## Prepare an upstream release first
+## Release preparation
 
-1. The project uses the MIT license in `LICENSE`. Use `MIT` in package metadata
-   and include the copyright notice with distributions.
-2. Commit the source, installer, requirements, documentation, and hero image.
-3. Run `make test` and an isolated install/uninstall check.
-4. Choose a version, tag the commit (for example `v0.1.0`), and publish a GitHub release.
-   This example version is illustrative, not an existing release.
-5. Record the archive URL and SHA-256 checksum. Use fixed release archives for
-   stable packages, not a moving main-branch download.
+1. Keep the MIT license and copyright notice in distributions.
+2. Commit the exact source being released. The current Python metadata and Debian
+   changelog prepare 0.2.0; the existing v0.1.0 tag remains unchanged.
+3. Run `make test`, Python wheel/sdist verification, and the relevant channel build.
+4. Tag the tested commit and publish the matching GitHub release. Never rewrite
+   existing release tags or reuse a published PyPI version.
+5. Update fixed source URLs, checksums, versions, and channel metadata together.
 
-GitHub Releases plus `make install` is the simplest first distribution route.
-Marketplace package names must be checked separately; a GitHub repo name does not
-reserve them.
+## Channel guides
 
-## AUR: Arch User Repository
+- [AUR](../../packaging/aur/README.md): v0.1.0 PKGBUILD and generated .SRCINFO,
+  validated on Arch. AUR account registration was temporarily closed on
+  2026-10-20; recheck availability before submission. Push recipes to AUR's
+  separate SSH Git repository, not package binaries.
+- [Homebrew](../../packaging/homebrew/README.md): v0.1.0 Linux/WSL formula with
+  pinned PyYAML. Publish it in `hayyaun/homebrew-tap/Formula/dwork.rb` after testing.
+- [PyPI](../../packaging/python/README.md): `dwork-cli` wheel/sdist and `dwork`
+  console command. TestPyPI first; Trusted Publishing is recommended for CI.
+  The separate PyPI name `dwork` belongs to an unrelated project.
+- [Debian/Ubuntu](../../packaging/debian/README.md): staged debhelper builds,
+  local .deb installation, GitHub release assets, and later signed apt/PPA uploads.
 
-AUR distributes build recipes (`PKGBUILD` and metadata), rather than hosting your
-application's built package. Prepare and test the recipe on Arch Linux.
+The package verification workflow builds/tests artifacts but does not publish
+or store registry credentials. Publication still requires the relevant account,
+repository, signing configuration, and a verified matching release.
 
-The version 0.1.0 recipe is in [packaging/aur](../../packaging/aur/README.md).
-It is prepared for validation and submission; its presence does not mean the
-package is already published.
+## Other channels
 
-### Account and package repository
+Snap/Flatpak need a separate host-integration design for project paths, Docker,
+and desktop terminals. They are not included in this packaging work. Native
+Windows package managers are not a target: dwork runs inside WSL2 on Windows.
 
-Create an AUR account and add your SSH public key to its profile. Check that the
-desired package name is available. For an available `dwork` package name:
-
-```sh
-git -c init.defaultBranch=master clone ssh://aur@aur.archlinux.org/dwork.git
-cd dwork
-```
-
-This is a separate packaging Git repository from `hayyaun/dwork`.
-
-### Write PKGBUILD
-
-Set the actual version, release archive URL, checksum, description, upstream URL,
-architecture, and selected SPDX license identifier. dwork is pure Python, so
-`arch=('any')` is appropriate for its code.
-
-Runtime dependencies should include Arch's `python` and `python-yaml`. Use `make`
-as a build dependency. Docker/Compose and supported GUI terminals can be optional
-dependencies because host-only and Compose-only workflows are supported.
-
-The `package()` function can use the supported staging install:
-
-```sh
-package() {
-    cd "$srcdir/dwork-$pkgver"
-    make install VENV=0 PREFIX=/usr DESTDIR="$pkgdir" PYTHON=/usr/bin/python
-}
-```
-
-The extracted directory name must match your release archive. Install the selected
-license where Arch's license guidelines require it. Do not create a venv or run
-pip from the package installation function; distribution dependencies provide YAML.
-
-### Build, inspect, and submit
-
-In the packaging repository on Arch:
-
-```sh
-makepkg --printsrcinfo > .SRCINFO
-makepkg -s
-```
-
-Review the package contents and test the executable on Arch; a clean build
-environment is preferable. Then publish the recipe and metadata:
-
-```sh
-git add PKGBUILD .SRCINFO
-git commit -m "Add dwork package"
-git push origin master
-```
-
-Do not commit the generated package archive. For updates, change the version,
-source checksum, and package release as appropriate, regenerate `.SRCINFO`,
-rebuild/test, and push the packaging commit.
-
-A stable `dwork` recipe should use tagged releases. A separately named
-`dwork-git` recipe follows the development branch and needs proper VCS versioning.
-
-References:
-[ArchWiki submission guidelines](https://wiki.archlinux.org/title/AUR_submission_guidelines),
-[PKGBUILD manual](https://man.archlinux.org/man/PKGBUILD.5.en),
-[makepkg manual](https://man.archlinux.org/man/makepkg.8.en).
-
-## Homebrew: start with your own tap
-
-A third-party tap is the straightforward starting point for a new project; a
-`homebrew/core` submission is a separate acceptance/review process.
-
-1. Create a repository such as `hayyaun/homebrew-tap`.
-2. Add a formula under `Formula/dwork.rb`.
-3. Point it at a fixed release archive and its SHA-256.
-4. Declare Python and YAML dependencies/resources. Use Homebrew's normal Python
-   dependency handling rather than downloading dependencies with pip during
-   installation.
-5. Add a test such as `dwork --help` and build/test on supported platforms.
-6. Publish the tap.
-
-Users can then install the formula by its fully qualified tap name:
-
-```sh
-brew install hayyaun/tap/dwork
-```
-
-That command is a future distribution example; the tap/formula has not been created.
-Until a macOS terminal adapter exists, terminal launching remains Linux/WSL only;
-do not advertise native macOS terminal support.
-
-References:
-[Create and maintain a tap](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap),
-[Adding software](https://docs.brew.sh/Adding-Software-to-Homebrew),
-[Python for formula authors](https://docs.brew.sh/Python-for-Formula-Authors).
-
-## PyPI: optional, after adding Python packaging
-
-The PyPI name `dwork` is already used by an unrelated project. Choose an available
-distribution name; the installed command can still be `dwork`.
-
-Before publishing, add a `pyproject.toml`, package metadata, a console-script entry
-point, and the declared PyYAML dependency. Build and validate a wheel and sdist,
-try TestPyPI first, then publish to PyPI. GitHub Actions Trusted Publishing avoids
-maintaining a long-lived upload token.
-
-Once published, users could install with `pipx` or `uv tool install`. Python
-packaging and publication are not implemented by the current Make installer.
-
-References:
-[Existing PyPI dwork project](https://pypi.org/project/dwork/),
-[Packaging flow](https://packaging.python.org/en/latest/flow/),
-[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/).
-
-## Debian/Ubuntu, Snap, and other channels
-
-- A Debian/Ubuntu package can use the staged install, declare `python3` and
-  `python3-yaml`, and ship through your own apt repository/PPA before pursuing
-  distribution inclusion. Test against each supported distribution release.
-  See [Launchpad PPAs](https://ubuntu.com/docs/launchpad/user/Packaging/PPA/).
-- Snap or Flatpak are not the first route recommended here: dwork needs access to
-  host projects, Docker, and desktop terminals, so confinement and host integration
-  need separate design and testing. Nothing in this repository currently claims
-  that integration.
-
-Recommended order: tagged GitHub release, AUR recipe, Linux Homebrew tap, then
-optional PyPI packaging and distribution-specific packages.
+References: [Python packaging](https://packaging.python.org/en/latest/flow/),
+[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/),
+[Homebrew taps](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap),
+[Debian maintainer guide](https://www.debian.org/doc/manuals/maint-guide/),
+[Launchpad PPAs](https://ubuntu.com/docs/launchpad/user/Packaging/PPA/).

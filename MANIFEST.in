@@ -1,0 +1,9 @@
+include LICENSE Makefile README.md requirements.txt dwork.sh
+recursive-include lib *.py
+recursive-include scripts *.py
+recursive-include examples *.md *.yml
+recursive-include docs *.md *.png
+graft packaging
+global-exclude *.pkg.tar.* *.deb *.buildinfo *.changes
+recursive-include tests *.py
+recursive-exclude * __pycache__ *.py[cod]

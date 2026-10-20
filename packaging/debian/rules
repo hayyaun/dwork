@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+
+override_dh_auto_test:
+	make test PYTHON=/usr/bin/python3
+
+override_dh_auto_install:
+	make install VENV=0 PREFIX=/usr DESTDIR=$(CURDIR)/debian/dwork PYTHON=/usr/bin/python3

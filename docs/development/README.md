@@ -45,3 +45,16 @@ Before publishing changes, check local skill discovery without installing:
 ```sh
 npx skills add ./skills/dwork --list
 ```
+
+## Distribution packaging
+
+[`pyproject.toml`](../../pyproject.toml) packages the existing `lib/dwork.py`
+module using setuptools. `dwork:cli` is the console entry point and preserves
+source CLI errors/interrupts. No duplicate runtime is maintained.
+
+Channel recipes, build instructions, and publication steps live under
+[`packaging/`](../../packaging/README.md). Verify wheels and sdists with
+`python scripts/verify-python-package.py` in a temporary tools venv containing
+build and twine. Debian builds use `python3 scripts/build-deb.py`; Homebrew has
+its own installed-behavior test. Packaging verification must not run real
+project containers, development servers, or GUI tasks.

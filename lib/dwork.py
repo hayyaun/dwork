@@ -370,13 +370,116 @@ def open_terminal(task):
     if code:
         raise DworkError(launcher + " failed to launch (exit " + str(code) + "). Check your graphical session.")
 
+def show_target():
+    context = docker("context", "show").strip()
+    print("Docker context: " + context)
+    # DOCKER_HOST can override the endpoint associated with the displayed context.
+    if os.environ.get("DOCKER_HOST") and not os.environ.get("DOCKER_CONTEXT"):
+        print("Docker endpoint override: DOCKER_HOST is set (value hidden).")
+
+
+def show_status(workspaces, containers):
+    for workspace in workspaces:
+        print("Workspace: " + workspace.name + " (" + str(workspace.directory) + ")")
+        if not workspace.enabled:
+            print("  Compose disabled; host command state is not tracked.")
+            continue
+        for item in containers:
+            labels = item.get("Config", {}).get("Labels") or {}
+            if labels.get("com.docker.compose.project") != workspace.name:
+                continue
+            service = labels.get("com.docker.compose.service", "(unknown service)")
+            state = item["State"]
+            health = state.get("Health", {}).get("Status", "no health check")
+            managed = "managed" if workspace.manages(service) else "unmanaged"
+            print("  " + service + " / " + item["Id"][:12] + ": "
+                  + state["Status"] + ", " + health + " (" + managed + ")")
+        for service in workspace.services:
+            if workspace.manages(service) and not service_containers(containers, workspace.name, service):
+                print("  " + service + ": missing container; run the project's initial setup manually.")
+    if any(w.terminals for w in workspaces):
+        print("Host terminal commands are configured; running sessions are not tracked.")
+
+
+def doctor(directory, options):
+    failures = []
+
+    def check(label, operation, hint):
+        try:
+            value = operation()
+            print("OK: " + label)
+            return value
+        except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
+            failures.append(label)
+            print("FAIL: " + label + ": " + str(error), file=sys.stderr)
+            print("  Fix: " + hint, file=sys.stderr)
+            return None
+
+    workspaces = check("Workspace configuration and Compose compatibility",
+                       lambda: discover(directory, options)[0],
+                       "Check dwork.yml and Compose options; Compose must support config --no-interpolate --no-env-resolution --format json.")
+    if workspaces is None:
+        print("Run dwork --dry-run after fixing configuration to inspect the switch plan.")
+        return 1
+    if any(w.enabled for w in workspaces):
+        check("Docker target", show_target,
+              "Install Docker CLI and check docker context show, DOCKER_CONTEXT, and DOCKER_HOST.")
+        containers = check("Docker access and container inventory", inventory,
+                           "Check docker info, daemon availability, and permissions for the selected Docker target.")
+        if containers is not None:
+            show_status(workspaces, containers)
+            for workspace in workspaces:
+                for task in workspace.terminals:
+                    for service in task.healthy:
+                        matches = service_containers(containers, workspace.name, service)
+                        if not matches or any(not c["State"].get("Health") for c in matches):
+                            failures.append("health prerequisite")
+                            print("FAIL: " + workspace.name + "/" + service
+                                  + " requires existing containers with Docker health checks."
+                                  + " Complete project setup and configure healthcheck manually.", file=sys.stderr)
+    else:
+        print("Docker checks skipped: Compose is disabled.")
+    for workspace in workspaces:
+        for task in workspace.terminals:
+            check("Shell, command, and terminal for " + task.title,
+                  lambda task=task: preflight_terminals([task]),
+                  "Check SHELL (Bash/Zsh), command PATH, graphical session, and configured launcher or DWORK_TERMINAL.")
+    print("Doctor: " + (str(len(failures)) + " check(s) failed." if failures else "all checks passed.")
+          + " No containers or terminals changed.")
+    return 1 if failures else 0
+
+
+def report_failure(completed, pending, step, containers):
+    print("Switch incomplete at: " + step, file=sys.stderr)
+    print("Completed: " + ("; ".join(completed) or "none"), file=sys.stderr)
+    print("Not confirmed complete: " + ("; ".join(pending) or "none"), file=sys.stderr)
+    print("The interrupted or failed operation may have changed state; inspect before retrying.", file=sys.stderr)
+    print("No automatic rollback was attempted. Host commands are not supervised.", file=sys.stderr)
+    try:
+        current = inventory() if containers else []
+        running = [((c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project", "?")
+                    + "/" + c["Id"][:12]) for c in current
+                   if c["State"]["Status"] in ("running", "restarting")]
+        print("Still running/restarting: " + (", ".join(running) or "none"), file=sys.stderr)
+    except (DworkError, OSError, ValueError, KeyError, TypeError):
+        print("Could not refresh container state; check docker ps --all.", file=sys.stderr)
+    print("Inspect current state: dwork status; preview a retry: dwork --dry-run (use the same Compose options).", file=sys.stderr)
+    for action in completed:
+        if action.startswith("stop "):
+            identifier = action.split()[1]
+            print("To restore the stopped container if appropriate: docker start " + identifier, file=sys.stderr)
+    print("For a failed container: docker inspect <container-id> and docker logs --tail 50 <container-id>.", file=sys.stderr)
+
+
 def main():
     options = sys.argv[1:]
+    mode = options.pop(0) if options and options[0] in ("status", "doctor") else "switch"
     preview = bool(options and options[0] == "--dry-run")
     if preview:
         options = options[1:]
     if options and options[0] in ("--help", "-h"):
-        print("Usage: dwork [--dry-run] [Docker Compose global options]")
+        print("Usage: dwork [--dry-run | status | doctor] [Docker Compose global options]")
+        print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
@@ -387,6 +490,8 @@ def main():
         print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
         return 0
     directory = Path.cwd()
+    if mode == "doctor":
+        return doctor(directory, options)
     workspaces, discovered = discover(directory, options)
     active = {w.name: w for w in workspaces if w.enabled}
     if len(active) != sum(w.enabled for w in workspaces):
@@ -394,6 +499,11 @@ def main():
     if active and not shutil.which("docker"):
         raise DworkError("docker is not available.")
     containers = inventory() if active else []
+    if active:
+        show_target()
+    if mode == "status":
+        show_status(workspaces, containers)
+        return 0
     keep = {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
     stops, starts, warnings = [], [], []
     for c in containers:
@@ -441,18 +551,22 @@ def main():
               else "Current workspace: " + workspaces[0].name + " (Compose disabled)")
     for warning in warnings:
         print("Warning: " + warning, file=sys.stderr)
-    if discovered or preview:
-        for identifier, project in stops:
-            print("Would stop: " + identifier[:12] + " (" + project + ")")
-        for identifier, project, service in starts:
-            print("Would start existing: " + identifier[:12] + " (" + project + "/" + service + ")")
-        for task in tasks:
-            if task.healthy:
-                print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
-            confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
-            print("Would open terminal: " + task.title + " -> " + shlex.join(task.command) + " in " + str(task.cwd) + confirmation)
-        if not stops and not starts and not tasks:
-            print("No container changes needed.")
+    print("Switch plan: " + str(len(stops)) + " stop(s), " + str(len(starts))
+          + " start(s), " + str(len(tasks)) + " terminal task(s).")
+    if active:
+        print("Scope: other Compose projects on this Docker target may be stopped.")
+    print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
+    for identifier, project in stops:
+        print("Would stop: " + identifier[:12] + " (" + project + ")")
+    for identifier, project, service in starts:
+        print("Would start existing: " + identifier[:12] + " (" + project + "/" + service + ")")
+    for task in tasks:
+        if task.healthy:
+            print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
+        confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
+        print("Would open terminal: " + task.title + " -> " + shlex.join(task.command) + " in " + str(task.cwd) + confirmation)
+    if not stops and not starts and not tasks:
+        print("No container changes needed.")
     if preview:
         return 0
     if discovered:
@@ -463,30 +577,51 @@ def main():
         if answer.strip().lower() != "y":
             print("Cancelled; nothing changed.")
             return 0
+    actions = []
     for identifier, project in stops:
-        print("Stopping: " + identifier[:12] + " (" + project + ")", flush=True)
-        docker("stop", identifier)
+        actions.append(("stop " + identifier + " (" + project + ")",
+                        lambda identifier=identifier: docker("stop", identifier)))
     for identifier, project, service in starts:
-        print("Starting existing: " + identifier[:12] + " (" + project + "/" + service + ")", flush=True)
-        docker("start", identifier)
-    # All health gates pass before any terminal launches.
+        actions.append(("start " + identifier + " (" + project + "/" + service + ")",
+                        lambda identifier=identifier: docker("start", identifier)))
     for ids, timeout in gates:
-        print("Waiting for Docker health checks...", flush=True)
-        wait_healthy(ids, timeout)
-    for task in tasks:
-        if not confirm_terminal(task):
-            print("Skipped terminal: " + task.title, flush=True)
-            continue
-        print("Opening terminal: " + task.title, flush=True)
-        open_terminal(task)
+        actions.append(("wait for healthy " + ", ".join(ids),
+                        lambda ids=ids, timeout=timeout: wait_healthy(ids, timeout)))
+    completed = []
+    pending = [label for label, _ in actions] + ["terminal " + task.title for task in tasks]
+    step = "before execution"
+    try:
+        for label, operation in actions:
+            step = label
+            print("Executing: " + label, flush=True)
+            operation()
+            completed.append(label)
+            pending.pop(0)
+        for task in tasks:
+            step = "terminal " + task.title
+            if not confirm_terminal(task):
+                print("Skipped terminal: " + task.title, flush=True)
+                pending.pop(0)
+                continue
+            print("Opening terminal: " + task.title, flush=True)
+            open_terminal(task)
+            completed.append("launched terminal " + task.title)
+            pending.pop(0)
+    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
+        report_failure(completed, pending, step, containers)
+        raise
     return 0
 
-if __name__ == "__main__":
+def cli():
+    """Shared console entry point for source and packaged installations."""
     try:
-        sys.exit(main())
+        return main()
     except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
         print("dwork: " + str(error), file=sys.stderr)
-        sys.exit(1)
+        return 1
     except KeyboardInterrupt:
         print("\ndwork: cancelled.", file=sys.stderr)
-        sys.exit(130)
+        return 130
+
+if __name__ == "__main__":
+    sys.exit(cli())

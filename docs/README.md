@@ -11,3 +11,5 @@
 - [Publish packages](publishing/README.md)
 - [Develop and test](development/README.md)
 - [Introduce dwork](promotion/README.md)
+
+- [Distribution packaging](../packaging/README.md): Python, Homebrew, Debian, and AUR.

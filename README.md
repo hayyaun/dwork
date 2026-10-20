@@ -34,6 +34,9 @@ Installs a standalone `dwork` command for your user, with isolated Python
 dependencies. No `sudo` or shell sourcing required. If needed, the installer prints
 the line to add `~/.local/bin` to `PATH`.
 
+[Python, Homebrew, and Debian packaging →](packaging/README.md)
+Build/install instructions are available; registry and tap publication is pending.
+
 <details>
 <summary>Requirements and other installation options</summary>
 
