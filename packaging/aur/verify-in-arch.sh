@@ -6,7 +6,7 @@ cp -a /recipe /home/builder/package
 chown -R builder:builder /home/builder/package
 cd /home/builder/package
 runuser -u builder -- makepkg --printsrcinfo > /recipe/.SRCINFO
-runuser -u builder -- makepkg --cleanbuild --noconfirm
+runuser -u builder -- makepkg --force --cleanbuild --noconfirm
 namcap PKGBUILD
 namcap dwork-0.1.0-1-any.pkg.tar.zst
 pacman -U --noconfirm dwork-0.1.0-1-any.pkg.tar.zst

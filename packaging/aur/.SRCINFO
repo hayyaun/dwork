@@ -1,0 +1,22 @@
+pkgbase = dwork
+	pkgdesc = Switch development workspaces, resume existing containers, and launch terminals
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/hayyaun/dwork
+	arch = any
+	license = MIT
+	checkdepends = zsh
+	makedepends = make
+	depends = sh
+	depends = python>=3.10
+	depends = python-yaml
+	optdepends = docker: manage existing project containers
+	optdepends = docker-compose: read Compose workspace configuration
+	optdepends = gnome-terminal: launch development terminals on GNOME
+	optdepends = konsole: launch development terminals on KDE
+	optdepends = xfce4-terminal: launch development terminals on Xfce
+	optdepends = xterm: launch development terminals on X11
+	source = dwork-0.1.0.tar.gz::https://github.com/hayyaun/dwork/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = 31762d6eb3e57ba9637cc955af01c519c55ef9ac3c2320a6109c712ba47a36f0
+
+pkgname = dwork

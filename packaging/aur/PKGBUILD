@@ -6,7 +6,7 @@ pkgdesc='Switch development workspaces, resume existing containers, and launch t
 arch=('any')
 url='https://github.com/hayyaun/dwork'
 license=('MIT')
-depends=('python>=3.10' 'python-yaml')
+depends=('sh' 'python>=3.10' 'python-yaml')
 makedepends=('make')
 checkdepends=('zsh')
 optdepends=(
