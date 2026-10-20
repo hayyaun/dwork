@@ -17,7 +17,25 @@ class DownTests(unittest.TestCase):
         self.state = self.fixture.base / "state/dwork/workspaces.json"
 
     def run_cli(self, args, **kwargs):
+        kwargs.setdefault("answer", "y\n")
         return self.fixture.run_dwork("bash", args, register_current=False, **kwargs)
+
+    def test_confirmation_decline_eof_and_preview_preserve_registry(self):
+        self.register("api")
+        before = self.state.read_bytes()
+        for args, answer in (("down", "n\n"), ("down", "\n"), ("down", ""),
+                              ("down --dry-run", "")):
+            with self.subTest(args=args, answer=answer):
+                result, changes, _ = self.run_cli(args, answer=answer,
+                    containers=[legacy.container("a", "api", state="running")])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(changes, [])
+                self.assertEqual(self.state.read_bytes(), before)
+                if args == "down":
+                    self.assertLess(result.stdout.index("Would stop:"), result.stdout.index("Stop all listed"))
+                    self.assertIn("Cancelled", result.stdout)
+                else:
+                    self.assertNotIn("(y/N)", result.stdout)
 
     def register(self, name, services=None, **kwargs):
         directory = self.root / name
@@ -133,6 +151,7 @@ class DownTests(unittest.TestCase):
                 patch.object(runtime, "show_target"), \
                 patch.object(runtime, "inventory", return_value=[legacy.container("a", "api", state="running")]), \
                 patch.object(runtime, "docker", side_effect=KeyboardInterrupt), \
+                patch("builtins.input", return_value="y"), \
                 patch.object(runtime.sys, "argv", ["dwork", "down"]), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
             self.assertEqual(runtime.cli(), 130)

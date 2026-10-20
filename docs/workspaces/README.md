@@ -253,7 +253,24 @@ not a guaranteed amount of host-visible memory.
 Docker receives one `stop` call with all selected container IDs. If it fails or is
 interrupted, dwork refreshes the selected containers' states and reports partial
 completion when possible. Preview first to inspect the scope; the explicit `down`
-command proceeds without another confirmation prompt.
+command shows the stop plan and asks `Stop all listed registered containers? (y/N)`.
+Only `y` or `Y` proceeds; Enter, another answer, or end-of-input cancels.
+`--dry-run` does not prompt. If no containers need stopping, no confirmation is needed.
+
+## Rename
+
+```sh
+dwork rename app api
+```
+
+Changes the saved workspace name to an available name. Use `api` for subsequent
+`switch`, `forget`, and `rename` commands. Names are case-sensitive, must start
+with a letter or digit, and may contain letters, digits, dots, underscores, and
+hyphens. An already registered name (including the current name) is rejected.
+
+Renaming works from any directory, even if the workspace directory is unavailable
+or Docker is offline. It preserves the directory, Compose identity, options, and
+lock policy; containers, terminals, and project files are unaffected.
 
 ## Forget
 
@@ -274,7 +291,7 @@ paths, selection options, and resolved project identities. They are local state,
 not a portable project configuration.
 
 Updates replace the registry atomically. A per-user file lock prevents concurrent
-registrations, scans, forget operations, switches, and shutdowns from interleaving; a second mutating
+registrations, scans, renames, forget operations, switches, and shutdowns from interleaving; a second mutating
 invocation reports that another operation is in progress. Read-only commands do not
 create registry or lock files. A malformed registry blocks registry operations and
 switching without overwriting the file; restore or repair it before retrying.

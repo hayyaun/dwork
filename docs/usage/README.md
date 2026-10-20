@@ -60,6 +60,7 @@ dwork scan                # Recursively register configured workspaces, then off
 dwork list               # Registered names, directory paths, and container status
 dwork switch my-app      # Activate the saved workspace from anywhere
 dwork switch my-app --dry-run
+dwork rename my-app api   # Rename to an available workspace name
 dwork down                # Stop all registered workloads on this Docker target
 dwork forget my-app      # Remove only the registration
 ```
@@ -79,6 +80,12 @@ development terminals. Use `dwork scan --dry-run` to preview without writing or
 prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).
 
 ### Stop all registered workloads
+
+`dwork up` shows the current workspace plan and asks for confirmation before
+applying it. `dwork down` shows the containers it will stop and asks for confirmation
+when there are containers to stop. Only `y` or `Y` proceeds; Enter, `n`, and
+end-of-input cancel. `--dry-run` previews without prompting. Existing registration,
+group, and terminal-task confirmations still apply.
 
 ```sh
 dwork down --dry-run

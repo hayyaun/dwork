@@ -62,6 +62,7 @@ class CompletionTests(unittest.TestCase):
         setup = ("source " + shlex.quote(str(script))
                  + "\ndwork() { printf 'alpha\\nbeta\\n'; }\n")
         for words, index, expected in (("dwork sw al", 2, ["alpha"]),
+                                       ("dwork rename al", 2, ["alpha"]),
                                        ("dwork sc", 1, ["scan"]),
                                        ("dwork scan --d", 2, ["--dry-run"]),
                                        ("dwork -f comp", 2, ["compose dev.yaml"])):
@@ -101,7 +102,8 @@ class CompletionTests(unittest.TestCase):
                     until(b"\r\nREADY\r\n")
                     for typed, result in ((b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
                                           (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
-                                          (b"dwork rm be\t\n", b"EXECUTED:rm beta")):
+                                          (b"dwork rm be\t\n", b"EXECUTED:rm beta"),
+                                          (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name")):
                         os.write(master, typed)
                         until(result)
                     os.write(master, b"exit\n")

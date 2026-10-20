@@ -45,6 +45,79 @@ class RegistryTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertNotIn("Register and switch?", result.stdout)
 
+    def test_up_requires_confirmation_after_plan_and_preview_never_prompts(self):
+        self.register()
+        before = self.state.read_bytes()
+        for args, answer, expected in (("up", "", []), ("up", "\n", []),
+                                        ("up", "n\n", []),
+                                        ("up", "Y\n", [["start", "a"]]),
+                                        ("up --dry-run", "", [])):
+            with self.subTest(args=args, answer=answer):
+                result, changes, _ = self.run_cli(args, answer=answer,
+                    containers=[legacy.container("a", "main")])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(changes, expected)
+                self.assertEqual(self.state.read_bytes(), before)
+                if args == "up":
+                    self.assertLess(result.stdout.index("Would start existing:"),
+                                    result.stdout.index("Apply the listed"))
+                else:
+                    self.assertNotIn("(y/N)", result.stdout)
+
+    def test_up_decline_does_not_register_new_workspace(self):
+        result, changes, _ = self.run_cli("up", answer="n\n",
+            containers=[legacy.container("a", "main")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(changes, [])
+        self.assertFalse(self.state.exists())
+
+    def test_rename_only_changes_name_and_switch_uses_new_name(self):
+        self.register(name="old")
+        before = self.entries()[0]
+        # Renaming needs neither the project directory nor readable configuration.
+        (self.root / "dwork.yml").write_text("version: invalid\n")
+        result, changes, calls = self.run_cli("rename old new-app", cwd=self.fixture.base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Renamed old to new-app", result.stdout)
+        self.assertEqual(changes, [])
+        self.assertEqual(calls, [])
+        self.assertEqual(self.entries(), [dict(before, name="new-app")])
+        result, _, calls = self.run_cli("list --names")
+        self.assertEqual(result.stdout, "new-app\n")
+        self.assertEqual(calls, [])
+        (self.root / "dwork.yml").unlink()
+        result, changes, _ = self.run_cli("switch new-app", cwd=self.fixture.base,
+                                         containers=[legacy.container("a", "main")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(changes, [["start", "a"]])
+        result, changes, calls = self.run_cli("switch old")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Unknown workspace", result.stderr)
+        self.assertEqual(changes, [])
+        self.assertEqual(calls, [])
+
+    def test_rename_rejects_taken_invalid_unknown_names_without_registry_changes(self):
+        self.register(name="old")
+        other = self.fixture.base / "other"
+        self.fixture.model(other, "other")
+        self.register(other, name="taken")
+        before = self.state.read_bytes()
+        for args, message in (("rename old taken", "already registered"),
+                              ("rename old old", "already registered"),
+                              ("rename missing fresh", "Unknown workspace"),
+                              ("rename old bad/name", "Workspace name must"),
+                              ("rename old ''", "Workspace name must"),
+                              ("rename old", "Usage:"),
+                              ("rename old fresh extra", "Usage:"),
+                              ("rename --dry-run old fresh", "Usage:")):
+            with self.subTest(args=args):
+                result, changes, calls = self.run_cli(args)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn(message, result.stderr)
+                self.assertEqual(changes, [])
+                self.assertEqual(calls, [])
+                self.assertEqual(self.state.read_bytes(), before)
+
     def test_decline_eof_and_dry_run_do_not_register_or_mutate(self):
         for args, answer in (("", ""), ("", "n\n"), ("--dry-run", "y\n")):
             result, changes, _ = self.run_cli(args, answer=answer,

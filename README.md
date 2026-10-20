@@ -86,6 +86,7 @@ dwork scan                  # Find workspaces recursively; optionally select Com
 dwork list                  # Show remembered directories and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
+dwork rename my-app api      # Change its saved name to an available name
 dwork down                  # Stop all registered workspace containers
 dwork forget my-app         # Forget it; leave containers and files alone
 ```
@@ -111,6 +112,9 @@ It still appears in `dwork list` and can be activated normally.
 
 Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`,
 `ps` = `status`, and `up` activates the current workspace.
+
+`dwork up` and `dwork down` show the plan and ask for confirmation before applying
+it. Enter or `n` cancels; `--dry-run` previews without prompting.
 
 ## Tab completion
 

@@ -19,6 +19,7 @@ class LockedTests(unittest.TestCase):
         self.state = self.fixture.base / "state/dwork/workspaces.json"
 
     def run_cli(self, args, **kwargs):
+        kwargs.setdefault("answer", "y\n")
         return self.fixture.run_dwork("bash", args, register_current=False, **kwargs)
 
     def configure(self, directory, name, locked):

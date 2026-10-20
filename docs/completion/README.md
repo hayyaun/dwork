@@ -3,7 +3,7 @@
 [Project home](../../README.md) · [Usage](../usage/README.md) · [Installation](../installation/README.md)
 
 Completion is available for Bash and Zsh. It suggests commands, aliases, relevant
-flags, registered workspace names after `switch`/`sw` and `forget`/`rm`, and file
+flags, registered workspace names after `switch`/`sw`, `forget`/`rm`, and `rename`, and file
 or directory paths after Compose options such as `-f` and `--project-directory`.
 
 ## Enable it

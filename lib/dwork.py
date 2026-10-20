@@ -19,8 +19,8 @@ LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
 LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
 
 FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
-COMMANDS = ("register", "scan", "list", "switch", "forget", "down", "status", "doctor", "completion")
-ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "activate", "ps": "status"}
+COMMANDS = ("register", "scan", "list", "switch", "rename", "forget", "down", "status", "doctor", "completion")
+ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "up", "ps": "status"}
 SCAN_IGNORED_DIRS = frozenset({
     ".git", ".hg", ".svn", "node_modules", "bower_components", "vendor",
     ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
@@ -56,7 +56,7 @@ _dwork_complete() {
     elif [[ "$prev" == --project-directory ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -d -- "$cur")
         return
-    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm ]]; then
+    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( COMP_CWORD == 2 )) && [[ "$cur" != -* ]]; then
             while IFS= read -r candidate; do
                 [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
@@ -94,7 +94,7 @@ _dwork() {
     elif [[ "$prev" == --project-directory ]]; then
         _files -/
         return
-    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm ]]; then
+    elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( CURRENT == 3 )) && [[ "$PREFIX" != -* ]]; then
             names=("${(@f)$(dwork list --names 2>/dev/null)}")
             (( ${#names} )) && compadd -- "${names[@]}"
@@ -148,6 +148,12 @@ def container_name(item):
 
 COMPOSE_ENV = ("COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES",
                "COMPOSE_ENV_FILES", "COMPOSE_PATH_SEPARATOR", "COMPOSE_DISABLE_ENV_FILE")
+
+
+def validate_workspace_name(name):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+        raise DworkError("Workspace name must contain letters, digits, dots, underscores, or hyphens"
+                         + " and start with a letter or digit.")
 
 
 def registry_path():
@@ -331,6 +337,13 @@ def registered_services(entries, target, require_directories=True):
     return managed
 
 
+def confirm_action(prompt):
+    try:
+        return input(prompt + " (y/N) ").strip().lower() == "y"
+    except EOFError:
+        return False
+
+
 def confirm_registration(entry):
     print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
     if all(m.get("locked", False) for m in entry["members"]):
@@ -408,12 +421,25 @@ def down_workspaces(entries, preview):
     print("Locked projects: " + (", ".join(locked_projects(entries, target)) or "none"))
     for item in selected:
         print(color("Would stop: ", "stop") + item["Id"][:12] + " (" + colored_name(container_name(item)) + ")")
-    if locks_changed and not preview:
-        save_registry(entries)
     if not selected:
+        if locks_changed and not preview:
+            save_registry(entries)
         print("No registered containers need stopping.")
         return 0
     if preview:
+        return 0
+    if not confirm_action("Stop all listed registered containers?"):
+        print("Cancelled; nothing changed.")
+        return 0
+    # Lock policy can change while the confirmation prompt is open.
+    locks_changed = refresh_locks(entries) or locks_changed
+    protected = set(locked_projects(entries, target))
+    selected = [item for item in selected if
+                (item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") not in protected]
+    if locks_changed:
+        save_registry(entries)
+    if not selected:
+        print("No registered containers need stopping; listed projects are now locked.")
         return 0
     print(color("Stopping registered workspace containers...", "stop"), flush=True)
     try:
@@ -1103,6 +1129,7 @@ def main():
         print("       dwork scan [--dry-run]")
         print("       dwork list | forget NAME")
         print("       dwork switch NAME [--dry-run]")
+        print("       dwork rename NAME NEW_NAME")
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
@@ -1115,6 +1142,7 @@ def main():
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
+        print("up and down show their plans and require confirmation (y/N); --dry-run never prompts.")
         print("Each terminal asks (y/N) unless that task sets confirm: false in dwork.yml.")
         print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
         print("Only other registered workspaces on this Docker target may be stopped.")
@@ -1142,6 +1170,22 @@ def main():
         return list_registrations(read_registry())
     if mode == "status":
         return switch_workspace(directory, options, mode, preview, [])
+    if mode == "rename":
+        if preview or len(options) != 2 or any(value.startswith("-") for value in options):
+            raise DworkError("Usage: dwork rename NAME NEW_NAME")
+        name, new_name = options
+        validate_workspace_name(new_name)
+        with registry_lock():
+            entries = read_registry()
+            entry = next((e for e in entries if e["name"] == name), None)
+            if entry is None:
+                raise DworkError("Unknown workspace: " + name + ". Run dwork list.")
+            if any(e["name"] == new_name for e in entries):
+                raise DworkError("Workspace name already registered: " + new_name + ". Choose an available name.")
+            entry["name"] = new_name
+            save_registry(entries)
+        print("Renamed " + colored_name(name) + " to " + colored_name(new_name) + ".")
+        return 0
     if mode == "scan":
         if options:
             raise DworkError("Usage: dwork scan [--dry-run]")
@@ -1170,7 +1214,7 @@ def main():
             raise DworkError("Use dwork --dry-run to preview; register only saves a workspace.")
         if options and not options[0].startswith("-"):
             name = options.pop(0)
-    if mode == "activate" and options and not options[0].startswith("-"):
+    if mode in ("activate", "up") and options and not options[0].startswith("-"):
         raise DworkError("Unknown command: " + options[0] + ". See dwork --help.")
     if preview:
         return registry_command(directory, options, mode, preview, name, read_registry())
@@ -1226,9 +1270,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     direct = bool(existing and existing.get("direct", False))
     default_name = workspaces[0].name if len(workspaces) == 1 else directory.name
     name = name or (existing["name"] if existing else default_name)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
-        raise DworkError("Workspace name must contain letters, digits, dots, underscores, or hyphens"
-                         + " and start with a letter or digit. Use dwork register NAME.")
+    validate_workspace_name(name)
     candidate = registration(directory, options, workspaces, target, name, direct=direct)
     if any(e["name"] == name and e["path"] != candidate["path"] for e in entries):
         raise DworkError("Workspace name already registered: " + name + ". Use dwork register NAME with a unique name.")
@@ -1316,6 +1358,9 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     if not stops and not starts and not tasks:
         print("No container changes needed.")
     if preview:
+        return 0
+    if mode == "up" and not confirm_action("Apply the listed workspace plan?"):
+        print("Cancelled; nothing changed.")
         return 0
     if discovered:
         try:
