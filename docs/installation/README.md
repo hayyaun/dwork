@@ -39,6 +39,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 You can also invoke `~/.local/bin/dwork --help` directly.
 
+To let a coding agent create `dwork.yml` for your projects, separately
+[install the optional dwork skill](../skills/README.md). It supports Codex,
+Claude Code, Cursor, and other agents through the skills CLI or manual copying.
+
 If dependency setup is interrupted, retry `make install` with the same prefix.
 A marked partial installation can also be removed with `make uninstall`.
 

@@ -47,6 +47,21 @@ On Ubuntu, the installer prerequisites are `git make python3 python3-venv`.
 
 </details>
 
+## Let your agent configure it
+
+Install the optional dwork skill for your coding agents (Node.js 22.20+):
+
+```sh
+npx skills add hayyaun/dwork --skill dwork -g
+```
+
+Choose Codex, Claude Code, Cursor, or another supported agent, then open your
+project and ask: **"Use the dwork skill to create dwork.yml for this project."**
+The agent inspects your existing commands and Compose services and previews the
+configuration when dwork is available. The skill is separate from `make install`.
+
+[All-agent installation, manual setup, and usage →](docs/skills/README.md)
+
 ## Use it
 
 ```sh

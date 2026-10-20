@@ -29,3 +29,19 @@ Zsh when those shells are installed. PyYAML is needed for configuration tests.
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.
 The default venv installation is additionally smoke-tested in a temporary prefix.
+
+## Agent skill
+
+[`skills/dwork/`](../../skills/dwork/) is the portable, separately installable
+skill for users generating configurations in their own projects. Keep its
+bundled [configuration reference](../../skills/dwork/references/configuration.md)
+consistent with the parser and [configuration docs](../configuration/README.md)
+when changing supported fields or behavior. Keep references inside the skill
+folder so installations work without the source checkout. Installation and
+manual-copy instructions live in the [skill guide](../skills/README.md).
+
+Before publishing changes, check local skill discovery without installing:
+
+```sh
+npx skills add ./skills/dwork --list
+```

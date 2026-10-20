@@ -3,6 +3,7 @@
 [Project home](../README.md)
 
 - [Install dwork](installation/README.md)
+- [Install the agent skill](skills/README.md)
 - [Use dwork](usage/README.md)
 - [Configure dwork.yml](configuration/README.md)
 - [Terminal launchers](terminals/README.md)
