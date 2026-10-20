@@ -105,7 +105,7 @@ class DworkTests(unittest.TestCase):
                            input="", text=True, capture_output=True, env=env, check=True)
         # Existing behavior tests exercise already-registered workspaces. Registry
         # tests disable this setup to exercise the first-run consent path itself.
-        if register_current and not args.startswith(("register", "list", "switch", "forget", "down")):
+        if register_current and not args.startswith(("register", "scan", "list", "switch", "forget", "down")):
             words = shlex.split(args)
             if words and words[0] in ("--dry-run", "status", "doctor"):
                 words.pop(0)

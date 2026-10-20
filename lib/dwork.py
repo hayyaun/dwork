@@ -67,6 +67,8 @@ def read_registry():
             raise ValueError()
         names, paths = set(), set()
         for entry in data["workspaces"]:
+            if "direct" in entry and type(entry["direct"]) is not bool:
+                raise ValueError()
             if (not isinstance(entry["name"], str) or not entry["name"]
                     or not isinstance(entry["path"], str) or not Path(entry["path"]).is_absolute()
                     or entry["name"] in names or entry["path"] in paths
@@ -82,10 +84,13 @@ def read_registry():
                     or any(not isinstance(v, str) or not v for v in target.values())):
                 raise ValueError()
             for member in entry["members"]:
+                if not isinstance(member, dict):
+                    raise ValueError()
+                member.setdefault("locked", False)
                 if (not isinstance(member["project"], str) or not member["project"]
                         or not isinstance(member["directory"], str)
                         or not Path(member["directory"]).is_absolute()
-                        or type(member["enabled"]) is not bool
+                        or type(member["enabled"]) is not bool or type(member["locked"]) is not bool
                         or (member["services"] is not None and
                             (not isinstance(member["services"], list) or
                              any(not isinstance(s, str) for s in member["services"])))):
@@ -152,12 +157,51 @@ def registration_directory(directory, options, discovered):
     return directory
 
 
-def registration(directory, options, workspaces, target, name):
-    return {"name": name, "path": str(directory.resolve()), "options": list(options),
+def registration(directory, options, workspaces, target, name, direct=False):
+    entry = {"name": name, "path": str(directory.resolve()), "options": list(options),
             "environment": {key: os.environ[key] for key in COMPOSE_ENV if key in os.environ},
             "target": target,
             "members": [{"project": w.name, "directory": str(w.directory.resolve()),
-                         "enabled": w.enabled, "services": w.selected} for w in workspaces]}
+                         "enabled": w.enabled, "services": w.selected, "locked": w.locked} for w in workspaces]}
+    if direct:
+        entry["direct"] = True
+    return entry
+
+
+def lock_value(config):
+    locked = config.get("locked", False)
+    if type(locked) is not bool:
+        raise DworkError("dwork.yml: locked must be true or false.")
+    return locked
+
+
+def refresh_locks(entries):
+    """Read lock policy without loading Compose or changing registered ownership."""
+    changed = False
+    for entry in entries:
+        for member in entry["members"]:
+            locked = member.get("locked", False)
+            path = Path(member["directory"]) / "dwork.yml"
+            try:
+                path.stat()
+                config = read_config(path)
+                if type(config.get("version")) is not int or config["version"] != 1:
+                    raise DworkError("version must be 1")
+                locked = lock_value(config)
+            except FileNotFoundError:
+                pass  # Retain the last known policy when a directory/config disappears.
+            except (DworkError, OSError, ValueError, TypeError) as error:
+                locked = True
+                print(color("Warning: protecting " + member["project"] + "; cannot read lock policy in "
+                            + str(path) + ": " + str(error), "warning", sys.stderr), file=sys.stderr)
+            changed = changed or member.get("locked", False) != locked
+            member["locked"] = locked
+    return changed
+
+
+def locked_projects(entries, target):
+    return sorted({m["project"] for e in entries if e["target"] == target
+                   for m in e["members"] if m["enabled"] and m.get("locked", False)})
 
 
 def check_ownership(entries, candidate):
@@ -178,7 +222,8 @@ def registered_services(entries, target, require_directories=True):
         if entry["target"] != target or (require_directories and not Path(entry["path"]).is_dir()):
             continue
         for member in entry["members"]:
-            if member["enabled"] and (not require_directories or Path(member["directory"]).is_dir()):
+            if (member["enabled"] and not member.get("locked", False)
+                    and (not require_directories or Path(member["directory"]).is_dir())):
                 project = member["project"]
                 if project in managed:
                     raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
@@ -188,7 +233,10 @@ def registered_services(entries, target, require_directories=True):
 
 def confirm_registration(entry):
     print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
-    print("Future switches may stop its managed containers. Unregistered projects stay running.")
+    if all(m.get("locked", False) for m in entry["members"]):
+        print("This workspace is locked; switches and down will leave its containers running.")
+    else:
+        print("Future switches may stop its unlocked managed containers. Unregistered projects stay running.")
     try:
         return input("Register and switch? (y/N) ").strip().lower() == "y"
     except EOFError:
@@ -199,6 +247,7 @@ def list_registrations(entries):
     if not entries:
         print("No registered workspaces. Run dwork register in a project to remember it.")
         return 0
+    refresh_locks(entries)
     containers, target = [], None
     if any(e["target"] is not None for e in entries):
         try:
@@ -225,13 +274,19 @@ def list_registrations(entries):
             running = sum(c["State"]["Status"] in ("running", "restarting") for c in selected)
             state = str(running) + "/" + str(len(selected)) + " containers running"
             style = "start" if running else "stop"
-        print(colored_name(entry["name"]) + "  " + entry["path"] + "  [" + color(state, style) + "]")
+        protected = [m["project"] for m in entry["members"] if m.get("locked", False)]
+        marker = " [locked]" if len(entry["members"]) == 1 and protected else (
+            " [locked: " + ", ".join(protected) + "]" if protected else "")
+        print(colored_name(entry["name"]) + "  " + entry["path"] + "  [" + color(state, style) + "]" + color(marker, "warning"))
     return 0
 
 
 def down_workspaces(entries, preview):
     """Stop all registered container workloads on this target, without deleting them."""
+    locks_changed = refresh_locks(entries)
     if not any(e["target"] is not None for e in entries):
+        if locks_changed and not preview:
+            save_registry(entries)
         print("No registered Compose workspaces to stop.")
         return 0
     target = docker_target()
@@ -250,8 +305,11 @@ def down_workspaces(entries, preview):
             selected.append(item)
     print("Down plan: " + str(len(selected)) + " container(s) to stop across registered workspaces.")
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
+    print("Locked projects: " + (", ".join(locked_projects(entries, target)) or "none"))
     for item in selected:
         print(color("Would stop: ", "stop") + item["Id"][:12] + " (" + colored_name(container_name(item)) + ")")
+    if locks_changed and not preview:
+        save_registry(entries)
     if not selected:
         print("No registered containers need stopping.")
         return 0
@@ -277,6 +335,156 @@ def down_workspaces(entries, preview):
     print("Stopped " + str(len(selected)) + " container(s). Registrations, containers, networks, and volumes were kept.")
     return 0
 
+
+@contextmanager
+def compose_environment(values):
+    previous = {key: os.environ.get(key) for key in COMPOSE_ENV}
+    try:
+        for key in COMPOSE_ENV:
+            os.environ.pop(key, None)
+        os.environ.update(values)
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def scan_directories(root):
+    configured, compose = [], []
+    errors = []
+    def unreadable(error):
+        errors.append(str(error))
+    for directory, children, files in os.walk(root, followlinks=False, onerror=unreadable):
+        path = Path(directory)
+        children[:] = sorted(name for name in children
+                             if name != ".git" and not (path / name).is_symlink())
+        if "dwork.yml" in files:
+            configured.append(path)
+        elif any(name in files for name in FILENAMES):
+            compose.append(path)
+    return configured, compose, errors
+
+
+def checkbox_screen(screen, choices, curses):
+    """Small scrollable picker using the public curses input/window APIs."""
+    selected, cursor = set(), 0
+    screen.keypad(True)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass
+    while True:
+        screen.erase()
+        rows, columns = screen.getmaxyx()
+        visible = max(1, rows - 5)
+        offset = max(0, min(cursor - visible + 1, max(0, len(choices) - visible)))
+        lines = [(0, "Select Compose workspaces to register", curses.A_BOLD),
+                 (1, "Up/Down: move  Space: toggle  Enter: done  Esc: cancel", curses.A_NORMAL)]
+        for index in range(offset, min(len(choices), offset + visible)):
+            label = ("> " if index == cursor else "  ") + ("[x] " if index in selected else "[ ] ") + choices[index]
+            lines.append((index - offset + 3, label, curses.A_REVERSE if index == cursor else curses.A_NORMAL))
+        lines.append((rows - 1, str(len(selected)) + " selected", curses.A_NORMAL))
+        for row, label, attributes in lines:
+            if 0 <= row < rows and columns > 1:
+                try:
+                    screen.addnstr(row, 0, label, columns - 1, attributes)
+                except curses.error:
+                    pass  # A resize or a wide Unicode character can fill the last cell.
+        screen.refresh()
+        key = screen.get_wch()
+        if key in ("\n", "\r", curses.KEY_ENTER):
+            return sorted(selected)
+        if key in ("\x1b", "q"):
+            return None
+        if key == "\x03":
+            raise KeyboardInterrupt
+        if key in (curses.KEY_DOWN, "j"):
+            cursor = min(len(choices) - 1, cursor + 1)
+        elif key in (curses.KEY_UP, "k"):
+            cursor = max(0, cursor - 1)
+        elif key == " ":
+            if cursor in selected:
+                selected.remove(cursor)
+            else:
+                selected.add(cursor)
+
+
+def choose_compose_directories(paths, root):
+    if not sys.stdin.isatty() or not sys.stdout.isatty() or os.environ.get("TERM") in (None, "", "dumb"):
+        raise DworkError("The Compose checkbox picker requires an interactive terminal. Run dwork scan in a terminal; configured workspaces already registered are kept.")
+    try:
+        import curses
+    except ImportError:
+        raise DworkError("The Compose picker requires Python curses support from your Python distributor. You can also register individual directories with dwork register.")
+    choices = [str(path.relative_to(root)) for path in paths]
+    try:
+        curses.setupterm()  # Validate TERM before initscr, which can terminate on bad terminal data.
+        indices = curses.wrapper(checkbox_screen, choices, curses)
+    except curses.error as error:
+        raise DworkError("Cannot open the Compose picker: " + str(error) + ". Configured workspaces already registered are kept.")
+    return [] if indices is None else [paths[index] for index in indices]
+
+
+def scan_workspaces(root, entries, preview):
+    print("Scanning: " + str(root), flush=True)
+    configured, compose, errors = scan_directories(root)
+    target = None
+    failures = len(errors)
+    for error in errors:
+        print(color("Warning: scan could not read a directory: " + error, "warning", sys.stderr), file=sys.stderr)
+
+    def add_directories(paths):
+        nonlocal target, failures
+        added = 0
+        for directory in paths:
+            existing = next((e for e in entries if e["path"] == str(directory)), None)
+            if existing:
+                print("Already registered: " + colored_name(existing["name"]) + " -> " + str(directory))
+                continue
+            try:
+                # Each discovered directory owns its own config, even beneath another workspace.
+                with compose_environment({}):
+                    workspace = load_workspace(directory)
+                    if workspace.enabled and target is None:
+                        target = docker_target()
+                    base = re.sub(r"[^A-Za-z0-9_.-]+", "-", workspace.name).strip("-_.") or "workspace"
+                    name, suffix = base, 2
+                    while any(e["name"] == name for e in entries):
+                        name, suffix = base + "-" + str(suffix), suffix + 1
+                    candidate = registration(directory, [], [workspace], target if workspace.enabled else None, name, direct=True)
+                check_ownership(entries, candidate)
+                entries.append(candidate)
+                added += 1
+                print(("Would register: " if preview else "Registering: ") + colored_name(name) + " -> " + str(directory))
+            except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
+                failures += 1
+                print(color("Skipped " + str(directory) + ": " + str(error), "warning", sys.stderr), file=sys.stderr)
+        if added and not preview:
+            save_registry(entries)
+        return added
+
+    count = add_directories(configured)
+    print(("Would add " if preview else "Added ") + str(count) + " configured workspace(s). No containers or terminals changed.")
+    candidates = [p for p in compose if not any(e["path"] == str(p) for e in entries)]
+    if preview:
+        for path in candidates:
+            print("Compose candidate (not selected): " + str(path))
+    elif candidates:
+        try:
+            answer = input("Also review " + str(len(candidates)) + " Compose-only directories to register? (y/N) ")
+        except EOFError:
+            answer = ""
+        if answer.strip().lower() == "y":
+            selected = choose_compose_directories(candidates, root)
+            count = add_directories(selected)
+            print("Added " + str(count) + " selected Compose workspace(s). No containers or terminals changed.")
+    else:
+        print("No unregistered Compose-only directories found.")
+    return 1 if failures else 0
+
 @dataclass
 class TerminalTask:
     title: str
@@ -297,6 +505,7 @@ class Workspace:
     selected: object = None
     terminals: list = field(default_factory=list)
     configured: bool = False
+    locked: bool = False
 
     def manages(self, service):
         return self.selected is None or service in self.selected
@@ -360,7 +569,7 @@ def read_config(path):
         mark = getattr(error, "problem_mark", None)
         location = " at line " + str(mark.line + 1) if mark else ""
         raise DworkError("Invalid dwork.yml" + location + "; nothing changed.")
-    return mapping(config, ("version", "compose", "terminals"), "dwork.yml")
+    return mapping(config, ("version", "locked", "compose", "terminals"), "dwork.yml")
 
 def load_workspace(directory, options=()):
     path = directory / "dwork.yml"
@@ -370,6 +579,7 @@ def load_workspace(directory, options=()):
     cfg = read_config(path)
     if type(cfg.get("version")) is not int or cfg["version"] != 1:
         raise DworkError("dwork.yml: version must be 1.")
+    locked = lock_value(cfg)
     compose = mapping(cfg.get("compose", {}), ("enabled", "files", "services"), "compose")
     enabled = compose.get("enabled", True)
     if type(enabled) is not bool:
@@ -425,7 +635,7 @@ def load_workspace(directory, options=()):
             if any(c in value for c in ("\0", "\r", "\n", ";")):
                 raise DworkError("Terminal values cannot contain NUL, newlines, or Windows Terminal semicolon separators; use a script file.")
         terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window, launcher, confirm))
-    return Workspace(name, directory, services, enabled, selected, terminals, True)
+    return Workspace(name, directory, services, enabled, selected, terminals, True, locked)
 
 def config_directory(directory, options):
     """Use explicit Compose directory/file selection as the config search origin."""
@@ -637,7 +847,8 @@ def show_target():
 
 def show_status(workspaces, containers):
     for workspace in workspaces:
-        print("Workspace: " + colored_name(workspace.name) + " (" + str(workspace.directory) + ")")
+        marker = " [locked]" if workspace.locked else ""
+        print("Workspace: " + colored_name(workspace.name) + " (" + str(workspace.directory) + ")" + color(marker, "warning"))
         if not workspace.enabled:
             print("  Compose disabled; host command state is not tracked.")
             continue
@@ -732,7 +943,7 @@ def report_failure(completed, pending, step, containers):
 
 def main():
     options = list(sys.argv[1:])
-    commands = ("register", "list", "switch", "forget", "down", "status", "doctor")
+    commands = ("register", "scan", "list", "switch", "forget", "down", "status", "doctor")
     mode = options.pop(0) if options and options[0] in commands else "activate"
     preview = bool(options and options[0] == "--dry-run")
     if preview:
@@ -740,11 +951,13 @@ def main():
     if options and options[0] in ("--help", "-h"):
         print("Usage: dwork [--dry-run] [Docker Compose global options]")
         print("       dwork register [NAME] [Docker Compose global options]")
+        print("       dwork scan [--dry-run]")
         print("       dwork list | forget NAME")
         print("       dwork switch NAME [--dry-run]")
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("register: remember without switching; list: show remembered directories and status.")
+        print("scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories.")
         print("switch: activate a remembered workspace; forget: remove only its registration.")
         print("down: stop all registered workspace containers on this Docker target; respect exclusions.")
         print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
@@ -754,6 +967,7 @@ def main():
         print("Each terminal asks (y/N) unless that task sets confirm: false in dwork.yml.")
         print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
         print("Only other registered workspaces on this Docker target may be stopped.")
+        print("Workspaces with locked: true never stop during a switch or down.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
         print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
@@ -768,6 +982,13 @@ def main():
         return list_registrations(read_registry())
     if mode == "status":
         return switch_workspace(directory, options, mode, preview, [])
+    if mode == "scan":
+        if options:
+            raise DworkError("Usage: dwork scan [--dry-run]")
+        if preview:
+            return scan_workspaces(directory, read_registry(), True)
+        with registry_lock():
+            return scan_workspaces(directory, read_registry(), False)
     if mode == "down":
         if options:
             raise DworkError("Usage: dwork down [--dry-run]")
@@ -810,27 +1031,21 @@ def registry_command(directory, options, mode, preview, name, entries):
         if not directory.is_dir():
             raise DworkError("Workspace directory unavailable: " + str(directory)
                              + ". Forget it and register the new location after a move.")
-        old_environment = {key: os.environ.get(key) for key in COMPOSE_ENV}
         original = Path.cwd()
         try:
             os.chdir(directory)
-            for key in COMPOSE_ENV:
-                os.environ.pop(key, None)
-            os.environ.update(entry["environment"])
-            return switch_workspace(directory, entry["options"], mode, preview, entries, name)
+            with compose_environment(entry["environment"]):
+                return switch_workspace(directory, entry["options"], mode, preview, entries, name)
         finally:
             os.chdir(original)
-            for key, value in old_environment.items():
-                if value is None:
-                    os.environ.pop(key, None)
-                else:
-                    os.environ[key] = value
     return switch_workspace(directory, options, mode, preview, entries, name)
 
 
 def switch_workspace(directory, options, mode, preview, entries, name=None):
-    workspaces, discovered = discover(directory, options)
-    root = registration_directory(directory, options, discovered)
+    known = next((e for e in entries if e["path"] == str(directory)), None)
+    direct = bool(known and known.get("direct", False))
+    workspaces, discovered = ([load_workspace(directory, options)], False) if direct else discover(directory, options)
+    root = directory if direct else registration_directory(directory, options, discovered)
     if root != directory:
         directory = root
         workspaces, discovered = discover(directory, options)
@@ -845,14 +1060,16 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             show_target()
         show_status(workspaces, containers)
         return 0
+    locks_changed = refresh_locks(entries)
     target = docker_target() if active else None
     existing = next((e for e in entries if e["path"] == str(directory)), None)
+    direct = bool(existing and existing.get("direct", False))
     default_name = workspaces[0].name if len(workspaces) == 1 else directory.name
     name = name or (existing["name"] if existing else default_name)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
         raise DworkError("Workspace name must contain letters, digits, dots, underscores, or hyphens"
                          + " and start with a letter or digit. Use dwork register NAME.")
-    candidate = registration(directory, options, workspaces, target, name)
+    candidate = registration(directory, options, workspaces, target, name, direct=direct)
     if any(e["name"] == name and e["path"] != candidate["path"] for e in entries):
         raise DworkError("Workspace name already registered: " + name + ". Use dwork register NAME with a unique name.")
     check_ownership(entries, candidate)
@@ -925,6 +1142,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     if existing is None:
         print("Would register workspace: " + colored_name(name) + " -> " + str(directory))
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
+    print("Locked projects: " + (", ".join(locked_projects(entries, target)) or "none"))
     for identifier, project in stops:
         print(color("Would stop: ", "stop") + identifier[:12] + " (" + colored_name(project) + ")")
     for identifier, project, service in starts:
@@ -950,7 +1168,17 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         if not confirm_registration(candidate):
             print("Cancelled; no workspace registered and no containers or terminals changed.")
             return 0
-        save_registry(entries + [candidate])
+        entries.append(candidate)
+    # A user can edit lock policy while a discovery/registration prompt is open.
+    locks_changed = refresh_locks(entries) or locks_changed
+    protected = set(locked_projects(entries, target))
+    for identifier, project in stops:
+        if project in protected:
+            print("Skipped stop: " + colored_name(project) + " is now locked.")
+    stops = [(identifier, project) for identifier, project in stops if project not in protected]
+    if existing is None or locks_changed:
+        save_registry(entries)
+    if existing is None:
         print("Registered " + colored_name(name) + " at " + str(directory) + ".")
     actions = []
     for identifier, project in stops:

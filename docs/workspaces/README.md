@@ -50,6 +50,49 @@ from a nested directory or a symlink does not create another registration. Expli
 Compose options or file-selection environment variables preserve the invocation
 directory so relative paths keep their meaning.
 
+## Scan a directory tree
+
+```sh
+cd ~/projects
+dwork scan --dry-run
+dwork scan
+```
+
+Searches the starting directory and all descendants for `dwork.yml`, including
+nested workspaces. `.git` and symlinked directories are skipped; other directories
+are searched without a depth limit. The preview reports configured workspaces and
+Compose candidates without prompting or writing anything.
+
+The normal command registers all valid configured workspaces first. Once that
+phase is saved, it asks whether to review unregistered directories containing a
+standard Compose filename but no `dwork.yml`. Accepting opens a checkbox picker:
+
+- Up/Down arrows move between directories (j/k also work).
+- Space toggles the current directory; all start unchecked.
+- Enter registers only the selected directories.
+- Esc or q cancels the Compose selection.
+
+Declining the prompt, sending end-of-input, or cancelling the picker keeps the
+configured registrations already added. Scanning never switches containers, waits
+for health checks, launches project commands, or creates project config files.
+The picker uses Python's documented curses support in an interactive terminal.
+If no usable terminal/curses support exists, the command explains the problem and
+keeps the first phase; run `dwork register` in individual Compose directories instead.
+
+Recognized Compose filenames are `compose.yaml`, `compose.yml`, `docker-compose.yaml`,
+and `docker-compose.yml`. A directory is offered once even if it has several files.
+Already registered directories are kept with their existing names and selection
+options. New registry names get a numeric suffix when needed. Duplicate Compose
+project ownership, invalid configs, and unreadable directories are reported;
+valid additions are kept and the command exits with status 1 if any were skipped
+because of an error.
+
+Each newly scanned directory is registered independently, so selecting a nested
+Compose directory does not silently select its parent's `dwork.yml`. Activate it
+with `dwork switch NAME` or by running `dwork` in that registered directory. Scanning
+uses each directory's own config and normal Compose discovery, without applying
+the calling shell's Compose-selection environment to every discovered project.
+
 ## List
 
 ```sh
@@ -100,7 +143,8 @@ project cannot also be claimed by a separate registration on the same Docker tar
 dwork identifies a Docker target using the context name and Docker daemon ID.
 Only other registered workspaces on that same target, with available directories,
 are eligible to stop. Their registered `compose.services` selection is respected;
-when omitted, all containers in that Compose project are managed.
+when omitted, all containers in that Compose project are managed. Workspaces with
+`locked: true` are excluded from stop plans, including `dwork down`.
 
 Use unique Compose project names across repositories and Git worktrees. Registering
 two directories that claim the same project on the same target fails before any
@@ -117,6 +161,14 @@ export DWORK_KEEP_PROJECTS=infra,monitoring
 
 Put this in your shell startup file to make the policy persistent. It protects those
 projects during switches; it does not prevent explicitly activating them.
+
+For a project-level policy, set top-level `locked: true` in its `dwork.yml`.
+`dwork list` marks it `[locked]`; groups with protected children show their names.
+It stays registered and can still be activated normally. The current lock policy
+is read without requiring re-registration; switches/shutdowns record it so the
+last known lock is retained if a config or directory disappears. Invalid or
+unreadable policy protects the workspace with a warning. A valid config with
+`locked: false` or no `locked` key unlocks it. See [locked](../configuration/README.md#locked).
 
 When all selected workspaces disable Compose, no Docker calls run and no other
 workspace containers are stopped. Existing terminal processes from other workspaces
@@ -155,9 +207,11 @@ dwork down
 Stops all registered container workloads on the current Docker target together,
 including workloads from unavailable directories. It respects recorded service
 selections and `DWORK_KEEP_PROJECTS`. Unregistered projects and other Docker targets
-are untouched. Containers, networks, volumes, and registrations are retained.
+are untouched, and locked workspaces remain running. Containers, networks, volumes,
+and registrations are retained.
 
-`down` works from any directory without loading workspace files or opening terminals.
+`down` works from any directory. It reads workspace lock policies without loading
+Compose models or opening terminals.
 It does not close host terminal sessions or stop their processes. The Docker daemon
 and WSL VM remain running; this command releases the stopped workloads' resources,
 not a guaranteed amount of host-visible memory.
@@ -186,7 +240,7 @@ paths, selection options, and resolved project identities. They are local state,
 not a portable project configuration.
 
 Updates replace the registry atomically. A per-user file lock prevents concurrent
-registrations, forget operations, switches, and shutdowns from interleaving; a second mutating
+registrations, scans, forget operations, switches, and shutdowns from interleaving; a second mutating
 invocation reports that another operation is in progress. Read-only commands do not
 create registry or lock files. A malformed registry blocks registry operations and
 switching without overwriting the file; restore or repair it before retrying.

@@ -56,6 +56,7 @@ Unregistered Compose projects are also left running.
 
 ```sh
 dwork register my-app     # Save this workspace without starting or stopping anything
+dwork scan                # Recursively register configured workspaces, then offer Compose selection
 dwork list               # Registered names, directory paths, and container status
 dwork switch my-app      # Activate the saved workspace from anywhere
 dwork switch my-app --dry-run
@@ -69,6 +70,14 @@ or the directory name for a host-only workspace or a group of child workspaces.
 See [workspace registration](../workspaces/README.md) for naming, Docker targets,
 configuration changes, shared infrastructure, and moved directories.
 
+`dwork scan` includes the current directory and its descendants. All valid
+`dwork.yml` workspaces are added first. It then asks whether to review remaining
+Compose-only directories in a checkbox picker: use arrow keys to move, Space to
+toggle, and Enter to register the selected directories. Nothing is checked by
+default; Esc cancels selection. The command never starts/stops containers or opens
+development terminals. Use `dwork scan --dry-run` to preview without writing or
+prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).
+
 ### Stop all registered workloads
 
 ```sh
@@ -79,13 +88,13 @@ dwork down
 Run from any directory. `down` stops running, restarting, and paused containers
 managed by all registered workspaces on the current Docker target in one Docker
 stop call. Registered service selections and `DWORK_KEEP_PROJECTS` still apply;
-unregistered projects stay running. It does not remove containers, networks,
+workspaces with `locked: true` and unregistered projects stay running. It does not remove containers, networks,
 volumes, or registrations, and it does not stop host terminal commands or the
 Docker daemon/WSL VM. Docker's normal stop signal and timeout behavior apply.
 
 Unlike a workspace switch, explicit `down` also stops registered workloads whose
 directories have moved or disappeared. It uses the saved ownership, without
-loading project configs or requiring terminal dependencies. A batch error or
+loading Compose models or requiring terminal dependencies; it reads YAML lock policies. A batch error or
 interruption reports the refreshed state of each selected container when available;
 some containers may already have stopped. No rollback is attempted.
 

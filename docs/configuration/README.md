@@ -76,6 +76,32 @@ and unsupported versions are errors.
 
 `version: 1` is required.
 
+## locked
+
+```yaml
+version: 1
+locked: true
+```
+
+`locked` is a boolean, defaulting to `false`. A locked workspace remains registered
+and visible in `dwork list`, but its containers are excluded from both workspace
+switch stops and `dwork down`. It can still be activated and its existing containers
+started. Strings such as `"true"`, numbers, and null are rejected.
+
+Changes to this setting take effect without re-registration. dwork reads the current
+lock policy when planning switches, shutdowns, and listings. Registering or executing
+a switch/shutdown records the latest policy; if the YAML file or directory later
+disappears, the last recorded lock is retained. A readable, valid config with
+`locked: false` (or with the option omitted) unlocks the workspace.
+
+If a registered lock policy cannot be read or is invalid, dwork reports a warning
+and protects that workspace until the config is fixed. Listing and previews do not
+write lock snapshots. For a group of child workspaces, set `locked: true` in each
+child that should stay running; unlocked children remain eligible to stop.
+
+This option controls dwork's container operations; it does not supervise host
+terminal processes or prevent someone from stopping containers directly with Docker.
+
 ## compose
 
 ```yaml
@@ -95,7 +121,7 @@ compose:
   target-project containers. With it, other target-project services remain
   untouched, and missing-container warnings cover only selected services.
 - Only other registered workspaces on the same Docker target may be stopped,
-  respecting their registered service selections and `DWORK_KEEP_PROJECTS`.
+  respecting their registered service selections, `locked`, and `DWORK_KEEP_PROJECTS`.
   Unregistered projects stay running. See [remembered workspaces](../workspaces/README.md).
   When all selected workspaces disable Compose, no Docker commands are run.
 

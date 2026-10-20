@@ -158,6 +158,12 @@ See [publishing](../publishing/README.md) for AUR, Homebrew, and PyPI preparatio
 
 ## User workspace state
 
+The optional `dwork scan` checkbox picker uses Python's curses module and needs an
+interactive terminal. Standard Linux/WSL Python builds usually provide it; if your
+Python distributor omits curses, the command explains this and keeps the configured
+workspaces it already registered. Other commands and `scan --dry-run` do not need
+the picker. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).
+
 The installer and uninstaller leave remembered workspaces in
 `$XDG_STATE_HOME/dwork/workspaces.json` (default `~/.local/state/dwork/workspaces.json`).
 Use `dwork forget NAME` before uninstalling to remove individual registrations

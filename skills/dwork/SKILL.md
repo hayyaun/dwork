@@ -35,6 +35,8 @@ invent service names, commands, health checks, or folders.
 
 - Use `version: 1` and only supported fields. Create `dwork.yml` in the intended
   workspace directory, usually beside its Compose file.
+- Use top-level `locked: true` when the user wants the workspace kept running
+  through switches and `dwork down`. It remains listed and can still be activated.
 - For host-only work, set `compose.enabled: false` and omit Compose files,
   services, and health prerequisites. With Compose enabled, omit `files` when
   normal Compose discovery suffices; otherwise preserve the project's file order.

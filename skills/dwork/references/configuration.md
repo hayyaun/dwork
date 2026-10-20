@@ -16,6 +16,8 @@ might otherwise interpret as numbers or booleans.
 Only these top-level fields are supported:
 
 - `version`: required integer `1`.
+- `locked`: optional boolean, default `false`; keep this workspace's containers
+  running during both switches and `dwork down`, while still listing and allowing activation.
 - `compose`: optional mapping; Compose is enabled by default.
 - `terminals`: optional list of terminal tasks, default `[]`.
 
@@ -42,6 +44,13 @@ selection options, or managed services requires explicit re-registration.
 `dwork down` stops all registered container workloads on the current Docker target,
 respecting service selections and `DWORK_KEEP_PROJECTS`, without removing containers
 or volumes. `dwork down --dry-run` previews without stopping anything.
+`locked: true` protects a workspace from both operations. Lock changes are read
+without re-registration; a missing config retains the last recorded policy, and an
+unreadable/invalid lock policy protects the workspace with a warning. To unlock,
+use a readable valid config with `locked: false` or omit the field.
+`dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
+checkbox picker for unregistered Compose-only directories. It does not activate
+anything. `dwork scan --dry-run` previews without writing or prompting.
 With Compose disabled for all selected workspaces, no Docker commands run.
 
 ## Terminal tasks

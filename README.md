@@ -82,6 +82,7 @@ Remember a project without switching, give it a name, and return from anywhere:
 
 ```sh
 dwork register my-app       # Remember this directory; start/stop nothing
+dwork scan                  # Find workspaces recursively; optionally select Compose directories
 dwork list                  # Show remembered directories and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
@@ -93,7 +94,15 @@ dwork forget my-app         # Forget it; leave containers and files alone
 where it is. [Workspace registration and switching →](docs/workspaces/README.md)
 
 Use `dwork down --dry-run` to preview shutdown. `down` respects
-`DWORK_KEEP_PROJECTS` and keeps containers, networks, and volumes for next time.
+`DWORK_KEEP_PROJECTS` and locked workspaces, and keeps containers, networks, and volumes for next time.
+
+Keep a workspace running through every switch and `down` by adding this to its `dwork.yml`:
+
+```yaml
+locked: true
+```
+
+It still appears in `dwork list` and can be activated normally.
 
 > [!NOTE]
 > dwork starts existing containers. It never creates, rebuilds, or removes them.

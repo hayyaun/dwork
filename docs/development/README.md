@@ -30,6 +30,9 @@ Zsh when those shells are installed. PyYAML is needed for configuration tests.
 Registry tests isolate `XDG_STATE_HOME` in temporary directories. Existing switching
 tests explicitly prepare registrations; `test_registry.py` covers first-run consent,
 ownership boundaries, saved selections, target changes, missing directories, and locks.
+`test_scan.py` covers recursive registration and exercises the checkbox picker in
+a real pseudo-terminal, including keyboard navigation and terminal restoration.
+`test_locked.py` checks live lock policy and protection during switching/shutdown.
 
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.
