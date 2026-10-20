@@ -25,6 +25,10 @@ reserve them.
 AUR distributes build recipes (`PKGBUILD` and metadata), rather than hosting your
 application's built package. Prepare and test the recipe on Arch Linux.
 
+The version 0.1.0 recipe is in [packaging/aur](../../packaging/aur/README.md).
+It is prepared for validation and submission; its presence does not mean the
+package is already published.
+
 ### Account and package repository
 
 Create an AUR account and add your SSH public key to its profile. Check that the

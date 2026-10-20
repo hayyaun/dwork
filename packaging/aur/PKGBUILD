@@ -1,0 +1,32 @@
+# Maintainer: Hayyan Hami (hayyaun)
+pkgname=dwork
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Switch development workspaces, resume existing containers, and launch terminals'
+arch=('any')
+url='https://github.com/hayyaun/dwork'
+license=('MIT')
+depends=('python>=3.10' 'python-yaml')
+makedepends=('make')
+checkdepends=('zsh')
+optdepends=(
+  'docker: manage existing project containers'
+  'docker-compose: read Compose workspace configuration'
+  'gnome-terminal: launch development terminals on GNOME'
+  'konsole: launch development terminals on KDE'
+  'xfce4-terminal: launch development terminals on Xfce'
+  'xterm: launch development terminals on X11'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('31762d6eb3e57ba9637cc955af01c519c55ef9ac3c2320a6109c712ba47a36f0')
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make test PYTHON=/usr/bin/python
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make install VENV=0 PREFIX=/usr DESTDIR="$pkgdir" PYTHON=/usr/bin/python
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
