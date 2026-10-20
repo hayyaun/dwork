@@ -76,6 +76,7 @@ terminals:
             "version: 1\nunknown: true\n",
             "version: 1\ncompose: {enabled: maybe}\n",
             "version: 1\ncompose: {enabled: false}\nterminals: [{command: echo hi}]\n",
+            "version: 1\ncompose: {enabled: false}\nterminals: [{command: [echo], launcher: invalid}]\n",
             "version: 1\ncompose: {enabled: false}\nterminals: [{command: [echo], unknown: 1}]\n",
             "version: 1\ncompose: {enabled: false}\nterminals: [{command: [echo], wait_for: {healthy: [db]}}]\n",
         ]
@@ -192,7 +193,8 @@ terminals:
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
                 shell, containers=[db, legacy.container("b", "other", state="running")],
-                WSL_DISTRO_NAME="", SHELL="/bin/bash")
+                WSL_DISTRO_NAME="", SHELL="/bin/bash", DWORK_TERMINAL="gnome-terminal",
+                DISPLAY="", WAYLAND_DISPLAY="")
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [])
             self.assertFalse(any("-EncodedCommand" in call for call in calls))

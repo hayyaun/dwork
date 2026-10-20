@@ -19,7 +19,8 @@ dwork             # Switch the workspace
 - Starts existing stopped containers and warns about containers you need to create.
 - Keeps designated shared projects running.
 - Reads `dwork.yml` to enable or disable Compose and select services.
-- Opens configured commands in Windows Terminal after Docker health checks pass.
+- Opens configured commands in native Linux terminals or Windows Terminal after
+  Docker health checks pass.
 - Discovers immediate child workspaces and asks `(y/N)` before switching them together.
 
 It never creates, rebuilds, or removes containers. Normal project setup and
@@ -49,9 +50,11 @@ Adjust the path if you clone elsewhere. Keep `dwork.sh` and `lib/` together.
 Sourcing defines the function; it does not start anything.
 
 **Requirements:** Bash or Zsh and Python 3. Compose mode needs Docker and Docker
-Compose. YAML configs additionally need PyYAML. Opening terminals currently
-requires **WSL2, Windows Terminal, and Windows PowerShell**; Compose-only usage is
-not tied to Windows. Verified on Ubuntu/WSL2 with Bash and Zsh.
+Compose. YAML configs additionally need PyYAML. Opening terminals supports
+**native Linux desktops** (GNOME Terminal, Konsole, Xfce Terminal, or xterm) and
+**WSL2 + Windows Terminal + Windows PowerShell**. Auto-selection and overrides are
+covered in the [launcher guide](docs/terminals/README.md). GUI behavior on native
+Linux is covered by fake-launcher tests; the development environment is WSL2.
 
 ## Example: database first, backend next
 
@@ -84,6 +87,8 @@ configured commands again; stop an already-running backend before launching anot
 - [Installation](docs/installation/README.md): requirements, sourcing, updates, and removal.
 - [Usage](docs/usage/README.md): switching, previews, shared services, and limits.
 - [Configuration](docs/configuration/README.md): the complete `dwork.yml` format.
+- [Terminal launchers](docs/terminals/README.md): Linux desktop selection, WSL,
+  machine overrides, and window/tab support.
 - [Examples](examples/README.md): Compose-only, backend, full-stack, and host-only workspaces.
 - [Development](docs/development/README.md): source layout and tests.
 - [Sharing dwork](docs/promotion/README.md): a short introduction you can adapt.

@@ -51,7 +51,7 @@ terminals:
 
 Use this when the Compose file and backend Makefile live in the same directory.
 dwork starts the existing PostgreSQL container if stopped, waits for its Docker
-health check, then opens `make run` in a new Windows Terminal window.
+health check, then opens `make run` in a new terminal window.
 
 If the database container is missing or cannot become healthy, the backend
 terminal does not open. Create the container and apply migrations manually.
@@ -77,7 +77,7 @@ The backend has a PostgreSQL health prerequisite. All health gates pass before
 any terminal is launched, so the frontend opens after that prerequisite as well.
 
 Change `window: new` to `window: current` to open tabs in the most recently used
-Windows Terminal window instead.
+terminal window instead, using the selected emulator's rules (xterm has no tabs).
 
 ## 4. Frontend without Docker
 
@@ -143,7 +143,9 @@ Use exact Compose project names. See the [usage guide](../docs/usage/README.md).
 
 ## Before using terminal tasks
 
-Terminal tasks currently need WSL2 + Windows Terminal and PyYAML. Commands are
+Terminal tasks need PyYAML and either a supported Linux graphical terminal or
+WSL2 + Windows Terminal. See [launcher selection](../docs/terminals/README.md).
+Commands are
 argument lists, not shell snippets. Put pipelines in a script and invoke that
 script. Every `dwork` invocation opens the configured commands again; it does not
 detect or close an already-running backend/frontend.

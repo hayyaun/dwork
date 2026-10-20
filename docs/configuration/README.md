@@ -27,7 +27,7 @@ terminals:
 
 Invoking `dwork` reads the existing Compose model, switches existing containers,
 waits for every existing container of the selected `postgres` service to be
-running and healthy, then opens a Windows Terminal window running `make run`.
+running and healthy, then opens a terminal window running `make run`.
 It never creates missing containers.
 
 Preview first:
@@ -49,9 +49,11 @@ used by dwork. On Ubuntu/WSL:
 sudo apt install python3-yaml
 ```
 
-Terminal tasks currently support **WSL2 with Windows Terminal**, Windows
-PowerShell (`powershell.exe`), and Bash or Zsh as `SHELL`. Compose-only mode remains
-usable on other platforms. Dry runs can describe terminal tasks on other platforms.
+Terminal tasks support native Linux desktops with GNOME Terminal, Konsole, Xfce
+Terminal, or xterm, and WSL2 with Windows Terminal and Windows PowerShell.
+Bash or Zsh must be configured as `SHELL`. Native emulators need a graphical
+session; xterm supports new windows only. See [terminal launchers](../terminals/README.md).
+Compose-only mode remains usable on other platforms, and dry runs do not open GUIs.
 
 ## Configuration selection
 
@@ -112,13 +114,16 @@ to start them.
 - `title`: an optional nonempty title. Defaults to `dwork: <project>`.
 - `cwd`: an optional working directory relative to `dwork.yml`, defaulting to `.`.
   It must exist.
-- `window`: `new` opens a new window; `current` opens a tab in the most recently
-  used Windows Terminal window. Defaults to `new`.
+- `window`: `new` opens a new window; `current` requests an existing-window tab
+  using the selected emulator's rules. Defaults to `new`. xterm supports `new` only.
+- `launcher`: defaults to `auto`. Supported values are `auto`, `windows-terminal`,
+  `gnome-terminal`, `konsole`, `xfce4-terminal`, and `xterm`. An explicit task
+  setting overrides `DWORK_TERMINAL`; otherwise platform/desktop selection applies.
 - `wait_for`: optional health prerequisites described below.
 
-Commands run in the foreground of their new terminal. dwork confirms the terminal
-launcher succeeded; it does not supervise the command or report its eventual exit
-status. Every invocation launches the configured tasks again. It does not detect
+Commands run in the foreground of their new terminal. dwork checks dependencies
+and reports immediate launcher failures; it does not supervise later GUI startup,
+the command, or its eventual exit status. Every invocation launches the configured tasks again. It does not detect
 already-running host processes or close terminals from previous projects.
 
 For pipelines or compound commands, put the command in a script and invoke that

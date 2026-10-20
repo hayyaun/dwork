@@ -8,8 +8,11 @@
 - Docker CLI and Docker Compose for Compose workspaces. Compose must support
   `config --no-interpolate --no-env-resolution --format json`.
 - PyYAML when using `dwork.yml`. On Ubuntu/WSL: `sudo apt install python3-yaml`.
-- WSL2, Windows Terminal, and `powershell.exe` for terminal tasks, with Bash or
-  Zsh configured as `SHELL`. Other platforms can use Compose-only workspaces.
+- Bash or Zsh configured as `SHELL` for terminal tasks.
+- On native Linux: a graphical desktop session and GNOME Terminal, Konsole,
+  Xfce Terminal, or xterm. xterm supports new windows only.
+- On WSL2: Windows Terminal and `powershell.exe`. See
+  [terminal launchers](../terminals/README.md) for selection and overrides.
 
 Checked with Docker Compose v5.0.0 and Python 3.12 on Ubuntu in WSL2, using Bash
 and Zsh. A dry run can describe terminal tasks without launching them.

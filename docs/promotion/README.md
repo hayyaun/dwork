@@ -22,8 +22,8 @@ and frontend commands in their own terminals.
 
 No config? dwork uses your existing Compose project.
 
-Bash and Zsh function. Optional YAML configuration. Terminal launching currently
-supports WSL2 + Windows Terminal. Containers must already be created.
+Bash and Zsh function. Optional YAML configuration. Terminal launching supports native Linux desktops
+and WSL2 + Windows Terminal. Containers must already be created.
 
 Code and examples: [github.com/hayyaun/dwork](https://github.com/hayyaun/dwork)
 

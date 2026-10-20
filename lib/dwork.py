@@ -12,6 +12,9 @@ import subprocess
 import sys
 import time
 
+LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
+LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
+
 FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
 
 class DworkError(Exception):
@@ -25,6 +28,7 @@ class TerminalTask:
     healthy: list = field(default_factory=list)
     timeout: float = 180
     window: str = "new"
+    launcher: str = "auto"
 
 @dataclass
 class Workspace:
@@ -131,12 +135,15 @@ def load_workspace(directory, options=()):
         raise DworkError("terminals must be a list.")
     terminals = []
     for index, raw in enumerate(tasks):
-        task = mapping(raw, ("title", "command", "cwd", "wait_for", "window"),
+        task = mapping(raw, ("title", "command", "cwd", "wait_for", "window", "launcher"),
                        "terminals[" + str(index) + "]")
         command = strings(task.get("command"), "terminal.command")
         title = task.get("title", "dwork: " + name)
         cwd = task.get("cwd", ".")
         window = task.get("window", "new")
+        launcher = task.get("launcher", "auto")
+        if not isinstance(launcher, str) or launcher not in LAUNCHERS:
+            raise DworkError("terminal.launcher must be one of: " + ", ".join(LAUNCHERS))
         if not isinstance(title, str) or not title or not isinstance(cwd, str) or not cwd:
             raise DworkError("terminal.title and terminal.cwd must be nonempty strings.")
         cwd = (directory / cwd).resolve()
@@ -156,7 +163,7 @@ def load_workspace(directory, options=()):
         for value in [title, str(cwd), *command]:
             if any(c in value for c in ("\0", "\r", "\n", ";")):
                 raise DworkError("Terminal values cannot contain NUL, newlines, or Windows Terminal semicolon separators; use a script file.")
-        terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window))
+        terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window, launcher))
     return Workspace(name, directory, services, enabled, selected, terminals, True)
 
 def config_directory(directory, options):
@@ -255,24 +262,98 @@ def powershell_script(task):
             "$process = Start-Process -FilePath wt.exe -ArgumentList '" + arguments
             + "' -PassThru; $process.WaitForExit(); exit $process.ExitCode")
 
+def command_shell():
+    shell = shutil.which(os.environ.get("SHELL", "bash"))
+    if not shell or Path(shell).name not in ("bash", "zsh"):
+        raise DworkError("Terminal tasks require an available Bash or Zsh as SHELL.")
+    return shell
+
+def choose_launcher(task):
+    selected = task.launcher
+    if selected == "auto":
+        selected = os.environ.get("DWORK_TERMINAL", "auto") or "auto"
+    if selected not in LAUNCHERS:
+        raise DworkError("DWORK_TERMINAL must be one of: " + ", ".join(LAUNCHERS))
+    if selected != "auto":
+        return selected
+    if os.environ.get("WSL_DISTRO_NAME"):
+        return "windows-terminal"
+    if not sys.platform.startswith("linux"):
+        raise DworkError("Terminal launching supports native Linux and WSL; Compose-only mode is still available.")
+    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+    preferred = ("konsole" if "kde" in desktop else
+                 "xfce4-terminal" if "xfce" in desktop else
+                 "gnome-terminal" if "gnome" in desktop else None)
+    order = ([preferred] if preferred else []) + [p for p in LINUX_TERMINALS if p != preferred]
+    for launcher in order:
+        if launcher == "xterm" and task.window == "current":
+            continue
+        if shutil.which(launcher):
+            return launcher
+    raise DworkError("No supported Linux terminal is installed for this window mode. Install GNOME Terminal, Konsole, Xfce Terminal, or xterm (new windows only), or set DWORK_TERMINAL.")
+
+def linux_terminal_arguments(task, launcher):
+    if not sys.platform.startswith("linux"):
+        raise DworkError("Native terminal launchers require Linux.")
+    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+        raise DworkError("Native Linux terminal tasks require a graphical session (DISPLAY or WAYLAND_DISPLAY).")
+    if launcher not in LINUX_TERMINALS or not shutil.which(launcher):
+        raise DworkError("Linux terminal is unavailable: " + launcher)
+    if launcher == "xterm":
+        if task.window == "current":
+            raise DworkError("xterm does not support window: current; use window: new or a tab-capable launcher.")
+        if not os.environ.get("DISPLAY"):
+            raise DworkError("xterm requires an X11 DISPLAY (including XWayland).")
+    command = [command_shell(), "-lic", "exec " + shlex.join(task.command)]
+    if launcher == "gnome-terminal":
+        return [launcher, "--window" if task.window == "new" else "--tab",
+                "--title", task.title, "--working-directory", str(task.cwd), "--", *command]
+    if launcher == "konsole":
+        return [launcher, "--separate" if task.window == "new" else "--new-tab",
+                "--workdir", str(task.cwd), "-p", "LocalTabTitleFormat=" + task.title, "-e", *command]
+    if launcher == "xfce4-terminal":
+        return [launcher, "--window" if task.window == "new" else "--tab",
+                "--title", task.title, "--working-directory", str(task.cwd), "--execute", *command]
+    return [launcher, "-title", task.title, "-e", *command]
+
 def preflight_terminals(tasks):
-    if not tasks:
-        return
-    if not shutil.which("powershell.exe"):
-        raise DworkError("Terminal tasks require Windows PowerShell and Windows Terminal.")
+    windows = False
     for task in tasks:
-        terminal_arguments(task)
+        launcher = choose_launcher(task)
+        if launcher == "windows-terminal":
+            terminal_arguments(task)
+            if not shutil.which("powershell.exe"):
+                raise DworkError("Windows terminal tasks require Windows PowerShell and Windows Terminal.")
+            windows = True
+        else:
+            linux_terminal_arguments(task, launcher)
         program = task.command[0]
         local = (task.cwd / program).resolve()
         available = (local.is_file() and os.access(local, os.X_OK)) if "/" in program else bool(shutil.which(program))
         if not available:
             raise DworkError("Terminal command is unavailable: " + program)
-    run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-                 "(Get-Command wt.exe -ErrorAction Stop).Source"])
+    if windows:
+        run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                     "(Get-Command wt.exe -ErrorAction Stop).Source"])
 
 def open_terminal(task):
-    encoded = base64.b64encode(powershell_script(task).encode("utf-16le")).decode("ascii")
-    run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded])
+    launcher = choose_launcher(task)
+    if launcher == "windows-terminal":
+        encoded = base64.b64encode(powershell_script(task).encode("utf-16le")).decode("ascii")
+        run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded])
+        return
+    arguments = linux_terminal_arguments(task, launcher)
+    # GUI emulators can remain alive as long as their command. Detach the
+    # launcher without pipes, so dwork returns while the terminal stays open.
+    process = subprocess.Popen(arguments, cwd=task.cwd, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               start_new_session=True)
+    try:
+        code = process.wait(timeout=0.2)
+    except subprocess.TimeoutExpired:
+        return
+    if code:
+        raise DworkError(launcher + " failed to launch (exit " + str(code) + "). Check your graphical session.")
 
 def main():
     options = sys.argv[1:]
@@ -287,6 +368,7 @@ def main():
         print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
+        print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
         return 0
     directory = Path.cwd()
     workspaces, discovered = discover(directory, options)
