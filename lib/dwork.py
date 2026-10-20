@@ -29,6 +29,7 @@ class TerminalTask:
     timeout: float = 180
     window: str = "new"
     launcher: str = "auto"
+    confirm: bool = True
 
 @dataclass
 class Workspace:
@@ -135,12 +136,15 @@ def load_workspace(directory, options=()):
         raise DworkError("terminals must be a list.")
     terminals = []
     for index, raw in enumerate(tasks):
-        task = mapping(raw, ("title", "command", "cwd", "wait_for", "window", "launcher"),
+        task = mapping(raw, ("title", "command", "cwd", "wait_for", "window", "launcher", "confirm"),
                        "terminals[" + str(index) + "]")
         command = strings(task.get("command"), "terminal.command")
         title = task.get("title", "dwork: " + name)
         cwd = task.get("cwd", ".")
         window = task.get("window", "new")
+        confirm = task.get("confirm", True)
+        if type(confirm) is not bool:
+            raise DworkError("terminal.confirm must be true or false.")
         launcher = task.get("launcher", "auto")
         if not isinstance(launcher, str) or launcher not in LAUNCHERS:
             raise DworkError("terminal.launcher must be one of: " + ", ".join(LAUNCHERS))
@@ -163,7 +167,7 @@ def load_workspace(directory, options=()):
         for value in [title, str(cwd), *command]:
             if any(c in value for c in ("\0", "\r", "\n", ";")):
                 raise DworkError("Terminal values cannot contain NUL, newlines, or Windows Terminal semicolon separators; use a script file.")
-        terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window, launcher))
+        terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window, launcher, confirm))
     return Workspace(name, directory, services, enabled, selected, terminals, True)
 
 def config_directory(directory, options):
@@ -336,6 +340,17 @@ def preflight_terminals(tasks):
         run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
                      "(Get-Command wt.exe -ErrorAction Stop).Source"])
 
+def confirm_terminal(task):
+    if not task.confirm:
+        return True
+    prompt = ("Open terminal " + repr(task.title) + " running "
+              + shlex.join(task.command) + " in " + str(task.cwd) + "? (y/N) ")
+    try:
+        answer = input(prompt)
+    except EOFError:
+        answer = ""
+    return answer.strip().lower() == "y"
+
 def open_terminal(task):
     launcher = choose_launcher(task)
     if launcher == "windows-terminal":
@@ -365,6 +380,7 @@ def main():
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
+        print("Each terminal asks (y/N) unless that task sets confirm: false in dwork.yml.")
         print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
@@ -433,7 +449,8 @@ def main():
         for task in tasks:
             if task.healthy:
                 print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
-            print("Would open terminal: " + task.title + " -> " + shlex.join(task.command) + " in " + str(task.cwd))
+            confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
+            print("Would open terminal: " + task.title + " -> " + shlex.join(task.command) + " in " + str(task.cwd) + confirmation)
         if not stops and not starts and not tasks:
             print("No container changes needed.")
     if preview:
@@ -457,6 +474,9 @@ def main():
         print("Waiting for Docker health checks...", flush=True)
         wait_healthy(ids, timeout)
     for task in tasks:
+        if not confirm_terminal(task):
+            print("Skipped terminal: " + task.title, flush=True)
+            continue
         print("Opening terminal: " + task.title, flush=True)
         open_terminal(task)
     return 0

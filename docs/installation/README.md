@@ -2,62 +2,137 @@
 
 [Project home](../../README.md) · [Usage](../usage/README.md)
 
-## Requirements
+## Recommended: make install
 
-- Bash or Zsh, and Python 3.
-- Docker CLI and Docker Compose for Compose workspaces. Compose must support
-  `config --no-interpolate --no-env-resolution --format json`.
-- PyYAML when using `dwork.yml`. On Ubuntu/WSL: `sudo apt install python3-yaml`.
-- Bash or Zsh configured as `SHELL` for terminal tasks.
-- On native Linux: a graphical desktop session and GNOME Terminal, Konsole,
-  Xfce Terminal, or xterm. xterm supports new windows only.
-- On WSL2: Windows Terminal and `powershell.exe`. See
-  [terminal launchers](../terminals/README.md) for selection and overrides.
-
-Checked with Docker Compose v5.0.0 and Python 3.12 on Ubuntu in WSL2, using Bash
-and Zsh. A dry run can describe terminal tasks without launching them.
-
-## Source the function
-
-Clone the repository somewhere permanent:
+Requirements: Git, Make, Python 3.10 or newer, and Python venv/pip support.
+On Ubuntu/WSL, install these prerequisites through your package manager if missing:
 
 ```sh
-git clone https://github.com/hayyaun/dwork.git "$HOME/projects/foss/dwork"
+sudo apt install git make python3 python3-venv
 ```
 
-Add this line to `~/.bashrc` for Bash or `~/.zshrc` for Zsh (or both):
+Then:
+
+```sh
+git clone https://github.com/hayyaun/dwork.git
+cd dwork
+make install
+```
+
+This is a user install; do not run it with sudo. It creates:
+
+- `~/.local/bin/dwork`: a command usable from any shell and project directory.
+- `~/.local/share/dwork/lib/dwork.py`: the runtime.
+- `~/.local/share/dwork/venv/`: an isolated Python environment containing PyYAML.
+- `~/.local/share/dwork/examples/` and `docs/`: the shipped guides and examples.
+
+The default install downloads PyYAML and its requirements using pip inside that
+environment. It does not install into or alter your system Python. Shell startup
+files and project configs are not edited.
+
+If `~/.local/bin` is not on `PATH`, the installer prints the export line to add to
+your shell startup file. For the default prefix:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+You can also invoke `~/.local/bin/dwork --help` directly.
+
+If dependency setup is interrupted, retry `make install` with the same prefix.
+A marked partial installation can also be removed with `make uninstall`.
+
+## Runtime dependencies
+
+- Docker and Docker Compose for Compose workspaces. Compose must support
+  `config --no-interpolate --no-env-resolution --format json`.
+- Bash or Zsh as `SHELL` for terminal tasks.
+- Native Linux: a graphical desktop and GNOME Terminal, Konsole, Xfce Terminal,
+  or xterm (new windows only).
+- WSL2: Windows Terminal and `powershell.exe`.
+
+PyYAML is installed by the default installer. Docker, shells, terminals, Make,
+and system packages are not installed automatically.
+
+## Custom prefix
+
+Use an absolute prefix and the same value when uninstalling:
+
+```sh
+make install PREFIX="$HOME/tools/dwork"
+make uninstall PREFIX="$HOME/tools/dwork"
+```
+
+The command goes in `PREFIX/bin` and managed files in `PREFIX/share/dwork`.
+Use `PYTHON=/path/to/python3` to choose the interpreter. Install paths with spaces
+are supported. The installer refuses unrelated existing files or modified launchers.
+
+## Update or remove
+
+Update the checkout using your normal Git workflow, then run `make install` again.
+The launcher does not depend on the source checkout after installation.
+
+From a checkout, uninstall with:
+
+```sh
+make uninstall
+```
+
+It removes the managed launcher and installation directory, including the private
+venv. Your project's `dwork.yml` files and shell startup files are untouched.
+Package-manager installations should be removed with that package manager instead.
+
+## Migrating from the sourced function
+
+An existing shell function takes precedence over an installed executable.
+Remove the old dwork sourcing line from `~/.bashrc` / `~/.zshrc`, then open a new
+terminal or run:
+
+```sh
+unset -f dwork
+```
+
+The installed executable runs the same runtime and no longer needs sourcing.
+The installer prints this reminder but does not edit those files itself.
+
+## Manual sourcing still works
+
+For a source-based setup, keep the checkout and add this to the appropriate rc file:
 
 ```sh
 [ -r "$HOME/projects/foss/dwork/dwork.sh" ] && . "$HOME/projects/foss/dwork/dwork.sh"
 ```
 
-Open a new terminal, or load it immediately:
+Adjust the path to your clone. Load it in the current shell with:
 
 ```sh
 . "$HOME/projects/foss/dwork/dwork.sh"
 ```
 
-Change the path if you cloned elsewhere. The shell startup files can share the
-same entry point. Do not source your entire Bash startup file from Zsh or vice versa.
+Keep `dwork.sh` and `lib/` together. This method uses the `python3` on your PATH;
+install PyYAML separately for YAML support (Ubuntu: `sudo apt install python3-yaml`).
 
-Sourcing defines `dwork` in the current shell; it does not start containers or
-commands. Paths resolve relative to `dwork.sh`, independently of your current
-directory. The entry point and `lib/` directory must stay together.
+The compatibility entry point `.shell_functions` loads only dwork. The unrelated
+got function is no longer part of this project.
 
-## Updates
+To remove the source-based setup, remove its startup line and run `unset -f dwork`.
 
-Update your checkout using your normal Git workflow, then source `dwork.sh` again.
-New terminals load the updated definition automatically.
+## Package-maintainer installation
 
-The old `.shell_functions` file remains a compatibility entry point and loads
-only `dwork`. New installations should source `dwork.sh` directly. The unrelated
-`got` function is no longer part of this project.
-
-## Remove
-
-Remove the sourcing line from your shell startup files, then open a new terminal.
-For the current shell:
+Package managers should provide Python/PyYAML themselves and avoid network
+downloads or private virtual environments while staging:
 
 ```sh
-unset -f dwork
+make install VENV=0 PREFIX=/usr DESTDIR="/absolute/path/to/pkgdir"
 ```
+
+This installs into `DESTDIR/usr/bin` and `DESTDIR/usr/share/dwork` while the launcher
+references the final `/usr/share/dwork` location, not the staging path.
+The interpreter is the one used for `PYTHON` during installation; select the
+distribution's runtime interpreter explicitly when needed.
+
+`DESTDIR` with the default `VENV=1` is rejected because virtual environments are
+not relocatable. `VENV=0` does not install Python dependencies; the package manager
+or user must provide them.
+
+See [publishing](../publishing/README.md) for AUR, Homebrew, and PyPI preparation.

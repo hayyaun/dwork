@@ -1,64 +1,69 @@
-# dwork
+<div align="center">
 
-**Switch your development workspace with one command.**
+<img src="docs/assets/readme-hero.png" alt="dwork — switch your development workspace with one command" width="100%">
 
-`dwork` is a Bash/Zsh function that stops other projects' Docker Compose containers
-and resumes the existing containers for your current project. Add a `dwork.yml` to
-choose services, wait for healthy dependencies, and open your development commands
-in new terminals.
+<p><strong>Your project. Its containers. Your terminals. One command.</strong></p>
 
-```sh
-cd your-project
-dwork --dry-run   # See the plan
-dwork             # Switch the workspace
-```
+<p>
+  <a href="docs/installation/README.md"><img alt="Linux and WSL2" src="https://img.shields.io/badge/platform-Linux%20%7C%20WSL2-3fb950?style=flat-square"></a>
+  <a href="docs/installation/README.md"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white"></a>
+  <a href="#install"><img alt="Install with make install" src="https://img.shields.io/badge/install-make%20install-3fb950?style=flat-square"></a>
+  <a href="https://github.com/hayyaun/dwork/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/hayyaun/dwork?style=flat-square"></a>
+</p>
 
-## What it does
+<a href="examples/README.md">Examples</a> ·
+<a href="docs/configuration/README.md">Configuration</a> ·
+<a href="docs/terminals/README.md">Terminal support</a> ·
+<a href="docs/README.md">All docs</a>
 
-- Uses Docker Compose by default; configuration is optional.
-- Starts existing stopped containers and warns about containers you need to create.
-- Keeps designated shared projects running.
-- Reads `dwork.yml` to enable or disable Compose and select services.
-- Opens configured commands in native Linux terminals or Windows Terminal after
-  Docker health checks pass.
-- Discovers immediate child workspaces and asks `(y/N)` before switching them together.
+</div>
 
-It never creates, rebuilds, or removes containers. Normal project setup and
-migrations remain explicit steps.
+`dwork` switches your development workspace: resume this project's existing
+containers, stop other projects, wait for healthy dependencies, and ask before
+opening your configured commands in new terminals.
 
 ## Install
 
-Clone somewhere permanent:
-
 ```sh
-git clone https://github.com/hayyaun/dwork.git "$HOME/projects/foss/dwork"
+git clone https://github.com/hayyaun/dwork.git
+cd dwork
+make install
 ```
 
-Add this line to `~/.bashrc` for Bash and/or `~/.zshrc` for Zsh:
+Installs a standalone `dwork` command for your user, with isolated Python
+dependencies. No `sudo` or shell sourcing required. If needed, the installer prints
+the line to add `~/.local/bin` to `PATH`.
+
+<details>
+<summary>Requirements and other installation options</summary>
+
+- Python 3.10+, Git, Make, and Python's `venv` support.
+- Docker + Docker Compose when using containers.
+- A supported graphical terminal for terminal tasks: GNOME Terminal, Konsole,
+  Xfce Terminal, or xterm on Linux; Windows Terminal + PowerShell on WSL2.
+
+On Ubuntu, the installer prerequisites are `git make python3 python3-venv`.
+[Custom prefixes, manual sourcing, migration, and uninstall →](docs/installation/README.md)
+
+</details>
+
+## Use it
 
 ```sh
-[ -r "$HOME/projects/foss/dwork/dwork.sh" ] && . "$HOME/projects/foss/dwork/dwork.sh"
+cd your-project
+dwork --dry-run   # Preview the plan
+dwork             # Switch, then confirm each terminal
 ```
 
-Load it in your current terminal:
+No `dwork.yml`? Your existing Compose project is the default.
 
-```sh
-. "$HOME/projects/foss/dwork/dwork.sh"
-```
+> [!NOTE]
+> dwork starts existing containers. It never creates, rebuilds, or removes them.
+> Complete your project's initial setup and migrations first.
 
-Adjust the path if you clone elsewhere. Keep `dwork.sh` and `lib/` together.
-Sourcing defines the function; it does not start anything.
+## Describe your workspace
 
-**Requirements:** Bash or Zsh and Python 3. Compose mode needs Docker and Docker
-Compose. YAML configs additionally need PyYAML. Opening terminals supports
-**native Linux desktops** (GNOME Terminal, Konsole, Xfce Terminal, or xterm) and
-**WSL2 + Windows Terminal + Windows PowerShell**. Auto-selection and overrides are
-covered in the [launcher guide](docs/terminals/README.md). GUI behavior on native
-Linux is covered by fake-launcher tests; the development environment is WSL2.
-
-## Example: database first, backend next
-
-Place this `dwork.yml` beside your Compose file:
+Put `dwork.yml` beside your Compose file:
 
 ```yaml
 version: 1
@@ -74,23 +79,27 @@ terminals:
       timeout: 180
 ```
 
-When you invoke `dwork`, it starts your existing PostgreSQL container if stopped,
-waits for Docker to report it healthy, then opens `make run` in a new terminal
-window in this directory.
+**Start the database → wait for healthy → confirm → open the backend.**
 
-The Compose service must be named `postgres` and have a health check. Create its
-container and complete your project's setup first. Each invocation opens the
-configured commands again; stop an already-running backend before launching another.
+Each terminal asks `(y/N)`. Set `confirm: false` on a task to explicitly skip its
+prompt. Missing containers and failed health checks block dependent terminals.
 
-## Documentation
+[Copy an example →](examples/README.md) Backend, full-stack, Compose-only, or host-only.
 
-- [Installation](docs/installation/README.md): requirements, sourcing, updates, and removal.
-- [Usage](docs/usage/README.md): switching, previews, shared services, and limits.
-- [Configuration](docs/configuration/README.md): the complete `dwork.yml` format.
-- [Terminal launchers](docs/terminals/README.md): Linux desktop selection, WSL,
-  machine overrides, and window/tab support.
-- [Examples](examples/README.md): Compose-only, backend, full-stack, and host-only workspaces.
-- [Development](docs/development/README.md): source layout and tests.
-- [Sharing dwork](docs/promotion/README.md): a short introduction you can adapt.
+## A few useful controls
 
-Start with `dwork --dry-run` or `dwork --help`.
+- Keep shared infrastructure running: `DWORK_KEEP_PROJECTS=infra,monitoring dwork`.
+- Choose your Linux terminal: `DWORK_TERMINAL=konsole dwork`.
+- Run from a monorepo root: immediate child workspaces are listed for confirmation.
+
+## More
+
+[Install & uninstall](docs/installation/README.md) ·
+[Usage](docs/usage/README.md) ·
+[Configuration](docs/configuration/README.md) ·
+[Terminal launchers](docs/terminals/README.md) ·
+[Development](docs/development/README.md) ·
+[Publish packages](docs/publishing/README.md)
+
+Native Linux GUI launchers have automated fake-launcher coverage; real desktop
+GUI behavior has not been visually verified in the WSL development environment.

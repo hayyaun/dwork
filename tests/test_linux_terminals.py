@@ -144,7 +144,7 @@ terminals:
         db["State"]["Health"] = {"Status": "healthy"}
         for shell in self.fixture.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, containers=[db], WSL_DISTRO_NAME="", SHELL="/bin/bash",
+                shell, answer="y\n", containers=[db], WSL_DISTRO_NAME="", SHELL="/bin/bash",
                 DISPLAY=":test", WAYLAND_DISPLAY="")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [["start", "a"]])

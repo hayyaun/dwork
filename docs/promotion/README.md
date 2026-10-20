@@ -17,7 +17,7 @@ dwork --dry-run
 dwork
 ```
 
-Start the existing database container. Wait until it is healthy. Open the backend
+Start the existing database container. Wait until it is healthy. Confirm each session, then open the backend
 and frontend commands in their own terminals.
 
 No config? dwork uses your existing Compose project.

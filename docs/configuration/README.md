@@ -27,7 +27,7 @@ terminals:
 
 Invoking `dwork` reads the existing Compose model, switches existing containers,
 waits for every existing container of the selected `postgres` service to be
-running and healthy, then opens a terminal window running `make run`.
+running and healthy, then asks before opening a terminal window running `make run`.
 It never creates missing containers.
 
 Preview first:
@@ -119,6 +119,9 @@ to start them.
 - `launcher`: defaults to `auto`. Supported values are `auto`, `windows-terminal`,
   `gnome-terminal`, `konsole`, `xfce4-terminal`, and `xterm`. An explicit task
   setting overrides `DWORK_TERMINAL`; otherwise platform/desktop selection applies.
+- `confirm`: a boolean, defaulting to `true`. Ask `(y/N)` before opening this
+  session. Set `confirm: false` explicitly in this task to skip that prompt.
+  Strings such as `"false"` and numbers are rejected.
 - `wait_for`: optional health prerequisites described below.
 
 Commands run in the foreground of their new terminal. dwork checks dependencies
@@ -129,6 +132,37 @@ already-running host processes or close terminals from previous projects.
 For pipelines or compound commands, put the command in a script and invoke that
 script. Terminal values cannot contain newlines, NUL, or semicolons (Windows
 Terminal reserves semicolons as command separators).
+
+## Session confirmation
+
+Every terminal session asks for confirmation by default, on both Linux and WSL.
+The prompt shows the title, command, and working directory. Only `y` or `Y` opens
+that session. Enter, `n`, any other response, or end-of-input skips it and continues
+to the next configured terminal.
+
+Set `confirm: false` on a specific task to open it without asking:
+
+```yaml
+version: 1
+compose:
+  enabled: false
+terminals:
+  - title: Frontend
+    command: [npm, run, dev]
+    confirm: false
+```
+
+The option applies only to that task. There is no environment-wide or implicit
+bypass. An omitted `confirm` or explicit `confirm: true` asks every time.
+
+Container switching and all health gates happen before the session prompts.
+Declining a terminal does not roll back container changes. The parent-directory
+`(y/N)` prompt approves workspace switching, not individual terminal launches;
+sessions still ask afterward unless their own config opts out.
+
+`--dry-run` does not prompt or launch. It shows `[confirmation required]` or
+`[confirm: false]` beside each planned terminal. Ctrl+C cancels remaining work;
+terminals already opened are not closed.
 
 ## wait_for
 

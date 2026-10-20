@@ -7,5 +7,6 @@
 - [Configure dwork.yml](configuration/README.md)
 - [Terminal launchers](terminals/README.md)
 - [Copy an example](../examples/README.md)
+- [Publish packages](publishing/README.md)
 - [Develop and test](development/README.md)
 - [Introduce dwork](promotion/README.md)

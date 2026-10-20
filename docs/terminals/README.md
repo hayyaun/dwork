@@ -52,6 +52,18 @@ platform/desktop selection. A task's `launcher: auto` allows the environment set
 to choose. The same native launchers can be explicitly selected in WSLg when the
 emulator is installed and a graphical session is available.
 
+## Confirmation before each session
+
+Both native Linux and Windows Terminal sessions ask `(y/N)` by default, immediately
+before launch and after health prerequisites pass. The prompt includes the title,
+command, and working directory. Declining, pressing Enter, or end-of-input skips
+that session and continues to the next one.
+
+Set `confirm: false` on a task in `dwork.yml` to opt out for that session only.
+The machine launcher setting does not bypass confirmation. Dry runs show the
+confirmation policy without asking or opening terminals. See
+[session confirmation](../configuration/README.md#session-confirmation).
+
 ## Windows and tabs
 
 - GNOME Terminal: `window: new` opens a window; `current` opens a tab in the

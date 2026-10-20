@@ -51,7 +51,7 @@ terminals:
 
 Use this when the Compose file and backend Makefile live in the same directory.
 dwork starts the existing PostgreSQL container if stopped, waits for its Docker
-health check, then opens `make run` in a new terminal window.
+health check, then asks before opening `make run` in a new terminal window.
 
 If the database container is missing or cannot become healthy, the backend
 terminal does not open. Create the container and apply migrations manually.
@@ -140,6 +140,24 @@ export DWORK_KEEP_PROJECTS=infra,monitoring
 ```
 
 Use exact Compose project names. See the [usage guide](../docs/usage/README.md).
+
+## Confirmation before each terminal
+
+All examples use the default confirmation policy. After switching containers and
+passing health checks, dwork asks `(y/N)` separately for each session. Enter or
+end-of-input skips that session; later sessions still get their own prompt.
+
+For an intentional no-prompt session, add the boolean option to that task:
+
+```yaml
+terminals:
+  - title: Frontend
+    command: [npm, run, dev]
+    confirm: false
+```
+
+Other tasks still ask. `--dry-run` shows each task's policy and never prompts.
+The workspace discovery prompt does not approve individual terminal sessions.
 
 ## Before using terminal tasks
 

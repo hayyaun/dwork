@@ -115,7 +115,7 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
         item["State"]["Health"] = {"Status": "healthy"}
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                shell, answer="y\n", containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [["start", "a"]])
             launch = next(i for i, call in enumerate(calls) if "-EncodedCommand" in call)
@@ -132,7 +132,7 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
             for shell in self.shells:
                 with self.subTest(status=status, shell=shell):
                     result, _, calls = self.fixture.run_dwork(
-                        shell, containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                        shell, answer="y\n", containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
                     self.assertEqual(result.returncode, 1, result.stdout)
                     self.assertFalse(any("-EncodedCommand" in call for call in calls))
 
