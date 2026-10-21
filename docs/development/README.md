@@ -55,6 +55,9 @@ confirmation tests select a fake native terminal adapter for the runner's OS.
 `test_tasks.py` starts short-lived harmless processes to verify authenticated
 controllers, process-group shutdown, protected workspaces, cancelled previews,
 and returning a real pseudo-terminal to an ordinary usable shell.
+Task tests have a 30-second POSIX alarm that dumps blocked Python frames before
+terminating the test process. This keeps native-terminal CI diagnostics bounded
+without starting a watchdog thread before `pty.fork`.
 Task supervision uses documented [POSIX process APIs](https://docs.python.org/3/library/os.html)
 (`posix_spawn`, `waitid` with `WNOWAIT`, `killpg`, and terminal foreground groups)
 and [Unix sockets](https://docs.python.org/3/library/socket.html), with no GUI process-tree parsing.

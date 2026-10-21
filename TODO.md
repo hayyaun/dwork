@@ -56,7 +56,7 @@
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
 - [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.
 - [ ] Complete packaging review and verify the prepared changes are pushed before tagging a release.
-- [ ] Run the package verification workflow and resolve failures. macOS diagnostics identified task-group cleanup plus completion, terminal-restoration, and platform-isolation fixture defects; fixes are in progress before tagging 0.3.0.
+- [ ] Run the package verification workflow and resolve failures. macOS task-group cleanup and fixture defects are fixed; all new keeper cases pass natively, but an ordinary terminal lifecycle test still hangs. Bounded diagnostics are in progress before tagging 0.3.0.
 - [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Version 0.3.0 metadata is prepared for the macOS and browser features.
 - [ ] Review and publish the resulting GitHub release and its verified assets.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.

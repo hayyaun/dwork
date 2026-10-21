@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import patch
 import contextlib
+import faulthandler
 import io
 import json
 import os
@@ -50,6 +51,17 @@ class TaskRuntimeTests(unittest.TestCase):
 
 class TaskTests(unittest.TestCase):
     def setUp(self):
+        # A POSIX alarm reports blocked frames and terminates a hung test without
+        # starting a watchdog thread before the real PTY tests call forkpty().
+        previous_alarm = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        faulthandler.register(signal.SIGALRM, chain=True)
+        signal.alarm(30)
+        def cancel_alarm():
+            signal.alarm(0)
+            faulthandler.unregister(signal.SIGALRM)
+            signal.signal(signal.SIGALRM, previous_alarm)
+        # Add first so it stays armed through process and PTY cleanup.
+        self.addCleanup(cancel_alarm)
         self.fixture = legacy.DworkTests()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
