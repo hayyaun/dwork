@@ -59,6 +59,10 @@ and returning a real pseudo-terminal to an ordinary usable shell.
 Task tests have a 30-second POSIX alarm that dumps blocked Python frames before
 terminating the test process. This keeps native-terminal CI diagnostics bounded
 without starting a watchdog thread before `pty.fork`.
+PTY cleanup closes the master before reaping its child, following
+[`pty.spawn`](https://github.com/python/cpython/blob/3.14/Lib/pty.py), and uses
+bounded child-exit checks after HUP/KILL. This avoids holding a PTY open across
+a blocking reap, which hung the macOS test cleanup.
 Task supervision uses documented [POSIX process APIs](https://docs.python.org/3/library/os.html)
 (`posix_spawn`, `waitid` with `WNOWAIT`, `killpg`, and terminal foreground groups)
 and [Unix sockets](https://docs.python.org/3/library/socket.html), with no GUI process-tree parsing.

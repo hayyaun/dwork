@@ -433,19 +433,20 @@ class TaskTests(unittest.TestCase):
         if pid == 0:
             os.execve(args[0], args, self.env)
         def cleanup():
-            try:
-                os.kill(pid, signal.SIGHUP)
+            # Like pty.spawn(), close the master before waiting: a Darwin slave
+            # can otherwise wait for terminal output to drain while exiting.
+            os.close(master)
+            for signum in (signal.SIGHUP, signal.SIGKILL):
+                try:
+                    os.kill(pid, signum)
+                except ProcessLookupError:
+                    pass
                 deadline = time.monotonic() + 2
                 while time.monotonic() < deadline:
                     if os.waitpid(pid, os.WNOHANG)[0]:
                         return
                     time.sleep(.05)
-                os.kill(pid, signal.SIGKILL)
-                os.waitpid(pid, 0)
-            except ProcessLookupError:
-                pass
-            finally:
-                os.close(master)
+            self.fail("PTY child did not exit after its master was closed and SIGKILL was sent")
         self.addCleanup(cleanup)
         def until(marker):
             output = b""
