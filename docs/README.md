@@ -9,6 +9,7 @@
 - [Register, scan, list, switch, and forget workspaces](workspaces/README.md)
 - [Configure dwork.yml](configuration/README.md)
 - [Terminal launchers](terminals/README.md)
+- [Browser launching and HTTP readiness](browsers/README.md)
 - [Copy an example](../examples/README.md)
 - [Publish packages](publishing/README.md)
 - [Develop and test](development/README.md)

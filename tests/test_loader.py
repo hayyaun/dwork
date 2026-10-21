@@ -14,7 +14,8 @@ class LoaderTests(unittest.TestCase):
             if not shutil.which(shell):
                 continue
             with self.subTest(shell=shell), tempfile.TemporaryDirectory(prefix="dwork loader ") as temp:
-                root = Path(temp) / "repo with spaces"
+                directory = Path(temp).resolve()
+                root = directory / "repo with spaces"
                 root.mkdir()
                 shutil.copy2(REPO / "dwork.sh", root / "dwork.sh")
                 shutil.copytree(REPO / "lib", root / "lib")
@@ -25,10 +26,10 @@ command -v dwork >/dev/null || exit 21
 printf 'WORKDIR:%s\n' "$PWD"
 dwork --help
 """
-                result = subprocess.run([shell, "-c", script], cwd=temp,
+                result = subprocess.run([shell, "-c", script], cwd=directory,
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("WORKDIR:" + temp, result.stdout)
+                self.assertIn("WORKDIR:" + str(directory), result.stdout)
                 self.assertIn("Never creates", result.stdout)
 
     def test_relative_source_path(self):

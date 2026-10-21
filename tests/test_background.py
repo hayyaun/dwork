@@ -50,7 +50,7 @@ class BackgroundTests(unittest.TestCase):
     def test_real_harmless_child_runs_in_its_own_session_and_survives_dispatch(self):
         # Avoid personal login hooks while testing the process/session behavior.
         shell = self.fixture.bin / "bash"
-        shell.write_text("#!/usr/bin/python3\nimport os,sys\nos.execv('/bin/bash', ['bash', '--noprofile', '--norc', '-c', sys.argv[2]])\n")
+        shell.write_text("#!" + sys.executable + "\nimport os,sys\nos.execv('/bin/bash', ['bash', '--noprofile', '--norc', '-c', sys.argv[2]])\n")
         shell.chmod(0o755)
         output = self.root / "child.json"
         code = ("import json,os,time; from pathlib import Path; Path(" + repr(str(output)) + ").write_text("

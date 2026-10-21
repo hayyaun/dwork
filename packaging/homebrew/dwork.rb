@@ -6,10 +6,10 @@ class Dwork < Formula
   url "https://github.com/hayyaun/dwork/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "31762d6eb3e57ba9637cc955af01c519c55ef9ac3c2320a6109c712ba47a36f0"
   license "MIT"
+  head "https://github.com/hayyaun/dwork.git", branch: "main"
 
   depends_on "make" => :build
   depends_on "libyaml"
-  depends_on :linux
   depends_on "python@3.14"
 
   resource "pyyaml" do
@@ -18,7 +18,7 @@ class Dwork < Formula
   end
 
   def install
-    # v0.1.0 predates Python package metadata; use its supported Make installer.
+    # Both the v0.1.0 release and HEAD provide the supported Make installer.
     venv = virtualenv_create(libexec, "python3.14")
     venv.pip_install resource("pyyaml")
     system "gmake", "install", "VENV=0", "PREFIX=#{prefix}", "PYTHON=#{libexec}/bin/python"
@@ -27,8 +27,9 @@ class Dwork < Formula
   def caveats
     <<~EOS
       Docker and Docker Compose are required for container workspaces.
-      Install a supported desktop terminal for Linux terminal tasks, or use
-      Windows Terminal and PowerShell from WSL2. Each terminal asks by default.
+      Terminal tasks use Apple Terminal on macOS (HEAD until the next release),
+      a supported Linux desktop terminal, or Windows Terminal from WSL2.
+      Each terminal asks by default. Apple Terminal supports new windows only.
     EOS
   end
 

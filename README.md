@@ -5,7 +5,7 @@
 <p><strong>Your project. Its containers. Your terminals. One command.</strong></p>
 
 <p>
-  <a href="docs/installation/README.md"><img alt="Linux and WSL2" src="https://img.shields.io/badge/platform-Linux%20%7C%20WSL2-3fb950?style=flat-square"></a>
+  <a href="docs/installation/README.md"><img alt="Linux, macOS, and WSL2" src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20WSL2-3fb950?style=flat-square"></a>
   <a href="docs/installation/README.md"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white"></a>
   <a href="#install"><img alt="Install with make install" src="https://img.shields.io/badge/install-make%20install-3fb950?style=flat-square"></a>
   <a href="https://github.com/hayyaun/dwork/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/hayyaun/dwork?style=flat-square"></a>
@@ -41,10 +41,11 @@ Build/install instructions are available; registry and tap publication is pendin
 <details>
 <summary>Requirements and other installation options</summary>
 
-- Python 3.10+, Git, Make, and Python's `venv` support.
+- Python 3.10+ on Linux/WSL2, Python 3.13+ on macOS, Git, Make, and Python's `venv` support.
 - Docker + Docker Compose when using containers.
 - A supported graphical terminal for terminal tasks: GNOME Terminal, Konsole,
-  Xfce Terminal, or xterm on Linux; Windows Terminal + PowerShell on WSL2.
+  Xfce Terminal, or xterm on Linux; Apple Terminal on macOS (new windows only);
+  Windows Terminal + PowerShell on WSL2.
 
 On Ubuntu, the installer prerequisites are `git make python3 python3-venv`.
 [Custom prefixes, manual sourcing, migration, and uninstall →](docs/installation/README.md)
@@ -155,12 +156,21 @@ terminals:
     wait_for:
       healthy: [postgres]
       timeout: 180
+
+browsers:
+  - url: http://localhost:3000
+    wait_for:
+      timeout: 60
 ```
 
 **Start the database → wait for healthy → confirm → open the backend.**
 
 Each terminal asks `(y/N)`. Set `confirm: false` on a task to explicitly skip its
 prompt. Missing containers and failed health checks block dependent terminals.
+
+Browser entries ask separately, wait for HTTP readiness, then open the OS default
+browser. WSL always uses the Windows browser. The server can already be running
+or be started by a terminal task. [Browser configuration →](docs/browsers/README.md)
 
 Set `window: none` on a task to run it silently in the background without opening
 a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/README.md#detached-background-tasks)
@@ -180,8 +190,9 @@ a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/READ
 [Usage](docs/usage/README.md) ·
 [Configuration](docs/configuration/README.md) ·
 [Terminal launchers](docs/terminals/README.md) ·
+[Browser launching](docs/browsers/README.md) ·
 [Development](docs/development/README.md) ·
 [Publish packages](docs/publishing/README.md)
 
-Native Linux GUI launchers have automated fake-launcher coverage; real desktop
+Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
 GUI behavior has not been visually verified in the WSL development environment.

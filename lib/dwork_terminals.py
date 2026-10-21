@@ -1,4 +1,4 @@
-"""Task command construction and native Linux or Windows Terminal launching."""
+"""Task command construction and native Linux, macOS, or Windows launching."""
 from pathlib import Path
 import base64
 import os
@@ -11,6 +11,15 @@ from dwork_common import DworkError, LAUNCHERS, LINUX_TERMINALS, color, colored_
 import dwork_docker
 import dwork_registry
 import dwork_tasks
+
+
+APPLE_TERMINAL_SCRIPT = '''on run argv
+    tell application id "com.apple.Terminal"
+        set taskTab to do script (item 1 of argv)
+        set custom title of taskTab to item 2 of argv
+        activate
+    end tell
+end run'''
 
 
 def task_command(task):
@@ -59,8 +68,10 @@ def choose_launcher(task):
         return selected
     if os.environ.get("WSL_DISTRO_NAME"):
         return "windows-terminal"
+    if sys.platform == "darwin":
+        return "apple-terminal"
     if not sys.platform.startswith("linux"):
-        raise DworkError("Terminal launching supports native Linux and WSL; Compose-only mode is still available.")
+        raise DworkError("Terminal launching supports Linux, macOS, and WSL; Compose-only mode is still available.")
     desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
     preferred = ("konsole" if "kde" in desktop else
                  "xfce4-terminal" if "xfce" in desktop else
@@ -99,7 +110,23 @@ def linux_terminal_arguments(task, launcher):
     return [launcher, "-title", task.title, "-e", *command]
 
 
+def macos_terminal_arguments(task):
+    if sys.platform != "darwin":
+        raise DworkError("Apple Terminal requires macOS.")
+    if task.window != "new":
+        raise DworkError("Apple Terminal supports window: new only; its scripting interface cannot create tabs. Use window: new or none.")
+    if not shutil.which("osascript"):
+        raise DworkError("Apple Terminal requires macOS osascript.")
+    # Terminal's documented `do script` creates a new window without a target.
+    # User values travel as argv, never as AppleScript source. Shell quoting
+    # preserves cwd and the task's existing supervisor or command arguments.
+    command = "cd -- " + shlex.quote(str(task.cwd)) + " && " + shlex.join(task_command(task))
+    return ["osascript", "-", command, task.title]
+
+
 def preflight_terminals(tasks):
+    if tasks:
+        dwork_tasks.require_support()
     windows = False
     for task in tasks:
         launcher = None if task.window == "none" else choose_launcher(task)
@@ -110,6 +137,8 @@ def preflight_terminals(tasks):
             if not shutil.which("powershell.exe"):
                 raise DworkError("Windows terminal tasks require Windows PowerShell and Windows Terminal.")
             windows = True
+        elif launcher == "apple-terminal":
+            macos_terminal_arguments(task)
         else:
             linux_terminal_arguments(task, launcher)
         program = task.command[0]
@@ -151,6 +180,13 @@ def open_terminal(task):
             raise DworkError("Background task " + task.title + " exited immediately (exit " + str(code) + "). Run the command manually to inspect its output.")
         return process.pid
     launcher = choose_launcher(task)
+    if launcher == "apple-terminal":
+        result = subprocess.run(macos_terminal_arguments(task), input=APPLE_TERMINAL_SCRIPT,
+                                text=True, capture_output=True)
+        if result.returncode:
+            raise DworkError("Apple Terminal failed to launch: " + (result.stderr.strip() or str(result.returncode))
+                             + ". Check macOS Automation permission for the calling application to control Terminal.")
+        return
     if launcher == "windows-terminal":
         encoded = base64.b64encode(powershell_script(task).encode("utf-16le")).decode("ascii")
         dwork_docker.run_command(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded])

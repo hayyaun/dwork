@@ -72,7 +72,7 @@ class DworkTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="dwork-test-")
         self.addCleanup(self.temp.cleanup)
-        self.base = Path(self.temp.name)
+        self.base = Path(self.temp.name).resolve()
         self.root = self.base / "repo"
         self.root.mkdir()
         self.bin = self.base / "bin"

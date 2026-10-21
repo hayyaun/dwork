@@ -2,7 +2,8 @@
 from pathlib import Path
 import sys
 
-from dwork_common import DworkError, color, colored_name
+from dwork_common import DworkError, LAUNCHERS, color, colored_name
+import dwork_browsers
 import dwork_config
 import dwork_docker
 import dwork_registry
@@ -143,8 +144,12 @@ def doctor(directory, options):
             check("Shell, command, and terminal for " + task.title,
                   lambda task=task: dwork_terminals.preflight_terminals([task]),
                   "Check SHELL (Bash/Zsh), command PATH, graphical session, and configured launcher or DWORK_TERMINAL.")
+        for browser in workspace.browsers:
+            check("Default browser opener for " + browser.url,
+                  lambda browser=browser: dwork_browsers.preflight_browsers([browser]),
+                  "Check the desktop session and xdg-open on Linux, or Windows PowerShell interop on WSL.")
     print("Doctor: " + (str(len(failures)) + " check(s) failed." if failures else "all checks passed.")
-          + " No containers or terminals changed.")
+          + " No containers, terminals, or browser URLs changed.")
     return 1 if failures else 0
 
 
@@ -175,13 +180,14 @@ def main():
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
         print("up and down show their plans and require confirmation (y/N); --dry-run never prompts.")
-        print("Each terminal asks (y/N) unless that task sets confirm: false in dwork.yml.")
-        print("Dry-run previews containers, health prerequisites, and terminals without mutation.")
+        print("Each terminal and browser URL asks (y/N) unless that task sets confirm: false in dwork.yml.")
+        print("Browser URLs open in the OS default browser after HTTP readiness; WSL uses the Windows browser.")
+        print("Dry-run previews containers, health prerequisites, terminals, and browser URLs without mutation.")
         print("Only other registered workspaces on this Docker target may be stopped.")
         print("Workspaces with locked: true never stop during a switch or down.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
-        print("DWORK_TERMINAL: auto, windows-terminal, gnome-terminal, konsole, xfce4-terminal, xterm.")
+        print("DWORK_TERMINAL: " + ", ".join(LAUNCHERS) + ".")
         print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()

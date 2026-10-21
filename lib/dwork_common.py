@@ -7,7 +7,7 @@ import zlib
 
 
 LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
-LAUNCHERS = ("auto", "windows-terminal", *LINUX_TERMINALS)
+LAUNCHERS = ("auto", "windows-terminal", "apple-terminal", *LINUX_TERMINALS)
 
 
 class DworkError(Exception):
@@ -54,6 +54,14 @@ class TerminalTask:
 
 
 @dataclass
+class BrowserTask:
+    url: str
+    wait_url: str = None
+    timeout: float = 60
+    confirm: bool = True
+
+
+@dataclass
 class Workspace:
     name: str
     directory: Path
@@ -63,6 +71,7 @@ class Workspace:
     terminals: list = field(default_factory=list)
     configured: bool = False
     locked: bool = False
+    browsers: list = field(default_factory=list)
 
     def manages(self, service):
         return self.selected is None or service in self.selected

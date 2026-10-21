@@ -36,8 +36,8 @@ Preview first:
 dwork --dry-run
 ```
 
-The preview lists container changes, health requirements, and terminal tasks.
-It does not wait, prompt, or open terminals.
+The preview lists container changes, health requirements, terminal tasks, and
+browser URLs. It does not wait, prompt, or open applications.
 
 ## Requirements
 
@@ -50,7 +50,8 @@ sudo apt install python3-yaml
 ```
 
 Terminal tasks support native Linux desktops with GNOME Terminal, Konsole, Xfce
-Terminal, or xterm, and WSL2 with Windows Terminal and Windows PowerShell.
+Terminal, or xterm, macOS with Apple Terminal, and WSL2 with Windows Terminal
+and Windows PowerShell. macOS terminal/background tasks require Python 3.13 or newer.
 Bash or Zsh must be configured as `SHELL`. Native emulators need a graphical
 session; xterm supports new windows only. See [terminal launchers](../terminals/README.md).
 Compose-only mode remains usable on other platforms, and dry runs do not open GUIs.
@@ -149,10 +150,11 @@ run `dwork register NAME` with the intended options before switching again.
 - `window`: `new` opens a new window; `current` requests an existing-window tab
   using the selected emulator's rules; `none` runs detached in the background without
   a GUI, with input/output discarded. Defaults to `new`. xterm supports `new` only
-  for visible terminals; `none` does not use a terminal launcher.
+  for visible terminals; Apple Terminal also supports `new` only. `none` does
+  not use a terminal launcher.
   On Windows Terminal, `current` means the most recently used window, not necessarily
   the one containing your shell. See [troubleshooting current](../terminals/README.md#troubleshoot-current-on-windows-terminal--wsl).
-- `launcher`: defaults to `auto`. Supported values are `auto`, `windows-terminal`,
+- `launcher`: defaults to `auto`. Supported values are `auto`, `apple-terminal`, `windows-terminal`,
   `gnome-terminal`, `konsole`, `xfce4-terminal`, and `xterm`. An explicit task
   setting overrides `DWORK_TERMINAL`; otherwise platform/desktop selection applies.
 - `confirm`: a boolean, defaulting to `true`. Ask `(y/N)` before opening this
@@ -175,7 +177,7 @@ Terminal reserves semicolons as command separators).
 
 ## Session confirmation
 
-Every terminal session asks for confirmation by default, on both Linux and WSL.
+Every terminal session asks for confirmation by default on Linux, macOS, and WSL.
 The prompt shows the title, command, and working directory. Only `y` or `Y` opens
 that session. Enter, `n`, any other response, or end-of-input skips it and continues
 to the next configured terminal.
@@ -237,6 +239,59 @@ terminals:
   - title: Frontend
     command: [npm, run, dev]
 ```
+
+## browsers
+
+Open application pages after the configured terminal tasks have launched:
+
+```yaml
+version: 1
+compose:
+  enabled: false
+terminals:
+  - title: Frontend
+    command: [npm, run, dev]
+browsers:
+  - url: http://localhost:3000
+    wait_for:
+      timeout: 60
+```
+
+`browsers` defaults to an empty list. Each entry supports:
+
+- `url`: a required absolute HTTP or HTTPS URL. Credentials, whitespace,
+  backslashes, and control characters are rejected. Percent-encode spaces and
+  non-ASCII characters in paths and queries.
+- `confirm`: a boolean, defaulting to `true`. Ask before waiting or opening.
+  Only `y`/`Y` approves; declining or EOF skips that URL. Explicit `false`
+  skips this entry's confirmation.
+- `wait_for`: defaults to polling `url` with a 60-second retry deadline.
+  Set `url` inside this mapping to probe a separate health endpoint, and
+  `timeout` to a number greater than zero and at most 3600 seconds. Use
+  `wait_for: false` to open immediately without making an HTTP request.
+
+Readiness uses a direct HTTP GET and accepts statuses 200–399. It does not
+follow redirects, download the response body, or use HTTP proxy environment
+variables. HTTPS certificates are verified. Retries use a monotonic deadline
+and short socket timeouts; system DNS resolution can exceed that deadline.
+Authentication failures and server errors keep waiting until timeout.
+
+All terminal tasks are dispatched first, then browser entries run in order.
+The browser wait does not start or restart a development server: use an existing
+server or a terminal task you explicitly configure. If a terminal is declined,
+the browser still waits for its URL, which may already be served elsewhere.
+On timeout or opener failure, remaining browser entries are not opened;
+already-started tasks and containers remain running. Ctrl+C stops the remaining
+waits. Repeated activations open the configured URLs again.
+
+URLs open in the OS default browser: `open` on macOS, `xdg-open` in a Linux
+desktop session, and Windows PowerShell `Start-Process` on WSL. WSL never falls
+back to a Linux browser when Windows interop is unavailable. The browser decides
+whether to reuse a tab or window; dwork does not force a new window or close
+browser windows during `down`. See [browser launching](../browsers/README.md).
+
+`--dry-run`, `register`, `status`, and `doctor` never poll readiness or open a
+browser. `doctor` checks the opener's availability only.
 
 ## Implementation references
 

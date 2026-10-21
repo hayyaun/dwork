@@ -126,6 +126,7 @@ class LinuxTerminalTests(unittest.TestCase):
                 self.assertEqual(json.loads(result.stdout), values)
 
 
+@unittest.skipUnless(sys.platform.startswith("linux"), "Native Linux CLI integration")
 class LinuxIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.fixture = legacy.DworkTests()

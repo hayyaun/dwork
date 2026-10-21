@@ -26,6 +26,28 @@ import dwork_terminals
 import dwork_workspaces
 
 
+class TaskRuntimeTests(unittest.TestCase):
+    def test_old_macos_python_fails_before_supervisor_changes_directory_or_spawns(self):
+        with patch.object(sys, "platform", "darwin"), \
+                patch.object(sys, "version_info", (3, 12)), \
+                patch.object(os, "chdir") as chdir, patch.object(os, "posix_spawn") as spawn:
+            with self.assertRaisesRegex(dwork_common.DworkError, "macOS require Python 3.13"):
+                dwork_tasks.supervise({})
+        chdir.assert_not_called()
+        spawn.assert_not_called()
+
+    def test_linux_minimum_and_supported_macos_python_are_accepted(self):
+        for platform, version in (("linux", (3, 10)), ("darwin", (3, 13)), ("darwin", (3, 14))):
+            with self.subTest(platform=platform, version=version), \
+                    patch.object(sys, "platform", platform), patch.object(sys, "version_info", version):
+                dwork_tasks.require_support()
+
+    def test_old_macos_python_fails_before_building_task_arguments(self):
+        with patch.object(sys, "platform", "darwin"), patch.object(sys, "version_info", (3, 12)):
+            with self.assertRaisesRegex(dwork_common.DworkError, "reinstall dwork"):
+                dwork_tasks.arguments(None, None, None)
+
+
 class TaskTests(unittest.TestCase):
     def setUp(self):
         self.fixture = legacy.DworkTests()
@@ -34,7 +56,7 @@ class TaskTests(unittest.TestCase):
         self.root = self.fixture.root
         self.state = self.fixture.base / "state/dwork"
         self.shell = self.fixture.bin / "bash"
-        self.shell.write_text("#!/usr/bin/python3\nimport os,sys\n"
+        self.shell.write_text("#!" + sys.executable + "\nimport os,sys\n"
             "if sys.argv[1] == '-il': os.execv('/bin/bash', ['bash','--noprofile','--norc','-i'])\n"
             "os.execv('/bin/bash', ['bash','--noprofile','--norc', '-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n")
         self.shell.chmod(0o755)
@@ -223,6 +245,7 @@ class TaskTests(unittest.TestCase):
             args = dwork_terminals.terminal_arguments(task)
             self.assertEqual(args[args.index("--exec") + 1:], command)
         with patch.dict(os.environ, {"DISPLAY": ":test"}), \
+                patch.object(sys, "platform", "linux"), \
                 patch.object(shutil, "which", side_effect=lambda program: str(self.shell)):
             for launcher, delimiter in (("gnome-terminal", "--"), ("konsole", "-e"),
                                         ("xfce4-terminal", "--execute"), ("xterm", "-e")):
@@ -249,7 +272,7 @@ class TaskTests(unittest.TestCase):
         if not shell:
             self.skipTest("Zsh unavailable")
         self.shell = self.fixture.bin / "zsh"
-        self.shell.write_text("#!/usr/bin/python3\nimport os,sys\n"
+        self.shell.write_text("#!" + sys.executable + "\nimport os,sys\n"
             + "shell=" + repr(shell) + "\n"
             + "if sys.argv[1] == '-il': os.execv(shell, ['zsh','-f','-i'])\n"
             + "os.execv(shell, ['zsh','-f','-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n")

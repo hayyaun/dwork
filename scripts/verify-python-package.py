@@ -38,7 +38,7 @@ def main():
             command = env / "bin/dwork"
             run(python, "-m", "pip", "install", artifact)
             run(command, "--help", cwd=workspace)
-            config.write_text("version: 1\ncompose:\n  enabled: false\n")
+            config.write_text("version: 1\ncompose:\n  enabled: false\nbrowsers:\n  - url: http://localhost:3000\n")
             run(command, "--dry-run", cwd=workspace)
             # Installed console entry point must preserve source CLI failures.
             config.write_text("version: 99\n")

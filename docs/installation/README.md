@@ -5,10 +5,18 @@
 ## Recommended: make install
 
 Requirements: Git, Make, Python 3.10 or newer, and Python venv/pip support.
+On macOS, use Python 3.13 or newer for supervised terminal/background tasks;
+the process-lifecycle API used by dwork is available there starting with 3.13.
 On Ubuntu/WSL, install these prerequisites through your package manager if missing:
 
 ```sh
 sudo apt install git make python3 python3-venv
+```
+
+On macOS with Homebrew, install Python and choose it explicitly:
+
+```sh
+brew install python@3.14
 ```
 
 Then:
@@ -18,6 +26,10 @@ git clone https://github.com/hayyaun/dwork.git
 cd dwork
 make install
 ```
+
+On macOS, run `make install PYTHON="$(brew --prefix python@3.14)/bin/python3.14"`
+to avoid selecting an older system Python. Apple's Command Line Tools provide Git
+and Make (`xcode-select --install` if they are missing).
 
 This is a user install; do not run it with sudo. It creates:
 
@@ -72,6 +84,10 @@ installed separately for every distribution method.
 - Native Linux: a graphical desktop and GNOME Terminal, Konsole, Xfce Terminal,
   or xterm (new windows only).
 - WSL2: Windows Terminal and `powershell.exe`.
+- macOS: Apple Terminal and `osascript`, both included with macOS. Visible tasks
+  support `window: new`; use `window: none` for detached tasks. The first launch
+  may ask permission for the calling application to control Terminal. See
+  [macOS terminal behavior](../terminals/README.md#apple-terminal-on-macos).
 
 PyYAML is installed by the default installer. Docker, shells, terminals, Make,
 and system packages are not installed automatically.
@@ -159,7 +175,7 @@ See [publishing](../publishing/README.md) for AUR, Homebrew, and PyPI preparatio
 ## User workspace state
 
 The optional `dwork scan` checkbox picker uses Python's curses module and needs an
-interactive terminal. Standard Linux/WSL Python builds usually provide it; if your
+interactive terminal. Standard Linux, macOS, and WSL Python builds usually provide it; if your
 Python distributor omits curses, the command explains this and keeps the configured
 workspaces it already registered. Other commands and `scan --dry-run` do not need
 the picker. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).

@@ -4,7 +4,8 @@ from pathlib import Path
 import math
 import os
 
-from dwork_common import DworkError, LAUNCHERS, TerminalTask, Workspace
+from dwork_common import BrowserTask, DworkError, LAUNCHERS, TerminalTask, Workspace
+import dwork_browsers
 import dwork_docker
 
 
@@ -90,7 +91,7 @@ def read_config(path):
         mark = getattr(error, "problem_mark", None)
         location = " at line " + str(mark.line + 1) if mark else ""
         raise DworkError("Invalid dwork.yml" + location + "; nothing changed.")
-    return mapping(config, ("version", "locked", "compose", "terminals"), "dwork.yml")
+    return mapping(config, ("version", "locked", "compose", "terminals", "browsers"), "dwork.yml")
 
 
 def load_workspace(directory, options=()):
@@ -157,7 +158,27 @@ def load_workspace(directory, options=()):
             if any(c in value for c in ("\0", "\r", "\n", ";")):
                 raise DworkError("Terminal values cannot contain NUL, newlines, or Windows Terminal semicolon separators; use a script file.")
         terminals.append(TerminalTask(title, command, cwd, healthy, timeout, window, launcher, confirm))
-    return Workspace(name, directory, services, enabled, selected, terminals, True, locked)
+    browsers = []
+    raw_browsers = cfg.get("browsers", [])
+    if not isinstance(raw_browsers, list):
+        raise DworkError("browsers must be a list.")
+    for index, raw in enumerate(raw_browsers):
+        where = "browsers[" + str(index) + "]"
+        browser = mapping(raw, ("url", "wait_for", "confirm"), where)
+        url = dwork_browsers.validate_url(browser.get("url"), where + ".url")
+        confirm = browser.get("confirm", True)
+        if type(confirm) is not bool:
+            raise DworkError("browser.confirm must be true or false.")
+        wait = browser.get("wait_for", {})
+        wait_url, timeout = None, 60
+        if wait is not False:
+            wait = mapping(wait, ("url", "timeout"), "browser.wait_for")
+            wait_url = dwork_browsers.validate_url(wait.get("url", url), "browser.wait_for.url")
+            timeout = wait.get("timeout", 60)
+            if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
+                raise DworkError("browser.wait_for.timeout must be greater than 0 and at most 3600 seconds.")
+        browsers.append(BrowserTask(url, wait_url, timeout, confirm))
+    return Workspace(name, directory, services, enabled, selected, terminals, True, locked, browsers)
 
 
 def config_directory(directory, options):

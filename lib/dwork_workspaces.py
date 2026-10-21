@@ -7,6 +7,7 @@ import sys
 
 from dwork_common import DworkError, color, colored_name
 import dwork_common
+import dwork_browsers
 import dwork_config
 import dwork_docker
 import dwork_registry
@@ -216,8 +217,9 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         elif (project in managed and project not in keep and state in ("running", "restarting")
               and (managed[project] is None or service in managed[project])):
             stops.append((identifier, project))
-    gates, tasks = [], []
+    gates, tasks, browsers = [], [], []
     for w in workspaces:
+        browsers.extend(w.browsers)
         for service in w.services:
             if w.manages(service) and not dwork_docker.service_containers(containers, w.name, service):
                 warnings.append("Service " + w.name + "/" + service + " has no container; create it manually if needed (it may be profile-specific).")
@@ -239,6 +241,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
                 gates.append((ids, task.timeout))
     if not preview:
         dwork_terminals.preflight_terminals(tasks)
+        dwork_browsers.preflight_browsers(browsers)
     if discovered:
         print("Projects found in immediate subdirectories:")
         for w in workspaces:
@@ -249,7 +252,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     for warning in warnings:
         print(color("Warning: " + warning, "warning", sys.stderr), file=sys.stderr)
     print("Switch plan: " + str(len(stops)) + " stop(s), " + str(len(starts))
-          + " start(s), " + str(len(tasks)) + " terminal task(s).")
+          + " start(s), " + str(len(tasks)) + " terminal task(s), " + str(len(browsers)) + " browser URL(s).")
     if active:
         print("Scope: only other registered workspaces on this Docker target may be stopped.")
     if existing is None:
@@ -266,7 +269,12 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         confirmation = " [confirmation required]" if task.confirm else " [confirm: false]"
         label = "Would run detached: " if task.window == "none" else "Would open terminal: "
         print(label + colored_name(task.title) + " -> " + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + confirmation)
-    if not stops and not starts and not tasks:
+    for browser in browsers:
+        confirmation = " [confirmation required]" if browser.confirm else " [confirm: false]"
+        print("Would open default browser: " + browser.url + confirmation)
+        if browser.wait_url is not None:
+            print("Would wait for HTTP readiness: " + browser.wait_url + " (timeout " + str(browser.timeout) + "s)")
+    if not stops and not starts and not tasks and not browsers:
         print("No container changes needed.")
     if preview:
         return 0
@@ -309,7 +317,8 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
                         lambda ids=ids, timeout=timeout: dwork_docker.wait_healthy(ids, timeout)))
     completed = []
     pending = [label for label, _ in actions] + [
-        ("background task " if task.window == "none" else "terminal ") + task.title for task in tasks]
+        ("background task " if task.window == "none" else "terminal ") + task.title for task in tasks] + [
+        "browser " + browser.url for browser in browsers]
     step = "before execution"
     try:
         for label, operation in actions:
@@ -334,6 +343,19 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             if background:
                 print("Started background task: " + colored_name(task.title) + " (supervisor PID " + str(pid) + ")", flush=True)
             completed.append(("launched background task " if background else "launched terminal ") + task.title)
+            pending.pop(0)
+        for browser in browsers:
+            step = "browser " + browser.url
+            if not dwork_browsers.confirm_browser(browser):
+                print("Skipped browser: " + browser.url, flush=True)
+                pending.pop(0)
+                continue
+            if browser.wait_url is not None:
+                print("Waiting for HTTP readiness: " + browser.wait_url, flush=True)
+            dwork_browsers.wait_ready(browser)
+            print("Opening default browser: " + browser.url, flush=True)
+            dwork_browsers.open_browser(browser)
+            completed.append("opened browser " + browser.url)
             pending.pop(0)
     except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
         dwork_docker.report_failure(completed, pending, step, containers)

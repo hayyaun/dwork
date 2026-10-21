@@ -16,6 +16,7 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS :: MacOS X",
   "Programming Language :: Python :: 3",
   "Topic :: Software Development",
 ]
@@ -39,6 +40,7 @@ py-modules = [
   "dwork_scan",
   "dwork_tasks",
   "dwork_terminals",
+  "dwork_browsers",
   "dwork_workspaces",
 ]
 package-dir = {"" = "lib"}

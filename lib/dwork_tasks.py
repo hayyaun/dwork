@@ -15,6 +15,17 @@ import tempfile
 import termios
 import time
 
+from dwork_common import DworkError
+
+
+def require_support():
+    """Keep the unreaped-child identity guarantee on supported Python builds."""
+    if sys.platform == "darwin" and (sys.version_info < (3, 13)
+            or not hasattr(os, "waitid") or not hasattr(os, "WNOWAIT")):
+        raise DworkError("Tracked terminal and background tasks on macOS require Python 3.13 or newer"
+                         + " with os.waitid support. Install a current Python (for example, brew install python@3.14)"
+                         + " and reinstall dwork using that interpreter.")
+
 
 def request(record, action):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
@@ -48,6 +59,7 @@ def running(state):
 
 
 def arguments(task, state, shell):
+    require_support()
     payload = {"state": str(state), "workspace": task.workspace,
                "directory": task.directory, "project": task.project,
                "title": task.title, "command": task.command, "cwd": str(task.cwd),
@@ -58,6 +70,7 @@ def arguments(task, state, shell):
 
 def supervise(spec):
     import shlex
+    require_support()
     os.chdir(spec["cwd"])
     visible = spec["visible"]
     foreground = os.tcgetpgrp(0) if visible else None
@@ -173,6 +186,6 @@ def supervise(spec):
 if __name__ == "__main__":
     try:
         sys.exit(supervise(json.loads(base64.urlsafe_b64decode(sys.argv[1]))))
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
         print("dwork task: " + str(error), file=sys.stderr)
         sys.exit(1)

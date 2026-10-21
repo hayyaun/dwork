@@ -2,12 +2,13 @@
 
 [Project home](../../README.md) · [Configuration](../configuration/README.md)
 
-Terminal tasks work on native Linux desktops and WSL. Existing configs keep
+Terminal tasks work on native Linux desktops, macOS, and WSL. Existing configs keep
 `launcher: auto` behavior by default, so you can share one config across machines.
 
 ## Automatic selection
 
 - On WSL, `auto` chooses Windows Terminal via Windows PowerShell.
+- On macOS, `auto` chooses Apple Terminal through its AppleScript interface.
 - On native Linux, it prefers the installed terminal for `XDG_CURRENT_DESKTOP`:
   GNOME Terminal for GNOME, Konsole for KDE, or Xfce Terminal for Xfce.
 - If that preference is unavailable, it checks GNOME Terminal, Konsole, Xfce
@@ -16,7 +17,7 @@ Terminal tasks work on native Linux desktops and WSL. Existing configs keep
 - An unsuccessful launch is reported; dwork does not retry by opening a different
   application.
 
-Native launchers require a graphical session: `DISPLAY` or `WAYLAND_DISPLAY`.
+Native Linux launchers require a graphical session: `DISPLAY` or `WAYLAND_DISPLAY`.
 xterm specifically needs `DISPLAY`, including XWayland. Headless/SSH sessions
 without graphical forwarding can still use Compose-only configs.
 
@@ -29,7 +30,7 @@ export DWORK_TERMINAL=konsole
 dwork --dry-run
 ```
 
-Supported values are `auto`, `windows-terminal`, `gnome-terminal`, `konsole`,
+Supported values are `auto`, `windows-terminal`, `apple-terminal`, `gnome-terminal`, `konsole`,
 `xfce4-terminal`, and `xterm`. This is a launcher name, not a shell command.
 
 ## Choose a launcher for one task
@@ -54,7 +55,7 @@ emulator is installed and a graphical session is available.
 
 ## Confirmation before each session
 
-Both native Linux and Windows Terminal sessions ask `(y/N)` by default, immediately
+Linux, macOS, and Windows Terminal sessions ask `(y/N)` by default, immediately
 before launch and after health prerequisites pass. The prompt includes the title,
 command, and working directory. Declining, pressing Enter, or end-of-input skips
 that session and continues to the next one.
@@ -74,9 +75,31 @@ confirmation policy without asking or opening terminals. See
   error, caught before container switching.
 - Windows Terminal: `new` opens a window; `current` targets the most recently used
   window.
+- Apple Terminal: new windows only. `window: current` is rejected during preflight.
 
 Existing-window selection follows each terminal application's documented rules.
 This does not guarantee the window containing the dwork invocation is the target.
+
+### Apple Terminal on macOS
+
+`launcher: auto` selects Apple Terminal on macOS; `launcher: apple-terminal`
+selects it explicitly. Use Python 3.13 or newer for tracked tasks. Homebrew's
+formula uses Python 3.14.
+
+The adapter uses Apple's supported `osascript` command and Terminal's scripting
+dictionary: `do script` without a target creates a new window, and the returned
+tab's `custom title` is set to the task title. The working directory and existing
+task supervisor are shell-quoted; user values are passed as script arguments.
+
+Terminal's scripting dictionary does not provide a command to create tabs.
+`window: current` therefore fails before container changes; use `window: new`
+or `window: none`. dwork does not send keyboard shortcuts or require Accessibility
+permission to create tabs.
+
+macOS may request Automation permission for the application invoking dwork to
+control Terminal. Approve that system prompt to use the launcher; if denied,
+enable Terminal control for that application in System Settings → Privacy &
+Security → Automation. A launch error includes the AppleScript failure.
 
 ### Troubleshoot `current` on Windows Terminal / WSL
 
@@ -121,7 +144,7 @@ terminals:
 ```
 
 `window: none` runs the task detached without opening a window or tab. It works in
-headless Linux/WSL sessions and does not require a GUI, Windows Terminal, PowerShell,
+headless Linux, macOS, and WSL sessions and does not require a GUI, Windows Terminal, PowerShell,
 or a native terminal emulator. The task's `launcher` and `DWORK_TERMINAL` are not used.
 An available Bash or Zsh shell and the command executable are still required.
 
@@ -169,7 +192,7 @@ that stay in that group stop too. Configure foreground commands: programs that
 daemonize, create other sessions/process groups, launch Windows processes, or
 delegate work to external services need their own lifecycle tools.
 
-Tracking is local to the Linux installation/WSL distribution and user. Host tasks
+Tracking is local to the operating-system installation/WSL distribution and user. Host tasks
 are considered across all registered workspaces locally, regardless of their saved
 Docker context; container shutdown remains scoped to the current Docker target.
 Host-only workspaces need no Docker connection. If registered Compose workspaces
@@ -207,11 +230,15 @@ automatic emulator selection is finalized when you invoke the real switch.
 Automated tests use fake emulators and verify native adapter arguments, shell
 quoting, health-before-launch ordering, headless rejection, and detached process
 handling. WSL launching has its own regression tests. A real native Linux desktop
-is not available in the development environment, so GUI behavior has not been
-visually verified there.
+or Mac is not available in the development environment, so GUI behavior has not
+been visually verified there. macOS CI runs the source tests and compiles the
+AppleScript against the installed Terminal dictionary without executing it or
+opening windows. Python CI covers Apple Silicon and Intel macOS runners.
 
 ## Official interfaces
 
+- [Apple Terminal scripting and osascript](https://support.apple.com/guide/terminal/automate-tasks-using-applescript-and-terminal-trml1003/mac)
+- [Python waitid availability](https://docs.python.org/3/library/os.html#os.waitid)
 - [GNOME Terminal manual](https://github.com/GNOME/gnome-terminal/blob/master/man/gnome-terminal.xml)
 - [Konsole command-line options](https://docs.kde.org/stable_kf6/en/konsole/konsole/command-line-options.html)
 - [Konsole profile title property](https://github.com/KDE/konsole/blob/master/src/profile/Profile.cpp)

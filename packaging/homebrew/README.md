@@ -1,13 +1,15 @@
-# Homebrew (Linux / WSL2)
+# Homebrew (macOS / Linux / WSL2)
 
 `dwork.rb` is a complete tap formula for the existing v0.1.0 release, with fixed
 source and PyYAML checksums. It uses Homebrew's documented Python virtualenv
-helpers and the release's existing Make installer. The formula is Linux-only;
-Homebrew installation does not add macOS terminal support.
+helpers and the release's existing Make installer. It also declares the supported
+`--HEAD` option for the main branch. Both versions can install on macOS and Linux;
+Apple Terminal support is in HEAD until a new stable release includes it. The
+stable v0.1.0 URL/checksum is intentionally unchanged.
 
 ## Test in a local tap
 
-With Homebrew installed on Linux or WSL2:
+With Homebrew installed on macOS, Linux, or WSL2:
 
 ```sh
 brew tap-new hayyaun/dwork-test
@@ -18,8 +20,25 @@ brew test hayyaun/dwork-test/dwork
 brew audit --strict hayyaun/dwork-test/dwork
 ```
 
+To install the current main branch with Apple Terminal support after these changes
+are merged, uninstall an existing stable installation and use:
+
+```sh
+brew uninstall hayyaun/dwork-test/dwork # only if already installed
+brew install --HEAD hayyaun/dwork-test/dwork
+brew test --HEAD hayyaun/dwork-test/dwork
+```
+
+HEAD tracks development source and is not a stable release. Apple Terminal opens
+new windows; its supported scripting API cannot create tabs. The formula provides
+Python 3.14, meeting macOS's Python 3.13 minimum for tracked tasks. Docker/Compose
+and any optional graphical terminal are still installed separately.
+
 The formula test parses a host-only YAML config and previews a workspace. It
 never starts Docker, development servers, or GUI terminals.
+Package CI tests the stable formula on Linux and macOS (Apple Silicon and Intel).
+The separate Python CI matrix verifies the current checkout on macOS 3.13/3.14;
+fetching remote HEAD would not verify unpublished pull-request changes.
 
 ## Publish your tap
 
