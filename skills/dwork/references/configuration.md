@@ -16,6 +16,13 @@ might otherwise interpret as numbers or booleans.
 Only these top-level fields are supported:
 
 - `version`: required integer `1`.
+- `confirm`: optional root-level boolean, default `true`; require plan confirmation
+  for plain `dwork` in a registered single workspace and `dwork up`. Set `false`
+  to skip that activation prompt only.
+  Registration, discovered-group, terminal/browser, and `down` confirmations are
+  separate. Child opt-outs do not approve a parent group. Explicit
+  `dwork switch NAME` keeps its existing confirmation behavior. This field was
+  added after 0.3.0; check installed-runtime support before generating it.
 - `locked`: optional boolean, default `false`; keep this workspace's containers
   and tracked host commands running during switches and `dwork down`, while still
   listing and allowing activation. Switches leave host commands running even
@@ -46,7 +53,10 @@ settings to them. Initial container creation, migrations, and rebuilds are
 separate setup steps. Only other registered workspaces on the same Docker target
 may be stopped, respecting their registered service selections and the comma-separated
 `DWORK_KEEP_PROJECTS` environment variable. Unregistered projects stay running.
-The first normal run asks before registering a new directory. `dwork register NAME`
+The first normal run asks before registering a new directory, independently of
+root `confirm`. Later plain `dwork` asks to apply the plan
+unless root `confirm: false` is set; only `y`/`Y` accepts, and EOF cancels.
+`--dry-run` previews the policy without asking. `dwork register NAME`
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
 list, activate, and forget remembered directories. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.

@@ -32,8 +32,9 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
             tasks.append(task)
         folder = directory or self.root
         folder.mkdir(parents=True, exist_ok=True)
+        # Isolate per-session consent from the separate activation prompt.
         (folder / "dwork.yml").write_text(json.dumps({
-            "version": 1, "compose": {"enabled": False}, "terminals": tasks}))
+            "version": 1, "confirm": False, "compose": {"enabled": False}, "terminals": tasks}))
 
     def run_case(self, shell, launcher, answer="", args=""):
         result, changes, calls = self.fixture.run_dwork(

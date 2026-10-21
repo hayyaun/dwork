@@ -52,6 +52,11 @@ invent service names, commands, health checks, or folders.
   workspace directory, usually beside its Compose file.
 - Use top-level `locked: true` when the user wants the workspace kept running
   through switches and `dwork down`. It remains listed and can still be activated.
+- Keep workspace activation confirmation enabled by default. Use root-level
+  `confirm: false` only when the user explicitly opts out and the installed
+  runtime supports it (added after 0.3.0). It skips the plain `dwork`/`up` plan
+  prompt only; registration, discovered groups, tasks, browsers, and `down` keep
+  their separate consent controls.
 - For host-only work, set `compose.enabled: false` and omit Compose files,
   services, and health prerequisites. With Compose enabled, omit `files` when
   normal Compose discovery suffices; otherwise preserve the project's file order.
@@ -125,7 +130,8 @@ exact error. Preserve the authenticated task-controller records; do not replace
 
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new
-directory and can stop other registered workspaces before terminal confirmation;
+directory and asks to apply the plan on later activations unless root
+`confirm: false` is set. It can stop other registered workspaces before terminal confirmation;
 `DWORK_KEEP_PROJECTS` can preserve registered shared projects. `dwork register NAME`
 remembers without activating, `dwork list` shows remembered directories,
 `dwork switch NAME` activates from anywhere, and `dwork forget NAME` removes only

@@ -73,6 +73,7 @@ class Workspace:
     configured: bool = False
     locked: bool = False
     browsers: list = field(default_factory=list)
+    confirm: bool = True
 
     def manages(self, service):
         return self.selected is None or service in self.selected

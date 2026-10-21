@@ -218,7 +218,7 @@ class TaskTests(unittest.TestCase):
             "title": "Worker", "command": [sys.executable, "-c", "__import__('time').sleep(60)"],
             "window": "none", "confirm": False}]}
         (self.root / "dwork.yml").write_text(json.dumps(config))
-        result, _, _ = self.cli("")
+        result, _, _ = self.cli("", answer="y\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         record = self.wait_for(lambda: dwork_tasks.running(self.state))[0]
         def cleanup():

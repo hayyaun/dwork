@@ -50,6 +50,22 @@ class BrowserConfigTests(unittest.TestCase):
         self.assertTrue(task.confirm)
         self.assertEqual(task.browser, "default")
 
+    def test_workspace_and_task_confirmation_settings_are_independent(self):
+        import yaml
+        for root_confirm in (None, True, False):
+            expected = True if root_confirm is None else root_confirm
+            with self.subTest(root_confirm=root_confirm):
+                config = {"version": 1, "compose": {"enabled": False},
+                          "terminals": [{"command": ["echo", "ready"], "confirm": not expected}],
+                          "browsers": [{"url": "http://localhost:3000/", "confirm": not expected}]}
+                if root_confirm is not None:
+                    config["confirm"] = root_confirm
+                (self.root / "dwork.yml").write_text(yaml.safe_dump(config))
+                workspace = dwork_config.load_workspace(self.root)
+                self.assertEqual(workspace.confirm, expected)
+                self.assertEqual(workspace.terminals[0].confirm, not expected)
+                self.assertEqual(workspace.browsers[0].confirm, not expected)
+
     def test_custom_browser_combines_with_no_wait_and_no_confirmation(self):
         task = self.load({"url": "http://localhost:3000", "browser": "Firefox",
                           "wait_for": False, "confirm": False}).browsers[0]
@@ -352,6 +368,21 @@ class BrowserLifecycleTests(unittest.TestCase):
         self.assertEqual(calls, ["terminal", "ready", "browser"])
         self.assertEqual(self.switch(), 0)
         self.assertEqual(calls, ["terminal", "ready", "browser"] * 2)
+
+    def test_declined_activation_never_launches_tasks_or_probes_browsers(self):
+        with patch("builtins.input", return_value="n"):
+            self.assertEqual(dwork_workspaces.switch_workspace(
+                self.root, [], "activate", False, [self.entry]), 0)
+        for operation in self.mocks[6:11]:
+            operation.assert_not_called()
+
+    def test_root_confirm_false_keeps_terminal_and_browser_consent_separate(self):
+        self.workspace.confirm = False
+        with patch("builtins.input", side_effect=AssertionError("activation must not prompt")):
+            self.assertEqual(dwork_workspaces.switch_workspace(
+                self.root, [], "activate", False, [self.entry]), 0)
+        self.mocks[6].assert_called_once_with(self.task)
+        self.mocks[8].assert_called_once_with(self.browser)
 
     def test_dry_run_has_no_preflight_prompt_probe_or_launch(self):
         self.assertEqual(self.switch(preview=True), 0)

@@ -19,6 +19,12 @@ Only `y` or `Y` accepts. Any other response or end-of-input cancels without
 registering the workspace, changing containers, or opening terminals. The usual
 terminal confirmations are separate. Once remembered, the directory does not
 require registration consent again.
+Plain `dwork` then shows the plan and asks before activating the remembered
+workspace. Set root-level `confirm: false` in its `dwork.yml` to skip that
+activation prompt; it also applies to `dwork up` and takes effect without
+re-registration. Registration, discovered-group, terminal/browser, and `down`
+confirmations remain separate. Explicit `dwork switch NAME` keeps its existing
+confirmation behavior.
 If activation later fails, an accepted registration remains remembered; use
 `dwork forget NAME` if you no longer want dwork to manage it.
 

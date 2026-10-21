@@ -77,6 +77,27 @@ and unsupported versions are errors.
 
 `version: 1` is required.
 
+## confirm
+
+```yaml
+version: 1
+confirm: false
+```
+
+`confirm` is a root-level boolean, defaulting to `true`. Plain `dwork` in a
+registered workspace and `dwork up` show the plan and ask
+`Apply the listed workspace plan? (y/N)` before container changes, health waits,
+or task/browser launches. Only `y` or `Y` proceeds; Enter, any other answer, or
+end-of-input cancels. Set `confirm: false` to skip this activation prompt.
+Strings, numbers, and null are rejected. Changes take effect without re-registration,
+including when invoking dwork from a nested directory using the selected ancestor config.
+
+First-time plain `dwork` uses the existing combined registration/switch consent.
+Root `confirm: false` does not skip registration, discovered-group, per-terminal, per-browser,
+or `down` confirmations. Child opt-outs do not approve a discovered parent group.
+Explicit `dwork switch NAME` keeps its existing confirmation behavior.
+`--dry-run` shows the activation policy without prompting or changing state.
+
 ## locked
 
 ```yaml
@@ -290,7 +311,8 @@ browsers:
 On macOS use `browser: Firefox`; on WSL use a Windows executable/path as above.
 Omit `browser` to keep the default. `wait_for: false` and `confirm: false` are
 independent. A terminal's `confirm: false` skips its session prompt as well;
-workspace registration and `up`/group confirmations still apply.
+workspace registration and group confirmations still apply. Root `confirm`
+controls only the separate `dwork`/`up` activation prompt.
 
 Readiness uses a direct HTTP GET and accepts statuses 200–399. It does not
 follow redirects, download the response body, or use HTTP proxy environment

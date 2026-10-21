@@ -45,6 +45,9 @@ Zsh when those shells are installed. PyYAML is needed for configuration tests.
 Registry tests isolate `XDG_STATE_HOME` in temporary directories. Existing switching
 tests explicitly prepare registrations; `test_registry.py` covers first-run consent,
 ownership boundaries, saved selections, target changes, missing directories, and locks.
+The shared fixture also approves the single-workspace activation prompt for existing
+behavior tests. Registry tests supply activation answers explicitly and cover rejection,
+EOF, root `confirm`, nested invocation, and preservation of group/registration consent.
 `test_scan.py` covers recursive registration and exercises the checkbox picker in
 a real pseudo-terminal, including keyboard navigation and terminal restoration.
 The restoration check compares all terminal settings except macOS's transient

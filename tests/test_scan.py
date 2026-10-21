@@ -225,7 +225,8 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(picker.call_args.args[0], [child, skipped])
         self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "configured"), str(child)})
         for args in ("switch child", ""):
-            result, changes, _ = self.run_cli(args, cwd=child, containers=[legacy.container("a", "child")])
+            result, changes, _ = self.run_cli(args, cwd=child, answer="y\n",
+                                             containers=[legacy.container("a", "child")])
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [["start", "a"]])
 

@@ -276,9 +276,16 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             print("Would wait for HTTP readiness: " + browser.wait_url + " (timeout " + str(browser.timeout) + "s)")
     if not stops and not starts and not tasks and not browsers:
         print("No container changes needed.")
+    # First-time activation already asks for combined registration/switch consent;
+    # discovered groups retain their separate group prompt. Child opt-outs must
+    # not silently approve a parent-directory group switch.
+    confirm_activation = mode == "up" or (mode == "activate" and existing is not None and not discovered)
+    skip_activation_confirmation = not discovered and not workspaces[0].confirm
+    if confirm_activation:
+        print("Workspace activation confirmation: " + ("skipped (confirm: false)" if skip_activation_confirmation else "required"))
     if preview:
         return 0
-    if mode == "up" and not dwork_common.confirm_action("Apply the listed workspace plan?"):
+    if confirm_activation and not skip_activation_confirmation and not dwork_common.confirm_action("Apply the listed workspace plan?"):
         print("Cancelled; nothing changed.")
         return 0
     if discovered:

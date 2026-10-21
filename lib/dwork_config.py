@@ -91,7 +91,7 @@ def read_config(path):
         mark = getattr(error, "problem_mark", None)
         location = " at line " + str(mark.line + 1) if mark else ""
         raise DworkError("Invalid dwork.yml" + location + "; nothing changed.")
-    return mapping(config, ("version", "locked", "compose", "terminals", "browsers"), "dwork.yml")
+    return mapping(config, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml")
 
 
 def load_workspace(directory, options=()):
@@ -103,6 +103,9 @@ def load_workspace(directory, options=()):
     if type(cfg.get("version")) is not int or cfg["version"] != 1:
         raise DworkError("dwork.yml: version must be 1.")
     locked = lock_value(cfg)
+    workspace_confirm = cfg.get("confirm", True)
+    if type(workspace_confirm) is not bool:
+        raise DworkError("dwork.yml: confirm must be true or false.")
     compose = mapping(cfg.get("compose", {}), ("enabled", "files", "services"), "compose")
     enabled = compose.get("enabled", True)
     if type(enabled) is not bool:
@@ -179,7 +182,8 @@ def load_workspace(directory, options=()):
             if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
                 raise DworkError("browser.wait_for.timeout must be greater than 0 and at most 3600 seconds.")
         browsers.append(BrowserTask(url, wait_url, timeout, confirm, selected_browser))
-    return Workspace(name, directory, services, enabled, selected, terminals, True, locked, browsers)
+    return Workspace(name, directory, services, enabled, selected, terminals, True, locked, browsers,
+                     confirm=workspace_confirm)
 
 
 def config_directory(directory, options):

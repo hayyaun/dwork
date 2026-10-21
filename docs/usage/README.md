@@ -42,6 +42,8 @@ waiting for health checks, opening terminals, or registering directories.
 2. Reports services that have no existing containers.
 3. On a new workspace, asks before remembering its directory and Compose identity.
    Declining or end-of-input cancels without switching.
+   For a remembered single workspace, asks to apply the plan unless the selected
+   `dwork.yml` sets root-level `confirm: false`.
 4. Stops running or restarting managed containers belonging to other registered
    workspaces on the same Docker target, except projects you explicitly keep running.
 5. Starts selected-project containers whose state is `created` or `exited`.
@@ -81,8 +83,9 @@ prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tre
 
 ### Stop all registered workloads
 
-`dwork up` shows the current workspace plan and asks for confirmation before
-applying it. `dwork down` shows the containers and tracked commands it will stop
+Plain `dwork` in a registered workspace and `dwork up` show the current workspace
+plan and ask for confirmation before applying it. Root-level `confirm: false`
+in `dwork.yml` skips that activation prompt only. `dwork down` shows the containers and tracked commands it will stop
 and asks for confirmation when there is work to stop. Only `y` or `Y` proceeds; Enter, `n`, and
 end-of-input cancel. `--dry-run` previews without prompting. Existing registration,
 group, and terminal-task confirmations still apply.
@@ -154,8 +157,10 @@ workspaces Docker checks are skipped. Terminal checks do not open a GUI.
 
 Every normal switch now prints its full plan, affected projects, and the
 `DWORK_KEEP_PROJECTS` exclusions before executing. New directories require
-registration consent; already-registered directories do not ask again. Child-group
-switches and individual terminal tasks keep their existing confirmations.
+registration consent. Already-registered single workspaces ask to apply the plan
+on plain `dwork` unless root-level `confirm: false` is set. Explicit
+`dwork switch NAME`, child-group switches, and individual task/browser entries
+keep their existing confirmation behavior.
 
 If execution fails or is interrupted, dwork reports confirmed completed actions,
 the failed step and actions not confirmed complete, and refreshes the running

@@ -84,7 +84,9 @@ dwork             # First run: confirm registration, then switch
 
 No `dwork.yml`? Your existing Compose project is the default.
 After the first registration, run `dwork` in that project to switch back to it.
-Each configured terminal still asks for confirmation.
+It shows the plan and asks for confirmation before switching. Set root-level
+`confirm: false` in `dwork.yml` to skip this activation prompt. Each configured
+terminal and browser still uses its own confirmation setting.
 
 Remember a project without switching, give it a name, and return from anywhere:
 
@@ -125,8 +127,10 @@ It still appears in `dwork list` and can be activated normally.
 Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`,
 `ps` = `status`, and `up` activates the current workspace.
 
-`dwork up` and `dwork down` show the plan and ask for confirmation before applying
-it. Enter or `n` cancels; `--dry-run` previews without prompting.
+`dwork` and `dwork up` confirm the activation plan unless root-level
+`confirm: false` opts out. First-time registration and discovered-group consent
+remain separate. `dwork down` always confirms when there is work to stop.
+Enter or `n` cancels; `--dry-run` previews without prompting.
 
 ## Tab completion
 

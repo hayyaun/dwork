@@ -116,8 +116,20 @@ class DworkTests(unittest.TestCase):
             words = shlex.split(args)
             if words and words[0] in ("--dry-run", "status", "doctor"):
                 words.pop(0)
-            subprocess.run([shell, "-c", source + "register " + shlex.join(words)],
-                           cwd=cwd or self.root, input="", text=True, capture_output=True, env=env)
+            registration = subprocess.run([shell, "-c", source + "register " + shlex.join(words)],
+                                          cwd=cwd or self.root, input="", text=True, capture_output=True, env=env)
+            # Existing behavior tests auto-register and approve the single-workspace
+            # activation gate; registry tests exercise that consent explicitly.
+            if registration.returncode == 0 and (not args or args.startswith("-")) and not args.startswith("--dry-run"):
+                entry = json.loads((Path(env["XDG_STATE_HOME"]) / "dwork/workspaces.json").read_text())["workspaces"][-1]
+                if len(entry["members"]) == 1 and entry["members"][0]["directory"] == entry["path"]:
+                    config_path = Path(entry["path"]) / "dwork.yml"
+                    confirm = True
+                    if config_path.is_file():
+                        import yaml
+                        confirm = yaml.safe_load(config_path.read_text()).get("confirm", True)
+                    if confirm:
+                        answer = "y\n" + answer
         self.log.write_text("")
         result = subprocess.run(
             [shell, "-c", ". " + shlex.quote(str(SOURCE)) + "\ndwork " + args],
@@ -173,14 +185,14 @@ class DworkTests(unittest.TestCase):
             self.assertEqual(len(calls), 1)
             self.assertIn("immediate subdirectories", result.stderr)
 
-    def test_normal_config_takes_precedence_without_prompt(self):
+    def test_normal_config_takes_precedence_with_confirmation(self):
         self.model(self.root, "main")
         self.model(self.root / "backend", "api")
         inventory = [container("a", "main"), container("b", "api", state="running")]
         for shell in self.shells:
             result, changes, _ = self.run_dwork(shell, containers=inventory)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertNotIn("(y/N)", result.stdout)
+            self.assertIn("Apply the listed workspace plan? (y/N)", result.stdout)
             self.assertEqual(changes, [["start", "a"]])
 
     def test_parent_config_takes_precedence(self):

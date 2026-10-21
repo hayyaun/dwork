@@ -24,6 +24,7 @@ class RegistryTests(unittest.TestCase):
         self.fixture.model(self.root, "main")
 
     def run_cli(self, args="", **kwargs):
+        kwargs.setdefault("answer", "y\n")
         return self.fixture.run_dwork("bash", args, register_current=False, **kwargs)
 
     def entries(self):
@@ -49,6 +50,74 @@ class RegistryTests(unittest.TestCase):
                 result, _, _ = self.fixture.run_dwork(shell, register_current=False)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertNotIn("Register and switch?", result.stdout)
+                self.assertIn("Apply the listed workspace plan?", result.stdout)
+
+    def test_plain_activation_confirms_before_any_container_changes(self):
+        other = self.fixture.base / "other"
+        self.fixture.model(other, "other")
+        self.register(other)
+        self.register()
+        before = self.state.read_bytes()
+        items = [legacy.container("a", "main"), legacy.container("b", "other", state="running")]
+        for shell in self.fixture.shells:
+            for answer in ("", "\n", "n\n", "yes\n", "Y\n"):
+                with self.subTest(shell=shell, answer=answer):
+                    result, changes, _ = self.fixture.run_dwork(
+                        shell, answer=answer, register_current=False, containers=items)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(changes, [["stop", "b"], ["start", "a"]] if answer == "Y\n" else [])
+                    self.assertEqual(self.state.read_bytes(), before)
+                    self.assertLess(result.stdout.index("Would start existing:"),
+                                    result.stdout.index("Apply the listed workspace plan?"))
+
+    def test_root_confirm_is_live_and_applies_from_nested_directory(self):
+        self.register()
+        nested = self.root / "nested"
+        nested.mkdir()
+        before = self.state.read_bytes()
+        for value in (True, False):
+            (self.root / "dwork.yml").write_text(json.dumps({"version": 1, "confirm": value}))
+            for args in ("", "up"):
+                result, changes, _ = self.run_cli(args, answer="", cwd=nested,
+                    containers=[legacy.container("a", "main")])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(changes, [] if value else [["start", "a"]])
+                self.assertEqual("Apply the listed workspace plan?" in result.stdout, value)
+                self.assertEqual(self.state.read_bytes(), before)
+            result, changes, _ = self.run_cli("--dry-run", answer="", cwd=nested,
+                containers=[legacy.container("a", "main")])
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(changes, [])
+            self.assertNotIn("(y/N)", result.stdout)
+            self.assertIn("confirmation: required" if value else "skipped (confirm: false)", result.stdout)
+
+    def test_root_confirm_false_keeps_first_registration_consent(self):
+        (self.root / "dwork.yml").write_text("version: 1\nconfirm: false\n")
+        result, changes, _ = self.run_cli(answer="", containers=[legacy.container("a", "main")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Register and switch?", result.stdout)
+        self.assertEqual(changes, [])
+        self.assertFalse(self.state.exists())
+
+    def test_root_confirm_requires_boolean_before_docker_is_called(self):
+        for value in ("true", "false", 0, 1, None, [], {}):
+            (self.root / "dwork.yml").write_text(json.dumps({"version": 1, "confirm": value}))
+            result, changes, calls = self.run_cli()
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("dwork.yml: confirm must be true or false", result.stderr)
+            self.assertEqual(calls, [])
+            self.assertEqual(changes, [])
+
+    def test_child_confirm_false_does_not_approve_group_activation(self):
+        (self.root / "compose.yaml").unlink()
+        child = self.root / "child"
+        self.fixture.model(child, "child")
+        (child / "dwork.yml").write_text("version: 1\nconfirm: false\n")
+        self.register(name="group")
+        result, changes, _ = self.run_cli(answer="", containers=[legacy.container("a", "child")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Switch all listed projects together?", result.stdout)
+        self.assertEqual(changes, [])
 
     def test_up_requires_confirmation_after_plan_and_preview_never_prompts(self):
         self.register()
