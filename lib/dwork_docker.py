@@ -2,11 +2,10 @@
 import json
 import os
 import re
-import shlex
-import subprocess
 import time
 
 from dwork_common import DworkError, color, colored_name
+from dwork_process import run_command
 
 
 def container_name(item):
@@ -20,17 +19,6 @@ def docker_target():
     if not all(target.values()):
         raise DworkError("Cannot identify the Docker target; nothing changed.")
     return target
-
-
-def run_command(args, cwd=None, *, timeout=None):
-    try:
-        result = subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=timeout)
-    except subprocess.TimeoutExpired as error:
-        raise DworkError("Timed out running command: " + shlex.join(args)
-                         + ". Inspect workload state before retrying.") from error
-    if result.returncode:
-        raise DworkError(result.stderr.strip() or "Command failed: " + shlex.join(args))
-    return result.stdout
 
 
 def docker(*args, cwd=None, timeout=None):

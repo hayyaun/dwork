@@ -210,7 +210,7 @@ terminals:
             args = dwork_terminals.terminal_arguments(task)
             self.assertEqual(args[-1], "exec echo 'hello world' 'a\"$b&c'")
             self.assertIn(str(task.cwd), args)
-            with patch.object(dwork_docker, "run_command") as command:
+            with patch.object(dwork_terminals, "run_command") as command:
                 dwork_terminals.open_terminal(task)
                 call = command.call_args.args[0]
                 self.assertIn("-EncodedCommand", call)

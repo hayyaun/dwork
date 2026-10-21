@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import dwork_common
 import dwork_terminals
+import dwork_terminal_launch
 
 
 class BackgroundTests(unittest.TestCase):
@@ -34,7 +35,7 @@ class BackgroundTests(unittest.TestCase):
     def test_detached_flags_quoting_and_immediate_failure(self):
         process = Mock(pid=4321)
         process.wait.side_effect = subprocess.TimeoutExpired("worker", .2)
-        with patch.object(dwork_terminals, "command_shell", return_value="/bin/bash"), \
+        with patch.object(dwork_terminal_launch, "command_shell", return_value="/bin/bash"), \
                 patch.object(subprocess, "Popen", return_value=process) as launch:
             self.assertEqual(dwork_terminals.open_terminal(self.task), 4321)
             self.assertEqual(launch.call_args.args[0], ["/bin/bash", "-lc", "exec echo 'hello world' '$(not-a-command)'"])
@@ -63,7 +64,7 @@ class BackgroundTests(unittest.TestCase):
             processes.append(process)
             return process
         try:
-            with patch.object(dwork_terminals, "command_shell", return_value=str(shell)), \
+            with patch.object(dwork_terminal_launch, "command_shell", return_value=str(shell)), \
                     patch.object(subprocess, "Popen", side_effect=launch):
                 pid = dwork_terminals.open_terminal(task)
             self.assertIsNone(processes[0].poll())

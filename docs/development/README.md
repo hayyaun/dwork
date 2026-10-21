@@ -9,22 +9,36 @@
 - [`lib/dwork.py`](../../lib/dwork.py): thin entry point shared by source and installed commands.
 - [`lib/dwork_cli.py`](../../lib/dwork_cli.py): argument routing, shell completion,
   diagnostics, and CLI error/interrupt handling.
-- [`lib/dwork_config.py`](../../lib/dwork_config.py): YAML validation, Compose
+- [`lib/dwork_config_parse.py`](../../lib/dwork_config_parse.py): data-only YAML
+  decoding and immutable normalized configuration values.
+- [`lib/dwork_config.py`](../../lib/dwork_config.py): path and Compose resolution,
   environment selection, deterministic initialization, and workspace discovery.
 - [`lib/dwork_version.py`](../../lib/dwork_version.py): single version constant
   shared by `--version`, package metadata, and release-tag validation.
-- [`lib/dwork_registry.py`](../../lib/dwork_registry.py): versioned registry,
-  atomic updates, switch locking, ownership checks, and registration display.
+- [`lib/dwork_registry_store.py`](../../lib/dwork_registry_store.py): versioned
+  registry validation, atomic persistence, state paths, and the operation lock.
+- [`lib/dwork_registry_policy.py`](../../lib/dwork_registry_policy.py): pure
+  ownership, service selection, lock protection, and tracked-command eligibility.
+- [`lib/dwork_registry.py`](../../lib/dwork_registry.py): registration workflows,
+  live YAML lock refresh, registration consent, and display.
 - [`lib/dwork_docker.py`](../../lib/dwork_docker.py): Compose models, Docker
   inventory, health prerequisites, and container status reporting.
 - [`lib/dwork_plans.py`](../../lib/dwork_plans.py): typed activation/shutdown
   snapshots, explicit action payloads, and per-action execution results.
-- [`lib/dwork_terminals.py`](../../lib/dwork_terminals.py): command construction,
-  per-session confirmation, and native Linux / Windows Terminal launching.
+- [`lib/dwork_launch.py`](../../lib/dwork_launch.py): immutable prepared terminal
+  and browser commands and dispatch metadata.
+- [`lib/dwork_terminal_launch.py`](../../lib/dwork_terminal_launch.py) and
+  [`lib/dwork_browser_launch.py`](../../lib/dwork_browser_launch.py): launcher
+  selection, argument construction, and dependency preflight.
+- [`lib/dwork_terminals.py`](../../lib/dwork_terminals.py) and
+  [`lib/dwork_browsers.py`](../../lib/dwork_browsers.py): per-entry consent,
+  prepared command dispatch, and browser HTTP readiness.
+- [`lib/dwork_process.py`](../../lib/dwork_process.py): shared checked subprocess
+  runner for Docker and Windows dispatch helpers.
 - [`lib/dwork_scan.py`](../../lib/dwork_scan.py): repository scanning, the
   Compose checkbox picker, and bulk registration.
 - [`lib/dwork_workspaces.py`](../../lib/dwork_workspaces.py): switch and shutdown
-  orchestration, shared typed execution, protection policy, confirmations, and
+  orchestration, launch preparation attachment, shared typed execution, confirmations, and
   partial-failure/recovery presentation.
   Switches exclude the selected registration; `down` uses the same path without
   an exclusion. Both stop commands before containers and recheck locks after prompts.
@@ -41,15 +55,54 @@
   installation, removal, and package staging.
 - [`requirements.txt`](../../requirements.txt): isolated-install Python dependency.
 
+## Internal boundaries
+
+`decode_config(text)` and `parse_config(mapping)` perform no filesystem, Compose,
+registry, GUI, or network operations. The normalized frozen records use tuples so
+later resolution cannot mutate the source configuration. `resolve_workspace` owns
+working-directory checks, YAML-relative paths, Compose file precedence, resolved
+project-name defaults, and service/health references. Discovery and saved Compose
+environments remain in `dwork_config`; structural validation happens before external
+resolution. Validation still checks directories and Compose references, and is distinct
+from launch preflight. The schema, defaults, and accepted configuration remain version 1.
+
+`dwork_registry_store` owns the existing JSON format, atomic replacement, and POSIX
+operation lock. Reads never create state. It neither loads workspace YAML nor decides
+which resources may stop. `dwork_registry_policy` evaluates supplied records without
+I/O: Docker target identity, enabled members, selected services, temporary/YAML locks,
+and tracked-command workspace/member identity. Registration and the existing live YAML
+refresh stay in the registry facade. Missing configs retain cached lock policy;
+unreadable policy protects the member. The operation lock still spans prompts and
+mutations, and the final live policy recheck remains immediately before shutdown.
+
+For live activation, `prepare_launches` attaches immutable commands returned by the
+terminal/browser preflights to the copied plan. Preparation resolves the same launcher,
+shell, supervisor identity, argv, cwd, and dispatch method that execution will use.
+Windows Terminal is probed once per batch. Preparation creates no supervisor records,
+launches no tasks/apps, and requests no HTTP pages. Dispatch uses these prepared values
+without repeating launcher selection or rebuilding arguments after outgoing shutdown.
+Terminal executable checks still use the invoking process's PATH or the task-relative
+executable; login-shell PATH policy is unchanged. Native quoting and supported platform
+interfaces are unchanged. Direct adapter calls can prepare on demand; the CLI prepares
+all launch entries before consent, registry writes, or workload changes.
+
+Prepared commands confer no permission. Activation/group/registration and individual
+terminal/browser confirmations remain separate. Browser readiness follows browser consent
+and terminal dispatch. Dry runs do not prepare launches; `doctor` checks dependencies
+without launching or requesting HTTP, while `register`, `status`, and `validate` do not
+check desktop dependencies. These boundaries introduce no new CLI/configuration fields,
+registry migration, automatic fallback, readiness guarantee, or retry/resume API.
+
 ## Activation plans and results
 
 `build_activation_plan` consumes resolved workspace paths, container snapshots,
-and an already-authorized shutdown selection. It performs no I/O, prompts, probes,
+and an ownership-filtered shutdown selection. It performs no I/O, prompts, probes,
 or persistence. Its copied configuration and inventory keep task ownership metadata
 inside the plan instead of mutating the loaded configuration. Actions explicitly
 represent task shutdown, a container-stop batch, individual container starts,
 health gates, terminal/background launches, and browser dispatch with optional
-readiness. They contain data, not executable closures or display labels.
+readiness. They contain data, not executable closures or display labels. Live launch actions also
+carry prepared commands; the pure builder leaves those fields unset.
 
 `switch_workspace` still validates registrations, target identity, and ownership
 before building the plan. Dry runs render the planned resources without executing
@@ -78,10 +131,20 @@ only from confirmed container-stop actions, never from parsing user-facing text,
 task titles, or ANSI sequences. Completed container changes are not rolled back.
 The models/results are internal and in-memory; they add no config keys, registry
 fields, JSON CLI output, retry/resume interface, or new permissions. Python wheels
-declare `dwork_plans` alongside the existing modules; Make/native installers copy
+declare all parsing, storage, policy, planning, and preparation modules; Make/native installers copy
 the same runtime module set.
 
 ## Tests
+
+`test_boundaries.py` covers parsing without external access, immutable normalized inputs,
+resolution defaults and Compose/path precedence, service and separator restrictions,
+registry round trips without policy evaluation, and failed atomic replacement cleanup.
+It also checks target/service/lock/task identity rules without filesystem or Docker
+access. Prepared-launch regressions cover Linux, macOS, WSL, and detached tasks:
+preflight performs no launches/HTTP, dispatch retains exact argv/cwd/supervisor metadata
+and transport when environment/platform selection changes, Windows probes remain batched,
+parent-PATH checks remain enforced, and prepared actions still require separate consent.
+
 
 `test_plans.py` covers data-only planning, isolated input snapshots, action order,
 existing service/job selection policy, missing-health preview/live behavior, and

@@ -79,7 +79,11 @@ Compose-only mode remains usable on other platforms, and dry runs do not open GU
   Compose or run part of the configuration.
 
 `dwork.yml` is not merged with another dwork file. Unknown fields, duplicate keys,
-and unsupported versions are errors.
+and unsupported versions are errors. Structural parsing is separate from external
+resolution: paths, Compose project defaults, selected services, and health prerequisites
+are resolved afterward. This keeps the same YAML-relative paths and explicit Compose
+selection precedence. Successful validation does not check terminal/browser dependencies
+or authorize activation.
 
 ## Editor autocomplete
 

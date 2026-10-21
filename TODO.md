@@ -8,6 +8,8 @@
 - [x] Report completed actions, the failed step, remaining work, and recovery commands after partial failures or interruption.
 - [x] Introduce typed activation plans, explicit lifecycle actions, and execution results; share shutdown execution, derive recovery from action identity, preserve consent/ownership/lock behavior, and cover planning plus every action's failure/interruption outcomes.
 
+- [x] Separate data-only configuration parsing from path/Compose resolution, registry persistence from pure ownership/protection policy, and launch preparation from dispatch; retain confirmation and live lock checks and cover the boundaries with regression tests.
+
 ## Switching policies
 
 - [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.

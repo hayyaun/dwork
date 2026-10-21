@@ -20,6 +20,7 @@ import dwork_config
 import dwork_docker
 import dwork_registry
 import dwork_terminals
+from dwork_launch import TerminalLaunch
 
 
 class DiagnosticsTests(unittest.TestCase):
@@ -164,7 +165,7 @@ class DiagnosticsTests(unittest.TestCase):
                 patch.object(dwork_docker, "show_target"), \
                 patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
                 patch.object(dwork_registry, "confirm_registration", return_value=True), \
-                patch.object(dwork_terminals, "preflight_terminals"), \
+                patch.object(dwork_terminals, "preflight_terminals", side_effect=lambda tasks: tuple(TerminalLaunch(("fake-terminal",), task.cwd, "gnome-terminal", task.title) for task in tasks)), \
                 patch.object(dwork_docker, "docker", return_value=json.dumps([item])), \
                 patch.object(dwork_terminals, "open_terminal") as launch, \
                 contextlib.redirect_stdout(io.StringIO()), \

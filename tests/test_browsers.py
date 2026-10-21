@@ -21,6 +21,7 @@ import dwork_common
 import dwork_config
 import dwork_registry
 import dwork_terminals
+from dwork_launch import BrowserLaunch, TerminalLaunch
 import dwork_workspaces
 
 
@@ -339,13 +340,17 @@ class BrowserLifecycleTests(unittest.TestCase):
         self.workspace = dwork_common.Workspace("app", self.root, {}, enabled=False,
                                                 terminals=[self.task], browsers=[self.browser])
         self.entry = dwork_registry.registration(self.root, [], [self.workspace], None, "app")
+        self.terminal_launch = TerminalLaunch(("fake-terminal",), self.root, "gnome-terminal", "Frontend")
+        self.browser_launch = BrowserLaunch(("fake-browser",), False)
         patches = [
             patch.object(dwork_config, "discover", return_value=([self.workspace], False)),
             patch.object(dwork_config, "registration_directory", return_value=self.root),
             patch.object(dwork_registry, "refresh_locks", return_value=False),
             patch.object(dwork_registry, "save_registry", side_effect=AssertionError("must not write")),
-            patch.object(dwork_terminals, "preflight_terminals"),
-            patch.object(dwork_browsers, "preflight_browsers"),
+            patch.object(dwork_terminals, "preflight_terminals",
+                         side_effect=lambda tasks: tuple(self.terminal_launch for task in tasks)),
+            patch.object(dwork_browsers, "preflight_browsers",
+                         side_effect=lambda tasks: tuple(self.browser_launch for task in tasks)),
             patch.object(dwork_terminals, "confirm_terminal", return_value=True),
             patch.object(dwork_terminals, "open_terminal"),
             patch.object(dwork_browsers, "confirm_browser", return_value=True),
@@ -365,9 +370,9 @@ class BrowserLifecycleTests(unittest.TestCase):
 
     def test_servers_launch_before_browser_readiness_and_open(self):
         calls = []
-        self.mocks[7].side_effect = lambda task: calls.append("terminal")
+        self.mocks[7].side_effect = lambda task, **kwargs: calls.append("terminal")
         self.mocks[9].side_effect = lambda task: calls.append("ready")
-        self.mocks[10].side_effect = lambda task: calls.append("browser")
+        self.mocks[10].side_effect = lambda task, **kwargs: calls.append("browser")
         self.assertEqual(self.switch(), 0)
         self.assertEqual(calls, ["terminal", "ready", "browser"])
         self.assertEqual(self.switch(), 0)
@@ -409,7 +414,7 @@ class BrowserLifecycleTests(unittest.TestCase):
         with patch("sys.stderr", new_callable=io.StringIO) as errors:
             with self.assertRaises(dwork_common.DworkError):
                 self.switch()
-        self.mocks[7].assert_called_once_with(self.planned_task())
+        self.mocks[7].assert_called_once_with(self.planned_task(), launch=self.terminal_launch)
         self.assertIsNone(self.task.workspace)
         self.mocks[8].assert_called_once_with(self.browser)
         self.mocks[9].assert_called_once_with(self.browser)

@@ -46,6 +46,13 @@ py-modules = [
   "dwork_terminals",
   "dwork_browsers",
   "dwork_workspaces",
+  "dwork_config_parse",
+  "dwork_registry_store",
+  "dwork_registry_policy",
+  "dwork_launch",
+  "dwork_terminal_launch",
+  "dwork_browser_launch",
+  "dwork_process",
   "dwork_version",
 ]
 package-dir = {"" = "lib"}

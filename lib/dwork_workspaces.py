@@ -13,26 +13,12 @@ import dwork_browsers
 import dwork_config
 import dwork_docker
 import dwork_registry
+from dwork_registry_policy import task_protection
 import dwork_tasks
 import dwork_terminals
 from dwork_plans import (Action, ActionResult, ActionStatus, ActivationPlan, ExecutionResult,
                          LaunchTerminal, OpenBrowser, ShutdownPlan, StartContainer,
                          StopContainers, StopTask, WaitHealthy, build_activation_plan, shutdown_actions)
-
-
-def task_protection(record, entries, keep):
-    entry = next((e for e in entries if e["path"] == record["workspace"]), None)
-    if entry is None:
-        return "workspace no longer registered"
-    member = next((m for m in entry["members"] if m["directory"] == record["directory"]
-                   and m["project"] == record["project"]), None)
-    if member is None:
-        return "workspace ownership changed"
-    if dwork_registry.member_locked(entry, member):
-        return "temporarily locked" if entry.get("temporary_locked", False) else "locked"
-    if member["project"] in keep:
-        return "DWORK_KEEP_PROJECTS"
-    return None
 
 
 def task_label(record, entries):
@@ -181,7 +167,7 @@ def execute_action(result: ActionResult, entries: list[dict[str, Any]], operatio
             print(("Skipped background task: " if background else "Skipped terminal: ") + colored_name(task.title), flush=True)
             return ActionStatus.SKIPPED
         print(("Starting background task: " if background else "Opening terminal: ") + colored_name(task.title), flush=True)
-        result.supervisor_pid = dwork_terminals.open_terminal(task)
+        result.supervisor_pid = dwork_terminals.open_terminal(task, launch=action.launch)
         if background:
             print("Started background task: " + colored_name(task.title)
                   + " (supervisor PID " + str(result.supervisor_pid) + ")", flush=True)
@@ -194,7 +180,7 @@ def execute_action(result: ActionResult, entries: list[dict[str, Any]], operatio
             print("Waiting for HTTP readiness: " + browser.wait_url, flush=True)
         dwork_browsers.wait_ready(browser)
         print("Opening " + dwork_browsers.browser_label(browser) + ": " + browser.url, flush=True)
-        dwork_browsers.open_browser(browser)
+        dwork_browsers.open_browser(browser, launch=action.launch)
     else:
         raise TypeError("Unsupported lifecycle action: " + type(action).__name__)
     return ActionStatus.COMPLETED
@@ -320,6 +306,17 @@ def registry_command(directory, options, mode, preview, name, entries):
     return switch_workspace(directory, options, mode, preview, entries, name)
 
 
+def prepare_launches(plan: ActivationPlan) -> ActivationPlan:
+    """Attach preflighted commands before any consent, persistence, or shutdown."""
+    terminals = dwork_terminals.preflight_terminals([action.task for action in plan.terminals])
+    browsers = dwork_browsers.preflight_browsers([action.browser for action in plan.browsers])
+    return replace(plan,
+        terminals=tuple(replace(action, launch=launch)
+                        for action, launch in zip(plan.terminals, terminals, strict=True)),
+        browsers=tuple(replace(action, launch=launch)
+                       for action, launch in zip(plan.browsers, browsers, strict=True)))
+
+
 def switch_workspace(directory, options, mode, preview, entries, name=None):
     known = next((e for e in entries if e["path"] == str(directory)), None)
     direct = bool(known and known.get("direct", False))
@@ -378,8 +375,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     tasks = [action.task for action in plan.terminals]
     browsers = [action.browser for action in plan.browsers]
     if not preview:
-        dwork_terminals.preflight_terminals(tasks)
-        dwork_browsers.preflight_browsers(browsers)
+        plan = prepare_launches(plan)
     if discovered:
         print("Projects found in immediate subdirectories:")
         for w in workspaces:

@@ -25,6 +25,11 @@ Each terminal and browser entry asks for confirmation separately. Omit
 readiness. Set `confirm: false` on an entry to explicitly disable its prompt.
 Preview with `dwork --dry-run`; check opener prerequisites with `dwork doctor`.
 
+Real activation prepares the selected opener and dispatch method before consent or
+outgoing workload changes, then uses that command after terminal tasks and browser
+consent. Preparing/checking an opener performs no HTTP request and opens no application.
+A dry run skips opener dependency checks; `doctor` checks dependencies separately.
+
 On **macOS**, URLs open through `/usr/bin/open` in the default browser.
 On **Linux**, URLs use `xdg-open` from `xdg-utils`, inside a graphical desktop
 session. On **WSL**, URLs use the **Windows** default browser through

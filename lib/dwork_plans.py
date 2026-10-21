@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence, TypedDict
 
 from dwork_common import BrowserTask, DworkError, TerminalTask, Workspace
+from dwork_launch import BrowserLaunch, TerminalLaunch
 
 
 ContainerSnapshot = dict[str, Any]
@@ -59,11 +60,13 @@ class WaitHealthy:
 @dataclass(frozen=True)
 class LaunchTerminal:
     task: TerminalTask
+    launch: TerminalLaunch | None = None
 
 
 @dataclass(frozen=True)
 class OpenBrowser:
     browser: BrowserTask
+    launch: BrowserLaunch | None = None
 
 
 Action = StopTask | StopContainers | StartContainer | WaitHealthy | LaunchTerminal | OpenBrowser

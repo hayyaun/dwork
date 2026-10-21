@@ -365,6 +365,12 @@ Removes only that registration. It never stops containers, closes terminals, or
 changes project files. Future switches no longer manage that workspace until it
 is registered again. An unknown name fails with a suggestion to run `dwork list`.
 
+The internal storage/policy split preserves these rules: loading a saved entry does
+not grant ownership of additional projects, and launch preflight does not authorize a
+switch. Live lock policy is still rechecked after plan-level confirmation and before
+stopping outgoing workloads. Registry version and saved fields are unchanged; no
+migration or re-registration is needed merely because of this internal refactor.
+
 ## Storage and concurrent invocations
 
 The registry is `$XDG_STATE_HOME/dwork/workspaces.json`, defaulting to

@@ -53,6 +53,17 @@ platform/desktop selection. A task's `launcher: auto` allows the environment set
 to choose. The same native launchers can be explicitly selected in WSLg when the
 emulator is installed and a graphical session is available.
 
+## Preparation before switching
+
+A real activation selects launchers, prepares argv and supervisor ownership metadata,
+and checks dependencies before confirmation or outgoing workload changes. Dispatch uses
+those prepared commands after health gates and each task's consent, without selecting a
+launcher again. Settings such as `DWORK_TERMINAL` and `SHELL` are read during preparation;
+set them before invoking dwork. Existing-window selection still happens in the terminal
+application at dispatch time. Preflight checks the command against the invoking PATH or
+its task-relative executable; a login shell finding additional programs does not bypass
+that check. A dry run does not perform this dependency preflight.
+
 ## Confirmation before each session
 
 Linux, macOS, and Windows Terminal sessions ask `(y/N)` by default, immediately

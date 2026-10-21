@@ -167,6 +167,13 @@ Current builds also block initial planning/previews when an eligible owned task'
 controller is unreachable. Protected or selected tasks retain their exclusions.
 Restore controller access before retrying; never delete records to bypass a block.
 
+Configuration parsing/resolution, registry storage/policy, and launch preparation/dispatch
+are separate internal boundaries. A successful parse is not full validation; validation
+still resolves directories and Compose references. Live preflight prepares commands before
+workload changes, but grants no consent and proves no application readiness. Set launcher
+and shell environment choices before invoking dwork. See the bundled reference for
+verification scope.
+
 Typed activation plans/actions/results are an internal refactor, not new YAML
 fields, a changed registry format, JSON CLI output, or a resume API. A rendered
 plan does not authorize execution. Keep registration/group/activation consent

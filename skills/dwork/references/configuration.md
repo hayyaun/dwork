@@ -340,6 +340,16 @@ wait for health/HTTP readiness, or open terminals/browsers. Read warnings even w
 missing containers may still block a real launch. YAML loading requires PyYAML
 in dwork's Python environment (included by the default `make install`).
 
+Current source separates data parsing, external path/Compose resolution, registry
+storage/policy, and launch preparation/dispatch. These are internal boundaries with
+unchanged YAML/registry formats and consent rules. Real activation prepares launcher
+commands and supervisor identity before workload changes and reuses those arguments at
+dispatch. Preparation neither starts a supervisor nor writes task records. Terminal
+command checks still use the invoking PATH or a task-relative executable, even when
+a login shell could find additional programs. Set `SHELL`/`DWORK_TERMINAL` before the
+invocation. A prepared command still requires the applicable confirmations and final
+lock recheck; it does not prove server readiness or browser rendering.
+
 `dwork doctor` checks configuration, Docker (when enabled), shell/command/terminal
 dependencies, and browser opener availability. It does not request HTTP pages,
 prompt, or open applications. `register` and `status` also do not probe/open

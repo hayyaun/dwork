@@ -127,7 +127,7 @@ class PlanTests(unittest.TestCase):
             mocks = self.execution_mocks(stack)
             for name in ("stop_task", "healthy", "terminal", "ready", "browser"):
                 value = mocks[name].return_value
-                mocks[name].side_effect = lambda *args, name=name, value=value: (events.append(name), value)[1]
+                mocks[name].side_effect = lambda *args, name=name, value=value, **kwargs: (events.append(name), value)[1]
             mocks["docker"].side_effect = lambda verb, *ids: events.append((verb, ids))
             mocks["confirm_terminal"].side_effect = lambda task: (events.append("confirm_terminal"), True)[1]
             mocks["confirm_browser"].side_effect = lambda browser: (events.append("confirm_browser"), True)[1]

@@ -280,11 +280,12 @@ and configuration diagnostics. Existing files can add the same comment.
 [Development](docs/development/README.md) ·
 [Publish packages](docs/publishing/README.md)
 
-The current lifecycle implementation uses typed activation plans, actions, and
-execution results while preserving the same preview, confirmation, ownership,
-and shutdown order. See the [development guide](docs/development/README.md#activation-plans-and-results)
-for the internal model and regression coverage. Configuration and registry formats
-are unchanged.
+The current lifecycle implementation separates configuration parsing from path/Compose
+resolution, registry storage from ownership policy, and launch preparation from dispatch.
+Typed activation plans carry prepared commands through the existing confirmations and
+final lock recheck. Preview behavior, ownership rules, shutdown order, and configuration/registry
+formats remain unchanged. See the [development guide](docs/development/README.md#internal-boundaries)
+for the boundaries and regression coverage.
 
 Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
 GUI behavior has not been visually verified in the WSL development environment.
