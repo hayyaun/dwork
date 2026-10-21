@@ -55,9 +55,9 @@
 - [x] Prepare and commit Homebrew, PyPI, and Debian packaging support.
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
 - [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.
-- [ ] Complete packaging review and verify the prepared changes are pushed before tagging a release.
-- [ ] Run the package verification workflow and resolve failures. Task-group and shared fake-Docker isolation fixes are complete; native hang diagnostics identified PTY test cleanup, now corrected to close the master before reaping. Expanded macOS verification is pending before tagging 0.3.0.
-- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Version 0.3.0 metadata is prepared for the macOS and browser features.
+- [x] Complete packaging review and verify the prepared changes are pushed before tagging a release.
+- [ ] Run the package verification workflow and resolve failures. Source and Python package checks pass on Linux, Apple Silicon, and Intel after task-group and portable-fixture fixes; the remaining Intel Homebrew dependency build is pending. The formula now pins the 0.3.0 tag and its verified archive checksum for follow-up verification.
+- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Tag v0.3.0 points to tested commit 33310a7; release package builds and draft creation are pending.
 - [ ] Review and publish the resulting GitHub release and its verified assets.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.

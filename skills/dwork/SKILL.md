@@ -18,6 +18,9 @@ It never creates, rebuilds, recreates, or removes containers.
 The macOS and browser options in this skill require dwork 0.3.0 or newer.
 Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
+When installation is needed, check which package channels are actually published.
+A prepared Homebrew formula in the repository does not mean its public tap is
+available; follow the installation guide for the selected release and platform.
 
 Read [the bundled configuration reference](references/configuration.md) before
 writing YAML. It includes the supported version, fields, and examples and works

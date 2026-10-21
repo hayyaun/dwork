@@ -1,11 +1,11 @@
 # Homebrew (macOS / Linux / WSL2)
 
-`dwork.rb` is a complete tap formula for the existing v0.1.0 release, with fixed
+`dwork.rb` is a complete tap formula for the v0.3.0 tag, with fixed
 source and PyYAML checksums. It uses Homebrew's documented Python virtualenv
-helpers and the release's existing Make installer. It also declares the supported
-`--HEAD` option for the main branch. Both versions can install on macOS and Linux;
-Apple Terminal support is in HEAD until a new stable release includes it. The
-stable v0.1.0 URL/checksum is intentionally unchanged.
+helpers and the shared Make installer. Stable v0.3.0 supports Apple Terminal on
+macOS, native Linux terminals, and Windows Terminal from WSL2. The formula also
+declares the supported `--HEAD` option for development builds of the main branch.
+The separate public Homebrew tap has not been published.
 
 ## Test in a local tap
 
@@ -20,8 +20,8 @@ brew test hayyaun/dwork-test/dwork
 brew audit --strict hayyaun/dwork-test/dwork
 ```
 
-To install the current main branch with Apple Terminal support after these changes
-are merged, uninstall an existing stable installation and use:
+For an optional development build of the current main branch, uninstall an
+existing stable installation and use:
 
 ```sh
 brew uninstall hayyaun/dwork-test/dwork # only if already installed
@@ -29,10 +29,11 @@ brew install --HEAD hayyaun/dwork-test/dwork
 brew test --HEAD hayyaun/dwork-test/dwork
 ```
 
-HEAD tracks development source and is not a stable release. Apple Terminal opens
-new windows; its supported scripting API cannot create tabs. The formula provides
-Python 3.14, meeting macOS's Python 3.13 minimum for tracked tasks. Docker/Compose
-and any optional graphical terminal are still installed separately.
+HEAD tracks development source and is not a stable release. Both stable and HEAD
+use Apple Terminal's new windows; its supported scripting API cannot create tabs.
+The formula provides Python 3.14, meeting macOS's Python 3.13 minimum for tracked
+tasks. Docker/Compose and any optional graphical terminal are still installed
+separately.
 
 The formula test parses a host-only YAML config and previews a workspace. It
 never starts Docker, development servers, or GUI terminals.
@@ -55,8 +56,7 @@ brew install hayyaun/tap/dwork
 This project change does not create or publish that separate repository.
 Homebrew/core inclusion is a different review process; an own tap works first.
 For new releases update the source URL/checksum and tests, plus the Python
-resource block when its dependency version changes. Once a tagged release has
-pyproject.toml, the formula can adopt `virtualenv_install_with_resources`.
+resource block when its dependency version changes.
 
 References: https://docs.brew.sh/Language-Specific-Formulae and
 https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap.

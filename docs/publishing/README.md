@@ -13,8 +13,8 @@ later interactive tests can block diagnostics. A successful run still executes
 the full suite; `make test` locally reports all failures in one run.
 
 1. Keep the MIT license and copyright notice in distributions.
-2. Commit the exact source being released. The current Python metadata and Debian
-   changelog prepare 0.3.0; existing release tags remain unchanged.
+2. Commit the exact source being released. Synchronize the Python metadata and
+   Debian upstream version with the intended tag; keep existing tags unchanged.
 3. Run `make test`, Python wheel/sdist verification, and the relevant channel build.
 4. Tag the tested commit and publish the matching GitHub release. Never rewrite
    existing release tags or reuse a published PyPI version.
@@ -76,10 +76,10 @@ Homebrew/AUR updates, and apt repository publication remain separate manual work
   validated on Arch. AUR account registration was temporarily closed on
   2026-10-20; recheck availability before submission. Push recipes to AUR's
   separate SSH Git repository, not package binaries.
-- [Homebrew](../../packaging/homebrew/README.md): the stable formula still pins
-  v0.1.0; HEAD supports Linux, macOS, and WSL with pinned PyYAML. Update its source
-  URL and checksum after the new tag exists, then publish it in
-  `hayyaun/homebrew-tap/Formula/dwork.rb` after testing.
+- [Homebrew](../../packaging/homebrew/README.md): the prepared stable v0.3.0
+  formula supports Linux, macOS, and WSL2 with pinned PyYAML. Its source URL and
+  checksum match the v0.3.0 tag archive. Test it before publishing it in the
+  separate `hayyaun/homebrew-tap/Formula/dwork.rb` repository.
 - [PyPI](../../packaging/python/README.md): `dwork-cli` wheel/sdist and `dwork`
   console command. TestPyPI first; Trusted Publishing is recommended for CI.
   The separate PyPI name `dwork` belongs to an unrelated project.

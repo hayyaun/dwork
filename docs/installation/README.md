@@ -66,8 +66,9 @@ not advertised as published registry packages yet.
 - Python: install this checkout using `pipx install .` or `uv tool install .`.
   The distribution is named `dwork-cli`, while the command remains `dwork`.
   Registry installation by name must wait for publication.
-- Homebrew: test the formula in a local tap using the
-  [Homebrew guide](../../packaging/homebrew/README.md). A public tap is separate.
+- Homebrew: test the prepared v0.3.0 formula in a local tap using the
+  [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.3.0 includes
+  macOS support; a public tap is separate and has not been published.
 - Debian/Ubuntu: build with `python3 scripts/build-deb.py`, then install the
   verified local `.deb` with apt. See the
   [Debian guide](../../packaging/debian/README.md) for build prerequisites.
