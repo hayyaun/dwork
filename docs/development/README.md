@@ -49,7 +49,8 @@ ownership boundaries, saved selections, target changes, missing directories, and
 a real pseudo-terminal, including keyboard navigation and terminal restoration.
 The restoration check compares all terminal settings except macOS's transient
 `PENDIN` input-queue state. Completion tests reap their own interactive shells
-after checking real Tab input. Direct-import tests use the fixture's fake Docker;
+after checking real Tab input. The shared fixture prepends fake Docker to `PATH`
+for both direct imports and CLI subprocesses, regardless of host Docker availability;
 confirmation tests select a fake native terminal adapter for the runner's OS.
 `test_locked.py` checks live lock policy and protection during switching/shutdown.
 `test_tasks.py` starts short-lived harmless processes to verify authenticated

@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SOURCE = Path(__file__).resolve().parents[1] / "dwork.sh"
 FAKE_DOCKER = r"""#!/usr/bin/env python3
@@ -80,6 +81,12 @@ class DworkTests(unittest.TestCase):
         executable = self.bin / "docker"
         executable.write_text(FAKE_DOCKER)
         executable.chmod(0o755)
+        # Direct-import tests need the same fake Docker availability as CLI tests.
+        environment = patch.dict(os.environ, {
+            "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
+        })
+        environment.start()
+        self.addCleanup(environment.stop)
         self.log = self.base / "docker.jsonl"
         self.shells = [s for s in ("bash", "zsh") if shutil.which(s)]
         self.assertTrue(self.shells, "Bash or Zsh is required")
