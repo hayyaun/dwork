@@ -7,7 +7,49 @@ flags, registered workspace names after `switch`/`sw`, `forget`/`rm`, and `renam
 or directory paths after Compose options such as `-f` and `--project-directory`.
 This includes `--version`, `init --dry-run`, and Compose-selection flags for `validate`.
 
-## Enable it
+## Package and Make installations
+
+Current Make installs generate native completion files as well as the existing
+sourceable scripts. Package recipes select their platform's standard directories:
+
+- Debian/Ubuntu: `/usr/share/bash-completion/completions/dwork` and
+  `/usr/share/zsh/vendor-completions/_dwork`.
+- Fedora/Arch: `/usr/share/bash-completion/completions/dwork` and
+  `/usr/share/zsh/site-functions/_dwork`.
+- Homebrew: its `bash_completion` directory (`etc/bash_completion.d/dwork`) and
+  `zsh_completion` directory (`share/zsh/site-functions/_dwork`) under the formula
+  prefix, linked by Homebrew into its shared prefix.
+- Other Make installs: `PREFIX/share/bash-completion/completions/dwork` and
+  `PREFIX/share/zsh/site-functions/_dwork`.
+
+When the shell's completion framework already searches those directories, no
+dwork-specific sourcing line is needed. Reopen the shell after installation.
+Bash needs `bash-completion` installed and loaded; the default `~/.local` install
+is discoverable through its usual user-data directory. Zsh needs the directory
+in `fpath` before `compinit` runs. Oh My Zsh already calls `compinit`. With
+Homebrew, run `brew shellenv` before Oh My Zsh/`compinit` so Homebrew's completion
+directory is included. See [Homebrew's shell setup](https://docs.brew.sh/Shell-Completion).
+Installation does not configure these shell-wide prerequisites or edit rc files.
+
+For package staging, Make accepts `BASH_COMPLETION_DIR` and `ZSH_COMPLETION_DIR`.
+They are final absolute paths under `PREFIX`, without `DESTDIR`; the installer
+applies staging itself. Supported directories are `share/bash-completion/completions`
+or `etc/bash_completion.d` for Bash, and `share/zsh/site-functions` or
+`share/zsh/vendor-completions` for Zsh. Debian's recipe explicitly chooses the
+vendor directory. Custom prefixes and the default user prefix may need the
+manual setup below, particularly for Zsh.
+
+The native Zsh file is an autoload function body that sources the shared
+completion definition and calls it on the first Tab request. The public
+`dwork completion zsh` output remains sourceable. Make records ownership and
+hashes for native files, refuses unrelated or modified files, and removes owned
+files on uninstall without removing shared completion directories. Existing
+sourceable paths remain available for users who already configured them.
+
+These paths apply to new builds from this source. Previously published release
+assets are unchanged and may still require explicit sourcing.
+
+## Manual setup: source, Python, and custom prefixes
 
 For Bash, add this to `~/.bashrc`:
 
@@ -34,16 +76,17 @@ or framework. Reopen the shell, or run the appropriate `source <(...)` line in t
 current shell after initialization. The `dwork` command must be on PATH or available
 as the sourced dwork function before these lines run.
 
-The Make installer also generates owned scripts at
+The Make installer keeps sourceable scripts at
 `PREFIX/share/dwork/completions/dwork.bash` and `PREFIX/share/dwork/completions/_dwork`.
-It prints shell-specific source instructions, with your actual prefix. These can
+It prints native paths and fallback source instructions with your actual prefix. These can
 be sourced instead of generating a script during shell startup. Install/uninstall
 never edits `.bashrc` or `.zshrc`; uninstall removes the owned scripts along with
 the installation. Remove any corresponding startup line yourself when uninstalling.
 The Zsh script is intended to be sourced after `compinit`.
 
 Python package installations support the same `dwork completion bash|zsh` commands
-without needing the Make-generated scripts.
+but do not install native completion files. `dwork.sh` also keeps its existing
+behavior: it defines the command and leaves completion setup explicit.
 
 ## Examples
 

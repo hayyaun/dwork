@@ -123,11 +123,16 @@ or `package.json`, then moves to the next project.
 [Skip list and repo markers →](docs/workspaces/README.md#scan-a-directory-tree)
 
 `switch` uses the saved directory and Compose options; your current shell stays
-where it is. [Workspace registration and switching →](docs/workspaces/README.md)
+where it is. It shuts down other eligible registered workspaces before activating
+the selected one. The selected workspace, including all members of a discovered
+group, stays running. [Workspace registration and switching →](docs/workspaces/README.md)
 
 Use `dwork down --dry-run` to preview shutdown. `down` respects
 `DWORK_KEEP_PROJECTS` and locked workspaces, and keeps containers, networks, and volumes for next time.
 
+Switching and `down` share shutdown rules: stop tracked commands first, then
+registered containers in one Docker batch. `switch` excludes the selected workspace;
+`down` excludes none. This shared lifecycle was added after release 0.3.0.
 Tracked terminal commands stop while their windows stay open at a shell prompt.
 Detached tasks (`window: none`) stop too. Commands started outside dwork or by
 versions without task tracking are not tracked. [Task lifecycle details →](docs/terminals/README.md#tracked-commands-and-shutdown)
@@ -150,7 +155,14 @@ Enter or `n` cancels; `--dry-run` previews without prompting.
 
 ## Tab completion
 
-Enable once in your shell startup file:
+Native package builds and the Homebrew formula install completion files in the
+standard shell directories. With Bash's `bash-completion` framework or Zsh's
+`compinit` already configured, reopen your shell to discover them automatically.
+This applies to builds containing the updated packaging; older release assets
+may still need the manual setup below.
+
+For manual sourcing, Python packages, or a prefix outside your shell's completion
+search path, enable once in your shell startup file:
 
 ```sh
 # Bash (~/.bashrc)

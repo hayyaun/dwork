@@ -1,6 +1,6 @@
 # dwork AUR packaging
 
-Upstream release: https://github.com/hayyaun/dwork/releases/tag/v0.1.0
+Upstream release: https://github.com/hayyaun/dwork/releases/tag/v0.3.0
 
 This directory prepares the stable `dwork` AUR package. It has not been submitted.
 AUR new-account registration was temporarily closed on 2026-10-20.
@@ -10,13 +10,20 @@ On Arch Linux, build as an ordinary user:
 ```sh
 makepkg --printsrcinfo > .SRCINFO
 makepkg -s
-sudo pacman -U dwork-0.1.0-1-any.pkg.tar.zst
+sudo pacman -U dwork-0.3.0-1-any.pkg.tar.zst
 dwork --help
 ```
 
 Inspect `PKGBUILD` and the generated package before installing. Never run makepkg
 as root. The recipe uses distribution Python/YAML, downloads no pip dependencies,
 and includes the MIT license in `/usr/share/licenses/dwork/LICENSE`.
+
+The prepared recipe now uses the verified v0.3.0 source archive and adds native
+Bash/Zsh completion entries from that release's sourceable scripts. Bash files
+go into `/usr/share/bash-completion/completions`, and the Zsh autoload entry goes
+into `/usr/share/zsh/site-functions`. Existing shell completion setup discovers
+them without a dwork-specific rc line. This recipe update is not an AUR submission;
+the historical validation below covers 0.1.0, not this updated build.
 
 Once you have an AUR account, add your SSH public key in its settings, then clone
 `ssh://aur@aur.archlinux.org/dwork.git` into a separate empty directory. Recheck
@@ -58,7 +65,7 @@ fingerprints published at https://aur.archlinux.org/ before accepting it.
 
 ```sh
 git add PKGBUILD .SRCINFO
-git commit -m "Add dwork 0.1.0"
+git commit -m "Add dwork 0.3.0"
 git push origin master
 ```
 

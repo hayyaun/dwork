@@ -44,12 +44,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: sudo apt-get update && sudo apt-get install -y build-essential debhelper python3-yaml zsh lintian
+      - run: sudo apt-get update && sudo apt-get install -y build-essential debhelper python3-yaml python3-jsonschema bash-completion zsh lintian
       - run: python3 scripts/build-deb.py
       - run: lintian dist/debian/*.deb
       - run: |
           sudo apt-get install -y ./dist/debian/dwork_*_all.deb
           /usr/bin/dwork --help
+          test -f /usr/share/bash-completion/completions/dwork
+          test -f /usr/share/zsh/vendor-completions/_dwork
+          zsh -fc 'autoload -Uz compinit; compinit -D; [[ ${_comps[dwork]} == _dwork ]]'
           mkdir -p /tmp/dwork-deb-smoke
           printf 'version: 1\ncompose:\n  enabled: false\n' > /tmp/dwork-deb-smoke/dwork.yml
           cd /tmp/dwork-deb-smoke

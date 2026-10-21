@@ -10,10 +10,13 @@ BuildArch:      noarch
 BuildRequires:  make
 BuildRequires:  python3-devel >= 3.10
 BuildRequires:  python3-pyyaml
+BuildRequires:  python3-jsonschema
+BuildRequires:  bash-completion
 BuildRequires:  zsh
 BuildRequires:  docker-cli
 Requires:       python3 >= 3.10
 Requires:       python3-pyyaml
+Recommends:     bash-completion
 
 %description
 Resume existing Docker Compose containers, stop other projects, wait for
@@ -37,3 +40,5 @@ Supports Linux desktops and WSL2. Containers are never created or rebuilt.
 %doc README.md
 %{_bindir}/dwork
 %{_datadir}/dwork/
+%{_datadir}/bash-completion/completions/dwork
+%{_datadir}/zsh/site-functions/_dwork

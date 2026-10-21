@@ -10,7 +10,10 @@ dwork resumes existing Compose containers, stops other registered workspaces on
 the same Docker target unless excluded, checks health prerequisites, and opens
 host commands in terminals or the background, then opens configured browser URLs
 with optional HTTP readiness. Unregistered projects stay running. Host commands are
-tracked for `dwork down`; ordinary workspace switches leave them running.
+tracked for shutdown. Switches and `dwork down` share the same shutdown rules:
+stop eligible registered host commands before containers, excluding the selected
+registration and all its group members only during a switch. Destination startup
+begins after shutdown succeeds. Locks and `DWORK_KEEP_PROJECTS` protect both.
 It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
@@ -27,9 +30,16 @@ it does not check running containers or desktop prerequisites.
 The macOS and browser options in this skill require dwork 0.3.0 or newer.
 Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
+Stopping outgoing tracked commands during switches was added after 0.3.0;
+verify the installed runtime includes this behavior before promising it.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
+Native package builds with the updated installer place completion files in the
+platform's discovery directories; the shell still needs its completion framework
+enabled. Source/Python installs and prefixes outside the shell's search path need
+explicit completion setup. Do not assume older published assets include the new
+paths; see the bundled reference before suggesting a shell change.
 Verified 0.3.0 packages are available from
 [GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0); select the
 appropriate platform package and verify its checksum before installation.
@@ -88,8 +98,9 @@ invent service names, commands, health checks, or folders.
   and xterm support new windows only; do not emulate tabs with UI keystrokes.
 - Use `window: none` only for commands the user wants detached with output
   discarded. Tracked terminal/background commands need Python 3.13+ on macOS;
-  Linux/WSL require Python 3.10+. `down` stops their process groups and leaves
-  visible terminal windows at a shell prompt.
+  Linux/WSL require Python 3.10+. Switching away or `down` stops eligible process
+  groups and leaves visible terminal windows at a shell prompt. Selected-workspace
+  tasks remain running; activation still launches approved configured tasks again.
 - Add `browsers` only for requested application pages. Keep per-browser
   confirmation enabled unless the user explicitly opts out. Browser entries run
   after all terminal tasks are dispatched; their HTTP wait is separate from
@@ -129,7 +140,10 @@ to check configuration without registration or workload inspection. Then, if dwo
 `dwork --dry-run` **from the directory containing the generated file**. This
 previews operations without switching containers, waiting, prompting, or opening
 terminals or browsers. Compose-enabled previews still need Docker/Compose and access to the
-Docker daemon. Host-only previews do not need Docker.
+Docker daemon. Host-only activation also needs Docker when Compose registrations
+exist, to shut down outgoing containers on the current target. An entirely
+host-only registry needs no Docker. Local tracked commands are considered across
+saved Docker targets; container shutdown stays scoped to the current target.
 
 Inspect warnings as well as the exit status: a successful dry run can still warn
 about missing containers or blocked terminal launches. If dwork or a dependency
@@ -146,7 +160,9 @@ exact error. Preserve the authenticated task-controller records; do not replace
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new
 directory and asks to apply the plan on later activations unless root
-`confirm: false` is set. It can stop other registered workspaces before terminal confirmation;
+`confirm: false` is set. It stops other eligible registered commands before their
+containers and before terminal confirmation; missing outgoing directories do not
+remove their saved ownership from the shutdown plan.
 `DWORK_KEEP_PROJECTS` can preserve registered shared projects. `dwork register NAME`
 remembers without activating, `dwork list` shows remembered directories,
 `dwork switch NAME` activates from anywhere, and `dwork forget NAME` removes only

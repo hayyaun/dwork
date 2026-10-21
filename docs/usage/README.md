@@ -44,8 +44,10 @@ waiting for health checks, opening terminals, or registering directories.
    Declining or end-of-input cancels without switching.
    For a remembered single workspace, asks to apply the plan unless the selected
    `dwork.yml` sets root-level `confirm: false`.
-4. Stops running or restarting managed containers belonging to other registered
-   workspaces on the same Docker target, except projects you explicitly keep running.
+4. Uses the same shutdown path as `down`, excluding the selected registration and
+   its group members: stops outgoing tracked commands first, then running,
+   restarting, or paused managed containers on the current Docker target in one
+   Docker stop call. Locks and `DWORK_KEEP_PROJECTS` protect both kinds of workload.
 5. Starts selected-project containers whose state is `created` or `exited`.
 
 It uses `docker stop` and `docker start`. It never calls `docker compose up`,
@@ -139,11 +141,19 @@ running. Docker's normal stop signal and timeout behavior apply to containers.
 See [tracked command shutdown](../terminals/README.md#tracked-commands-and-shutdown)
 for process-group shutdown and tracking limits.
 
-Unlike a workspace switch, explicit `down` also stops registered workloads whose
-directories have moved or disappeared. It uses the saved ownership, without
-loading Compose models or requiring terminal dependencies; it reads YAML lock policies. A batch error or
+Both switches and `down` stop eligible registered workloads whose directories have
+moved or disappeared, using saved ownership and the last known lock policy.
+`down` does so without loading Compose models or requiring terminal dependencies;
+it reads YAML lock policies. A batch error or
 interruption reports the refreshed state of each selected container when available;
 some containers may already have stopped. No rollback is attempted.
+
+The shared shutdown behavior was added after release 0.3.0. Switching to a host-only
+workspace still shuts down outgoing Compose containers on the current Docker target
+when Compose registrations exist. With an entirely host-only registry, switching
+and `down` need no Docker connection. Local tracked commands are considered across
+registered workspaces regardless of their saved Docker target. Selected-workspace
+tasks stay running; each activation still launches approved configured tasks again.
 
 ### Colored output
 
@@ -299,7 +309,9 @@ commands and environment, then use `dwork` for subsequent switches.
 ### Limits and behavior
 
 - Uses the Docker daemon/context selected by your Docker CLI. Check that context
-  before switching; only other registered workspaces on that target are in scope.
+  before switching; only containers owned on that target are in scope. Tracked
+  commands are local and stop across eligible registered workspaces regardless of
+  their saved Docker targets.
 - Matches containers by the standard `com.docker.compose.project` label. Separate
   registered directories cannot claim the same Compose project on the same target.
   Use distinct Compose project names for repositories and Git worktrees. An

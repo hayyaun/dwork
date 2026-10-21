@@ -49,7 +49,7 @@
       }
     },
     "terminals": {
-      "description": "Host commands to launch after container switching and all terminal health gates. Each invocation launches them again.",
+      "description": "Tracked host commands to launch after outgoing workspace shutdown, container startup, and all terminal health gates. Switching away or dwork down stops eligible commands. Each activation launches them again.",
       "type": "array",
       "default": [],
       "items": {"$ref": "#/definitions/terminal"}

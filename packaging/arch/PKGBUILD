@@ -8,8 +8,9 @@ url='https://github.com/hayyaun/dwork'
 license=('MIT')
 depends=('sh' 'python>=3.10' 'python-yaml')
 makedepends=('make')
-checkdepends=('zsh' 'docker')
+checkdepends=('zsh' 'docker' 'python-jsonschema' 'bash-completion')
 optdepends=(
+  'bash-completion: discover Bash command completions'
   'docker: manage existing project containers'
   'docker-compose: read Compose workspace configuration'
   'gnome-terminal: launch development terminals on GNOME'

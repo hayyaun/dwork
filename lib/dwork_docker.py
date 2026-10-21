@@ -125,7 +125,7 @@ def report_failure(completed, pending, step, containers):
     print("Completed: " + ("; ".join(completed) or "none"), file=sys.stderr)
     print("Not confirmed complete: " + ("; ".join(pending) or "none"), file=sys.stderr)
     print("The interrupted or failed operation may have changed state; inspect before retrying.", file=sys.stderr)
-    print("No automatic rollback was attempted. Host commands are not supervised.", file=sys.stderr)
+    print("No automatic rollback was attempted. Inspect tracked host commands with dwork down --dry-run.", file=sys.stderr)
     try:
         current = inventory() if containers else []
         running = [((c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project", "?")

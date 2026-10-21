@@ -278,6 +278,177 @@ class TaskTests(unittest.TestCase):
         self.assertIsNone(process.poll())
         self.assertEqual(dwork_tasks.request(record, "status")["state"], "running")
 
+    def test_host_only_switch_stops_outgoing_tasks_and_preserves_selected_workspace(self):
+        selected = self.fixture.base / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text("version: 1\ncompose: {enabled: false}\n")
+        result, _, _ = self.cli("register selected", cwd=selected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        outgoing, outgoing_record = self.launch()
+        task = self.task()
+        task.workspace = task.directory = str(selected)
+        task.project = selected.name
+        retained, retained_record = self.launch(task)
+
+        result, changes, calls = self.cli("switch selected --dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Would stop task: host/Worker", result.stdout)
+        self.assertNotIn("Would stop task: selected/Worker", result.stdout)
+        self.assertEqual(changes, [])
+        self.assertEqual(calls, [])
+        self.assertEqual(dwork_tasks.request(outgoing_record, "status")["state"], "running")
+
+        result, changes, calls = self.cli("switch selected")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(outgoing.wait(timeout=6), 0)
+        self.assertEqual(dwork_tasks.request(retained_record, "status")["state"], "running")
+        self.assertEqual(changes, [])
+        self.assertEqual(calls, [])
+
+        result, _, _ = self.cli("down", answer="y\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(retained.wait(timeout=6), 0)
+
+    def test_switch_preserves_all_selected_group_members(self):
+        group = self.fixture.base / "selected"
+        for name in ("api", "ui"):
+            child = group / name
+            child.mkdir(parents=True)
+            (child / "dwork.yml").write_text("version: 1\ncompose: {enabled: false}\n")
+        result, _, _ = self.cli("register selected", cwd=group)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        outgoing, _ = self.launch()
+        retained = []
+        for name in ("api", "ui"):
+            task = self.task()
+            task.workspace, task.directory, task.project = str(group), str(group / name), name
+            retained.append(self.launch(task))
+        result, changes, _ = self.cli("switch selected", answer="y\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(outgoing.wait(timeout=6), 0)
+        self.assertEqual(changes, [])
+        for process, record in retained:
+            self.assertIsNone(process.poll())
+            self.assertEqual(dwork_tasks.request(record, "status")["state"], "running")
+
+    def test_switch_respects_locked_and_kept_outgoing_group_tasks(self):
+        group = self.fixture.base / "outgoing"
+        for name, locked in (("locked", True), ("kept", False), ("worker", False)):
+            child = group / name
+            child.mkdir(parents=True)
+            (child / "dwork.yml").write_text(json.dumps({"version": 1, "locked": locked,
+                                                        "compose": {"enabled": False}}))
+        result, _, _ = self.cli("register outgoing", cwd=group)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        tasks = {}
+        for name in ("locked", "kept", "worker"):
+            task = self.task()
+            task.workspace, task.directory, task.project = str(group), str(group / name), name
+            tasks[name] = self.launch(task)
+        result, _, _ = self.cli("switch host", DWORK_KEEP_PROJECTS="kept")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(tasks["worker"][0].wait(timeout=6), 0)
+        for name in ("locked", "kept"):
+            process, record = tasks[name]
+            self.assertIsNone(process.poll())
+            self.assertEqual(dwork_tasks.request(record, "status")["state"], "running")
+
+    def test_switch_controller_failure_prevents_destination_launch(self):
+        selected = self.fixture.base / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
+            "terminals": [{"command": [sys.executable, "-c", "pass"], "window": "none", "confirm": False}]}))
+        result, _, _ = self.cli("register selected", cwd=selected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        process, record = self.launch()
+        with dwork_registry.registry_lock(), \
+                patch.object(dwork_tasks, "running", return_value=[record]), \
+                patch.object(dwork_tasks, "request", side_effect=TimeoutError("controller timed out")), \
+                patch.object(dwork_terminals, "open_terminal") as launch, \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+            with self.assertRaisesRegex(dwork_common.DworkError, "incomplete"):
+                dwork_workspaces.registry_command(self.root, [], "switch", False, "selected",
+                                                  dwork_registry.read_registry())
+        launch.assert_not_called()
+        self.assertIn("Switch incomplete", errors.getvalue())
+        self.assertIsNone(process.poll())
+
+    def test_task_finishing_during_confirmation_does_not_abort_shutdown_or_activation(self):
+        selected = self.fixture.base / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
+            "terminals": [{"command": ["echo", "ready"], "window": "none", "confirm": False}]}))
+        result, _, _ = self.cli("register selected", cwd=selected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for mode in ("down", "activate"):
+            with self.subTest(mode=mode):
+                finished = self.root / ("finish-" + mode)
+                code = ("from pathlib import Path\nimport time\nwhile not Path("
+                        + repr(str(finished)) + ").exists(): time.sleep(.01)")
+                process, record = self.launch(self.task([sys.executable, "-c", code]))
+                def finish_and_accept(prompt):
+                    finished.touch()
+                    self.assertEqual(process.wait(timeout=6), 0)
+                    self.assertFalse((self.state / "tasks" / (record["token"] + ".json")).exists())
+                    return True
+                with dwork_registry.registry_lock(), \
+                        patch.object(dwork_common, "confirm_action", side_effect=finish_and_accept), \
+                        patch.object(dwork_terminals, "open_terminal", return_value=123) as opener, \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    entries = dwork_registry.read_registry()
+                    if mode == "down":
+                        self.assertEqual(dwork_workspaces.down_workspaces(entries, False), 0)
+                        opener.assert_not_called()
+                    else:
+                        self.assertEqual(dwork_workspaces.registry_command(
+                            selected, [], mode, False, None, entries), 0)
+                        opener.assert_called_once()
+
+    def test_completed_task_is_never_reported_as_container_recovery_after_switch_failure(self):
+        selected = self.fixture.base / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
+            "terminals": [{"command": ["echo", "ready"], "window": "none", "confirm": False}]}))
+        result, _, _ = self.cli("register selected", cwd=selected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        process, _ = self.launch()
+        with dwork_registry.registry_lock(), \
+                patch.object(dwork_terminals, "open_terminal", side_effect=dwork_common.DworkError("failed launch")), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+            with self.assertRaisesRegex(dwork_common.DworkError, "failed launch"):
+                dwork_workspaces.registry_command(self.root, [], "switch", False, "selected",
+                                                  dwork_registry.read_registry())
+        self.assertEqual(process.wait(timeout=6), 0)
+        self.assertIn("Completed: stopped task", errors.getvalue())
+        self.assertNotIn("docker start task", errors.getvalue())
+
+    def test_stop_accepts_disappeared_connection_only_after_supervisor_record_is_removed(self):
+        record = {"token": "a" * 48}
+        state = self.fixture.base / "completed-state"
+        path = state / "tasks" / (record["token"] + ".json")
+        for error in (FileNotFoundError("gone"), ConnectionRefusedError("gone"),
+                      ConnectionResetError("gone"), BrokenPipeError("gone"),
+                      json.JSONDecodeError("empty response", "", 0)):
+            with self.subTest(error=type(error).__name__):
+                with patch.object(dwork_tasks, "request", side_effect=error):
+                    self.assertFalse(dwork_tasks.stop(record, state))
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("{}")
+                    try:
+                        with self.assertRaises(type(error)):
+                            dwork_tasks.stop(record, state)
+                    finally:
+                        path.unlink()
+        for error in (TimeoutError("slow"), PermissionError("denied"), ValueError("wrong token"),
+                      json.JSONDecodeError("bad response", "not JSON", 0)):
+            with self.subTest(error=type(error).__name__), patch.object(dwork_tasks, "request", side_effect=error):
+                with self.assertRaises(type(error)):
+                    dwork_tasks.stop(record, state)
+        with patch.object(dwork_tasks, "request") as request:
+            with self.assertRaisesRegex(ValueError, "Invalid task controller token"):
+                dwork_tasks.stop({"token": "../../outside"}, state)
+        request.assert_not_called()
+
     def test_combined_plan_stops_tasks_before_registered_containers(self):
         (self.root / "dwork.yml").write_text("version: 1\n")
         self.fixture.model(self.root, self.root.name)

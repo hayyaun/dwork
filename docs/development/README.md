@@ -21,7 +21,9 @@
 - [`lib/dwork_scan.py`](../../lib/dwork_scan.py): repository scanning, the
   Compose checkbox picker, and bulk registration.
 - [`lib/dwork_workspaces.py`](../../lib/dwork_workspaces.py): switch and shutdown
-  plans, protection policy, confirmations, and execution.
+  plans, shared shutdown selection/execution, protection policy, and confirmations.
+  Switches exclude the selected registration; `down` uses the same path without
+  an exclusion. Both stop commands before containers and recheck locks after prompts.
 - [`lib/dwork_common.py`](../../lib/dwork_common.py): shared models, errors,
   terminal choices, and console formatting.
 - [`lib/dwork_tasks.py`](../../lib/dwork_tasks.py): local task supervision and
@@ -77,9 +79,16 @@ after checking real Tab input. The shared fixture prepends fake Docker to `PATH`
 for both direct imports and CLI subprocesses, regardless of host Docker availability;
 confirmation tests select a fake native terminal adapter for the runner's OS.
 `test_locked.py` checks live lock policy and protection during switching/shutdown.
+`test_shutdown.py` checks common shutdown ownership and protection rules, paused
+containers, batch ordering, host-only destinations, missing directories, and Docker
+target isolation. `test_tasks.py` also verifies outgoing-command shutdown during
+switches, selected group preservation, and activation aborts after controller failure.
 `test_tasks.py` starts short-lived harmless processes to verify authenticated
 controllers, process-group shutdown, protected workspaces, cancelled previews,
-and returning a real pseudo-terminal to an ordinary usable shell.
+normal task completion during confirmation, and returning a real pseudo-terminal
+to an ordinary usable shell. Shutdown recognizes completed cleanup only when a
+controller connection disappears and the supervisor's token record is absent;
+authentication, permission, and active-controller failures still abort the plan.
 Task tests have a 30-second POSIX alarm that dumps blocked Python frames before
 terminating the test process. This keeps native-terminal CI diagnostics bounded
 without starting a watchdog thread before `pty.fork`.
@@ -99,6 +108,13 @@ exits. Group creation and joining use the documented
 
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.
+They also check native completion paths, migration from older install markers,
+preservation of modified/unrelated completions and shared directories, Zsh
+discovery through `fpath`/`compinit`, and Bash discovery when `bash-completion`
+is available. Real Tab tests cover the installed Zsh autoload entry as well as
+explicitly sourced Bash/Zsh scripts, including the first completion request.
+Native-file hashes are stored in the install marker; uninstall uses those
+recorded paths, so distro-specific directory flags are not needed again.
 The default venv installation is additionally smoke-tested in a temporary prefix.
 
 ## CI coverage

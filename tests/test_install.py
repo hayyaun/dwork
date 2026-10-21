@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shlex
+import shutil
 import sys
 import tempfile
 import unittest
@@ -45,31 +47,48 @@ class InstallTests(unittest.TestCase):
         )
         self.assertIn("complete -o", (self.prefix / "share/dwork/completions/dwork.bash").read_text())
         self.assertIn("compdef _dwork dwork", (self.prefix / "share/dwork/completions/_dwork").read_text())
+        self.assertEqual((self.prefix / "share/dwork/completions/dwork.bash").read_bytes(),
+                         (self.prefix / "share/bash-completion/completions/dwork").read_bytes())
+        native_zsh = (self.prefix / "share/zsh/site-functions/_dwork").read_text()
+        self.assertTrue(native_zsh.startswith("#compdef dwork\n"))
+        self.assertIn(shlex.quote(str(self.prefix / "share/dwork/completions/_dwork")), native_zsh)
         result = subprocess.run(["make", "uninstall", "PREFIX=" + str(self.prefix),
                                  "PYTHON=" + sys.executable], cwd=REPO,
                                 text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(executable.exists())
         self.assertFalse((self.prefix / "share/dwork").exists())
+        self.assertFalse((self.prefix / "share/bash-completion/completions/dwork").exists())
+        self.assertFalse((self.prefix / "share/zsh/site-functions/_dwork").exists())
 
     def test_reinstall_and_uninstall_preserve_unrelated_files(self):
         self.assertEqual(self.installer("install", "--venv", "0").returncode, 0)
         unrelated = self.prefix / "bin/another-tool"
         unrelated.write_text("preserve")
+        other_completion = self.prefix / "share/zsh/site-functions/_another_tool"
+        other_completion.write_text("preserve completion")
         self.assertEqual(self.installer("install", "--venv", "0").returncode, 0)
         result = self.installer("uninstall")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(unrelated.read_text(), "preserve")
+        self.assertEqual(other_completion.read_text(), "preserve completion")
         self.assertEqual(self.installer("uninstall").returncode, 0)
 
     def test_destdir_is_not_embedded_in_launcher(self):
         stage = self.root / "staging"
         result = self.installer("install", "--venv", "0", "--destdir", str(stage),
+                                "--zsh-completion-dir", "/usr/share/zsh/vendor-completions",
                                 prefix=Path("/usr"))
         self.assertEqual(result.returncode, 0, result.stderr)
         launcher = stage / "usr/bin/dwork"
         self.assertIn("/usr/share/dwork/lib/dwork.py", launcher.read_text())
         self.assertNotIn(str(stage), launcher.read_text())
+        self.assertTrue((stage / "usr/share/zsh/vendor-completions/_dwork").is_file())
+        native_zsh = (stage / "usr/share/zsh/vendor-completions/_dwork").read_text()
+        self.assertIn("/usr/share/dwork/completions/_dwork", native_zsh)
+        self.assertNotIn(str(stage), native_zsh)
+        self.assertTrue((stage / "usr/share/bash-completion/completions/dwork").is_file())
+        self.assertFalse((stage / "usr/share/zsh/site-functions/_dwork").exists())
         self.assertEqual(
             {module.name for module in (REPO / "lib").glob("*.py")},
             {module.name for module in (stage / "usr/share/dwork/lib").glob("*.py")},
@@ -77,6 +96,78 @@ class InstallTests(unittest.TestCase):
         result = self.installer("uninstall", "--destdir", str(stage), prefix=Path("/usr"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(launcher.exists())
+        self.assertFalse((stage / "usr/share/zsh/vendor-completions/_dwork").exists())
+
+    def test_homebrew_completion_layout(self):
+        result = self.installer("install", "--venv", "0", "--bash-completion-dir",
+                                str(self.prefix / "etc/bash_completion.d"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.prefix / "etc/bash_completion.d/dwork").is_file())
+        self.assertTrue((self.prefix / "share/zsh/site-functions/_dwork").is_file())
+        self.assertEqual(self.installer("uninstall").returncode, 0)
+        self.assertFalse((self.prefix / "etc/bash_completion.d/dwork").exists())
+
+    @unittest.skipUnless(shutil.which("zsh"), "Zsh is not installed")
+    def test_installed_zsh_completion_is_discovered_by_compinit(self):
+        self.assertEqual(self.installer("install", "--venv", "0").returncode, 0)
+        script = ("fpath=(" + shlex.quote(str(self.prefix / "share/zsh/site-functions"))
+                  + " $fpath); autoload -Uz compinit; compinit -D -i; "
+                  + "print -r -- ${_comps[dwork]}")
+        result = subprocess.run(["zsh", "-f", "-c", script], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "_dwork")
+
+    def test_upgrade_from_legacy_marker_adds_native_completions(self):
+        self.assertEqual(self.installer("install", "--venv", "0").returncode, 0)
+        marker = self.prefix / "share/dwork/.dwork-install.json"
+        record = json.loads(marker.read_text())
+        for relative in record.pop("completions"):
+            (self.prefix / relative).unlink()
+        marker.write_text(json.dumps(record))
+        result = self.installer("install", "--venv", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.prefix / "share/zsh/site-functions/_dwork").is_file())
+        self.assertEqual(self.installer("uninstall").returncode, 0)
+
+    def test_modified_completions_are_preserved_before_any_removal(self):
+        for relative in ("share/bash-completion/completions/dwork", "share/zsh/site-functions/_dwork"):
+            with self.subTest(completion=relative):
+                prefix = self.root / relative.split("/")[1]
+                self.assertEqual(self.installer("install", "--venv", "0", prefix=prefix).returncode, 0)
+                path = prefix / relative
+                path.write_text("my edited completion")
+                for action in ("install", "uninstall"):
+                    args = ("--venv", "0") if action == "install" else ()
+                    result = self.installer(action, *args, prefix=prefix)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("completion was modified", result.stderr)
+                    self.assertEqual(path.read_text(), "my edited completion")
+                    self.assertTrue((prefix / "bin/dwork").is_file())
+
+    def test_unrelated_native_completion_blocks_install_without_writes(self):
+        path = self.prefix / "share/zsh/site-functions/_dwork"
+        path.parent.mkdir(parents=True)
+        path.write_text("unrelated completion")
+        result = self.installer("install", "--venv", "0")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unrelated completion", result.stderr)
+        self.assertEqual(path.read_text(), "unrelated completion")
+        self.assertFalse((self.prefix / "share/dwork").exists())
+
+    def test_native_completion_links_and_invalid_directories_are_rejected(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        directory = self.prefix / "share/zsh"
+        directory.mkdir(parents=True)
+        (directory / "site-functions").symlink_to(outside, target_is_directory=True)
+        self.assertNotEqual(self.installer("install", "--venv", "0").returncode, 0)
+        self.assertFalse((outside / "_dwork").exists())
+        (directory / "site-functions").unlink()
+        for target in (str(outside), str(self.prefix / "unrelated"), "relative"):
+            with self.subTest(target=target):
+                result = self.installer("install", "--venv", "0", "--zsh-completion-dir", target)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((self.prefix / "share/dwork").exists())
 
     def test_staging_venv_is_rejected_without_writes(self):
         stage = self.root / "staging"

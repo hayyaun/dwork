@@ -4,7 +4,7 @@ set -euo pipefail
 version=${1:?Usage: build-in-container.sh VERSION}
 [[ $version =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
 
-pacman -Syu --noconfirm --needed python python-yaml zsh docker
+pacman -Syu --noconfirm --needed python python-yaml python-jsonschema bash-completion zsh docker
 useradd --create-home builder
 install -d -o builder -g builder /home/builder/package
 install -m644 /checkout/packaging/arch/PKGBUILD \
@@ -20,6 +20,9 @@ packages=(dwork-"$version"-1-any.pkg.tar.zst)
 package_path="$PWD/${packages[0]}"
 pacman -U --noconfirm "$package_path"
 pacman -Qk dwork
+test -f /usr/share/bash-completion/completions/dwork
+test -f /usr/share/zsh/site-functions/_dwork
+runuser -u builder -- zsh -fc 'autoload -Uz compinit; compinit -D; [[ ${_comps[dwork]} == _dwork ]]'
 runuser -u builder -- /usr/bin/dwork --help
 workspace=$(mktemp -d)
 chmod 755 "$workspace"

@@ -40,6 +40,34 @@ def request(record, action):
         return response
 
 
+def stop(record, state):
+    """Stop an approved task, or recognize its supervisor's completed cleanup.
+
+    Supervisors unlink their token record only after stopping the owned process
+    group. A vanished connection alone cannot prove completion: a crashed or
+    inaccessible controller with a remaining record must still fail shutdown.
+    """
+    token = record["token"]
+    if (not isinstance(token, str) or len(token) != 48
+            or any(c not in "0123456789abcdef" for c in token)):
+        raise ValueError("Invalid task controller token")
+    try:
+        response = request(record, "stop")
+    except (FileNotFoundError, ConnectionError, json.JSONDecodeError) as error:
+        # Empty input is a closed socket; a nonempty malformed response is a
+        # protocol failure, even if its record subsequently disappears.
+        if isinstance(error, json.JSONDecodeError) and error.doc:
+            raise
+        try:
+            (Path(state) / "tasks" / (token + ".json")).lstat()
+        except FileNotFoundError:
+            return False
+        raise
+    if response.get("state") != "stopped":
+        raise DworkError("Task controller did not confirm shutdown.")
+    return True
+
+
 def running(state):
     """Read-only discovery; stale files never authorize signalling a process."""
     records = []
@@ -249,6 +277,10 @@ def supervise(spec):
                     if status is not None:
                         exit_code = status.si_status if status.si_code == os.CLD_EXITED else 128 + status.si_status
                 stop_group()
+                # Publish completed cleanup before closing the controller socket,
+                # so a concurrent stop cannot see a stale live-task record.
+                record_path.unlink(missing_ok=True)
+                record_path = None
     finally:
         stop_group()
         if record_path is not None:

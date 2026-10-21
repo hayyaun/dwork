@@ -9,7 +9,7 @@ Compose projects and containers without Compose labels running.
 
 Run `dwork --dry-run` in your project to preview its plan. Run `dwork` when ready.
 If the directory is new, dwork shows the proposed name and absolute path, explains
-that future switches may stop its managed containers, and asks:
+that future switches may stop its managed containers and tracked commands, and asks:
 
 ```text
 Register and switch? (y/N)
@@ -157,6 +157,13 @@ used. Configuration files are read again, so terminal commands and health gates
 come from the current files. All existing health and terminal confirmations apply.
 Your calling shell's working directory stays unchanged.
 
+Switching uses the same shutdown policy as `down`, excluding the selected
+registration and all its group members. It stops outgoing tracked commands first,
+then stops outgoing running, restarting, or paused containers in one Docker batch,
+then starts the selected workspace. A shutdown failure stops further activation.
+This shared lifecycle was added after release 0.3.0. Tasks already running in the
+selected workspace are preserved; approved configured tasks still launch again.
+
 For example, remember a custom Compose selection once:
 
 ```sh
@@ -181,8 +188,9 @@ project cannot also be claimed by a separate registration on the same Docker tar
 ## What can stop
 
 dwork identifies a Docker target using the context name and Docker daemon ID.
-Only other registered workspaces on that same target, with available directories,
-are eligible to stop. Their registered `compose.services` selection is respected;
+Only other registered workspaces on that same target are eligible for container
+shutdown, using saved ownership even if their directories are unavailable.
+Their registered `compose.services` selection is respected;
 when omitted, all containers in that Compose project are managed. Workspaces with
 `locked: true` are excluded from stop plans, including `dwork down`.
 
@@ -210,9 +218,12 @@ last known lock is retained if a config or directory disappears. Invalid or
 unreadable policy protects the workspace with a warning. A valid config with
 `locked: false` or no `locked` key unlocks it. See [locked](../configuration/README.md#locked).
 
-When all selected workspaces disable Compose, no Docker calls run and no other
-workspace containers are stopped. Existing terminal processes from other workspaces
-are left running during a switch. Use `dwork down` to stop tracked commands.
+Tracked commands from other eligible registered workspaces stop during switching,
+regardless of their saved Docker target. Container shutdown stays scoped to the
+current Docker target. Switching to a host-only workspace also stops eligible
+outgoing Compose containers when Compose registrations exist; an entirely host-only
+registry makes no Docker calls. Terminal windows remain open at a shell prompt,
+and browser windows stay open.
 
 ## Configuration or location changes
 
@@ -233,9 +244,10 @@ cd ~/projects/new-location
 dwork register app
 ```
 
-Unavailable registered directories are shown in `list` and are excluded from stop
-plans. Restore the directory or forget and re-register it; dwork does not guess its
-new location.
+Unavailable registered directories are shown in `list`. Both switches and `down`
+use their last registered ownership and lock policy to shut down eligible workloads.
+An unavailable directory cannot be activated. Restore it or forget and re-register
+it; dwork does not guess its new location.
 
 ## Stop all workspaces
 
@@ -252,7 +264,7 @@ and registrations are retained.
 
 `down` works from any directory. It reads workspace lock policies without loading
 Compose models or opening terminals.
-It also stops locally tracked dwork commands, leaving visible terminal windows open
+Like switching, it stops locally tracked dwork commands before containers, leaving visible terminal windows open
 at a shell prompt. Locked tasks and `DWORK_KEEP_PROJECTS` exclusions remain running.
 The plan lists affected commands and protected tasks before confirmation.
 See [task lifecycle details](../terminals/README.md#tracked-commands-and-shutdown).

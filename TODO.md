@@ -11,6 +11,7 @@
 
 - [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.
 - [x] Confirm plain workspace activation before applying its plan; use a root-level `confirm` boolean (default `true`) with `confirm: false` to opt out, preserving separate registration, group, task/browser, and shutdown confirmations.
+- [x] Share shutdown planning and execution between workspace switches and `down`: stop outgoing tracked commands before containers, exclude the selected registration during switches, and apply the same ownership, lock, service, and Docker-target rules.
 
 ## Workspace groups (idea)
 
@@ -46,6 +47,7 @@
 ## CLI and releases
 
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
+- [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Source/Python and unsearched prefixes keep explicit setup.
 - [x] Document existing exit codes: 0 for success, 1 for failures, and 130 for interruption.
 - [x] Add `--version` with one version source shared by source/Make installs, package metadata, and release validation.
 - [ ] Add JSON output and explicit noninteractive behavior preserving confirmation controls.

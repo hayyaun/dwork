@@ -48,7 +48,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential debhelper python3-yaml zsh lintian
+          sudo apt-get install -y build-essential debhelper python3-yaml python3-jsonschema bash-completion zsh lintian
           python -m pip install build twine '.[test]'
       - name: Test source
         run: make test

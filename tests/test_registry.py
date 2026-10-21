@@ -319,7 +319,7 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(changes, [["start", "a"], ["start", "b"]])
         self.assertEqual(len(self.entries()[0]["members"]), 2)
 
-    def test_missing_directories_are_unavailable_and_not_stopped(self):
+    def test_missing_directory_cannot_activate_but_stored_resources_can_stop(self):
         self.register()
         moved = self.fixture.base / "moved"
         self.root.rename(moved)
@@ -333,7 +333,7 @@ class RegistryTests(unittest.TestCase):
         self.register(other)
         result, changes, _ = self.run_cli(cwd=other, containers=[legacy.container("a", "main", state="running")])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(changes, [])
+        self.assertEqual(changes, [["stop", "a"]])
 
     def test_host_only_registry_and_offline_list_need_no_docker(self):
         (self.root / "dwork.yml").write_text("version: 1\ncompose: {enabled: false}\n")

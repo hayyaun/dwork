@@ -155,14 +155,14 @@ def check_ownership(entries, candidate):
                              + " or forget the old registration; nothing changed.")
 
 
-def registered_services(entries, target, require_directories=True):
+def registered_services(entries, target):
+    """Return unlocked container ownership even when source directories are gone."""
     managed = {}
     for entry in entries:
-        if entry["target"] != target or (require_directories and not Path(entry["path"]).is_dir()):
+        if entry["target"] != target:
             continue
         for member in entry["members"]:
-            if (member["enabled"] and not member.get("locked", False)
-                    and (not require_directories or Path(member["directory"]).is_dir())):
+            if member["enabled"] and not member.get("locked", False):
                 project = member["project"]
                 if project in managed:
                     raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
@@ -173,9 +173,9 @@ def registered_services(entries, target, require_directories=True):
 def confirm_registration(entry):
     print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
     if all(m.get("locked", False) for m in entry["members"]):
-        print("This workspace is locked; switches and down will leave its containers running.")
+        print("This workspace is locked; switches and down will leave its containers and tracked commands running.")
     else:
-        print("Future switches may stop its unlocked managed containers. Unregistered projects stay running.")
+        print("Future switches may stop its unlocked managed containers and tracked commands. Unregistered projects stay running.")
     try:
         return input("Register and switch? (y/N) ").strip().lower() == "y"
     except EOFError:

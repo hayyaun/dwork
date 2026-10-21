@@ -41,6 +41,12 @@ dwork forget my-app
 `forget` removes only the registration. See
 [remembered workspaces](https://github.com/hayyaun/dwork/blob/main/docs/workspaces/README.md).
 
+On current source, `switch` and `down` share shutdown rules: tracked commands stop
+before registered containers. Switching excludes the selected workspace and its
+group members, then activates it; `down` stops all eligible registered workspaces.
+Locks and `DWORK_KEEP_PROJECTS` protect both commands and containers. Terminal
+windows remain open at a shell prompt. This shared lifecycle was added after 0.3.0.
+
 Without a dwork.yml file, dwork uses your Compose configuration. It only starts
 containers that already exist: it never creates, rebuilds, or removes them.
 

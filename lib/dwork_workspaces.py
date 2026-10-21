@@ -1,4 +1,5 @@
 """Workspace switching and shutdown, including plans and confirmations."""
+from dataclasses import dataclass
 from pathlib import Path
 import os
 import shlex
@@ -37,16 +38,21 @@ def task_label(record, entries):
             + shlex.join(record["command"]))
 
 
-def down_workspaces(entries, preview):
-    """Stop registered containers and locally supervised tasks after confirmation."""
-    locks_changed = dwork_registry.refresh_locks(entries)
-    has_compose = any(e["target"] is not None for e in entries)
-    target = dwork_docker.docker_target() if has_compose else None
-    managed = dwork_registry.registered_services(entries, target, require_directories=False)
-    if has_compose:
-        dwork_docker.show_target()
-    keep = {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
-    containers = dwork_docker.inventory() if managed else []
+@dataclass
+class ShutdownPlan:
+    containers: list
+    tasks: list
+    protected_tasks: list
+
+
+def keep_projects():
+    return {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
+
+
+def plan_shutdown(entries, target, containers, keep, exclude_workspace=None, task_records=None):
+    """Select the same owned resources for down and switch, except the destination."""
+    candidates = [e for e in entries if e["path"] != exclude_workspace]
+    managed = dwork_registry.registered_services(candidates, target)
     selected = []
     for item in containers:
         labels = item.get("Config", {}).get("Labels") or {}
@@ -56,23 +62,107 @@ def down_workspaces(entries, preview):
                 and (managed[project] is None or service in managed[project])
                 and item["State"]["Status"] in ("running", "restarting", "paused")):
             selected.append(item)
-    tasks = dwork_tasks.running(dwork_registry.registry_path().parent)
-    selected_tasks = []
-    for record in tasks:
+    if task_records is None:
+        task_records = dwork_tasks.running(dwork_registry.registry_path().parent)
+    selected_tasks, protected_tasks = [], []
+    for record in task_records:
+        if record["workspace"] == exclude_workspace:
+            continue
         reason = task_protection(record, entries, keep)
         if reason:
-            print("Keep task (" + reason + "): " + task_label(record, entries))
+            protected_tasks.append((record, reason))
         else:
             selected_tasks.append(record)
-    print("Down plan: " + str(len(selected)) + " container(s), " + str(len(selected_tasks))
+    return ShutdownPlan(selected, selected_tasks, protected_tasks)
+
+
+def show_shutdown_plan(plan, entries):
+    for record, reason in plan.protected_tasks:
+        print("Keep task (" + reason + "): " + task_label(record, entries))
+    for item in plan.containers:
+        print(color("Would stop: ", "stop") + item["Id"][:12] + " (" + colored_name(dwork_docker.container_name(item)) + ")")
+    for record in plan.tasks:
+        print(color("Would stop task: ", "stop") + task_label(record, entries))
+
+
+def recheck_shutdown(plan, entries, target, keep):
+    # Lock policy can change while the confirmation prompt is open.
+    changed = dwork_registry.refresh_locks(entries)
+    allowed = plan_shutdown(entries, target, plan.containers, keep, task_records=plan.tasks)
+    for item in plan.containers:
+        if item not in allowed.containers:
+            project = (item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project")
+            print("Skipped stop: " + colored_name(project) + " is now locked.")
+    for record, reason in allowed.protected_tasks:
+        print("Skipped task (" + reason + "): " + task_label(record, entries))
+    return allowed, changed
+
+
+def shutdown_steps(plan, entries):
+    steps = ["stop task " + task_label(record, entries) for record in plan.tasks]
+    if plan.containers:
+        steps.append("stop containers " + ", ".join(item["Id"] for item in plan.containers))
+    return steps
+
+
+def stop_workspaces(plan, entries, operation, completed=None, pending=None):
+    """Stop host commands before containers for every workspace lifecycle command."""
+    if completed is None:
+        completed = []
+    if pending is None:
+        pending = shutdown_steps(plan, entries)
+    # Stop host commands first so they can release connections before databases
+    # shut down. A failed controller request aborts remaining work with an error.
+    for record in plan.tasks:
+        try:
+            stopped = dwork_tasks.stop(record, dwork_registry.registry_path().parent)
+            label = task_label(record, entries)
+            print(color("Stopped task: " if stopped else "Task already finished: ", "stop") + label, flush=True)
+            completed.append(("stopped task " if stopped else "finished task ") + label)
+            pending.pop(0)
+        except (OSError, ValueError, KeyError, TypeError, DworkError) as error:
+            raise DworkError(operation + " incomplete while stopping " + record["title"] + ": " + str(error)
+                             + ". Earlier tasks may have stopped; inspect dwork down --dry-run before retrying.")
+    if not plan.containers:
+        return
+    print(color("Stopping registered workspace containers...", "stop"), flush=True)
+    try:
+        # Docker accepts multiple IDs; let its supported stop command handle the batch.
+        dwork_docker.docker("stop", *(item["Id"] for item in plan.containers))
+    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
+        print(color(operation + " incomplete; the batch may have partially stopped containers.", "warning", sys.stderr), file=sys.stderr)
+        try:
+            current = {c["Id"]: c for c in dwork_docker.inventory()}
+            for item in plan.containers:
+                state = current.get(item["Id"], {}).get("State", {}).get("Status", "not found; inspect manually")
+                style = "stop" if state == "exited" else "warning"
+                print(color(dwork_docker.container_name(item) + " / " + item["Id"][:12] + ": " + state, style, sys.stderr), file=sys.stderr)
+        except (DworkError, OSError, ValueError, KeyError, TypeError):
+            print("Could not refresh state; check docker ps --all before retrying.", file=sys.stderr)
+        raise
+    for item in plan.containers:
+        print(color("Stopped: " + dwork_docker.container_name(item) + " / " + item["Id"][:12], "stop"), flush=True)
+        project = (item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project")
+        completed.append("stop " + item["Id"] + " (" + project + ")")
+    pending.pop(0)
+
+
+def down_workspaces(entries, preview):
+    """Stop registered containers and locally supervised tasks after confirmation."""
+    locks_changed = dwork_registry.refresh_locks(entries)
+    has_compose = any(e["target"] is not None for e in entries)
+    target = dwork_docker.docker_target() if has_compose else None
+    containers = dwork_docker.inventory() if has_compose else []
+    if has_compose:
+        dwork_docker.show_target()
+    keep = keep_projects()
+    plan = plan_shutdown(entries, target, containers, keep)
+    print("Down plan: " + str(len(plan.containers)) + " container(s), " + str(len(plan.tasks))
           + " tracked command(s) to stop across registered workspaces.")
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
     print("Locked projects: " + (", ".join(dwork_registry.locked_projects(entries, target)) or "none"))
-    for item in selected:
-        print(color("Would stop: ", "stop") + item["Id"][:12] + " (" + colored_name(dwork_docker.container_name(item)) + ")")
-    for record in selected_tasks:
-        print(color("Would stop task: ", "stop") + task_label(record, entries))
-    if not selected and not selected_tasks:
+    show_shutdown_plan(plan, entries)
+    if not plan.containers and not plan.tasks:
         if locks_changed and not preview:
             dwork_registry.save_registry(entries)
         print("No registered containers or tracked commands need stopping.")
@@ -82,52 +172,14 @@ def down_workspaces(entries, preview):
     if not dwork_common.confirm_action("Stop all listed containers and tracked commands?"):
         print("Cancelled; nothing changed.")
         return 0
-    # Lock policy can change while the confirmation prompt is open.
-    locks_changed = dwork_registry.refresh_locks(entries) or locks_changed
-    protected = set(dwork_registry.locked_projects(entries, target))
-    selected = [item for item in selected if
-                (item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") not in protected]
-    allowed_tasks = []
-    for record in selected_tasks:
-        reason = task_protection(record, entries, keep)
-        if reason:
-            print("Skipped task (" + reason + "): " + task_label(record, entries))
-        else:
-            allowed_tasks.append(record)
-    if locks_changed:
+    plan, changed = recheck_shutdown(plan, entries, target, keep)
+    if changed or locks_changed:
         dwork_registry.save_registry(entries)
-    # Stop host commands first so they can release connections before databases
-    # shut down. A failed controller request aborts remaining work with an error.
-    for record in allowed_tasks:
-        try:
-            response = dwork_tasks.request(record, "stop")
-            if response.get("state") != "stopped":
-                raise DworkError("Task controller did not confirm shutdown.")
-            print(color("Stopped task: ", "stop") + task_label(record, entries), flush=True)
-        except (OSError, ValueError, KeyError, TypeError, DworkError) as error:
-            raise DworkError("Down incomplete while stopping " + record["title"] + ": " + str(error)
-                             + ". Earlier tasks may have stopped; inspect dwork down --dry-run before retrying.")
-    if not selected:
+    stop_workspaces(plan, entries, "Down")
+    if plan.containers:
+        print("Stopped " + str(len(plan.containers)) + " container(s). Registrations, containers, networks, and volumes were kept.")
+    else:
         print("Down finished. Terminal windows were left open.")
-        return 0
-    print(color("Stopping registered workspace containers...", "stop"), flush=True)
-    try:
-        # Docker accepts multiple IDs; let its supported stop command handle the batch.
-        dwork_docker.docker("stop", *(item["Id"] for item in selected))
-    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
-        print(color("Down incomplete; the batch may have partially stopped containers.", "warning", sys.stderr), file=sys.stderr)
-        try:
-            current = {c["Id"]: c for c in dwork_docker.inventory()}
-            for item in selected:
-                state = current.get(item["Id"], {}).get("State", {}).get("Status", "not found; inspect manually")
-                style = "stop" if state == "exited" else "warning"
-                print(color(dwork_docker.container_name(item) + " / " + item["Id"][:12] + ": " + state, style, sys.stderr), file=sys.stderr)
-        except (DworkError, OSError, ValueError, KeyError, TypeError):
-            print("Could not refresh state; check docker ps --all before retrying.", file=sys.stderr)
-        raise
-    for item in selected:
-        print(color("Stopped: " + dwork_docker.container_name(item) + " / " + item["Id"][:12], "stop"), flush=True)
-    print("Stopped " + str(len(selected)) + " container(s). Registrations, containers, networks, and volumes were kept.")
     return 0
 
 
@@ -194,12 +246,15 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
                          + " with the intended Compose options; nothing changed.")
     if mode == "switch" and not existing:
         raise DworkError("Workspace registration no longer matches its directory; register it again.")
-    managed = dwork_registry.registered_services(entries, target)
-    containers = dwork_docker.inventory() if active else []
-    if active:
+    # A host-only destination must also shut down outgoing Compose workspaces.
+    has_compose = bool(active) or any(e["target"] is not None for e in entries)
+    shutdown_target = target if active else (dwork_docker.docker_target() if has_compose else None)
+    containers = dwork_docker.inventory() if has_compose else []
+    if has_compose:
         dwork_docker.show_target()
-    keep = {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
-    stops, starts, warnings = [], [], []
+    keep = keep_projects()
+    shutdown = plan_shutdown(entries, shutdown_target, containers, keep, exclude_workspace=str(directory))
+    starts, warnings = [], []
     for c in containers:
         labels = c.get("Config", {}).get("Labels") or {}
         project = labels.get("com.docker.compose.project")
@@ -214,9 +269,6 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
                 starts.append((identifier, project, service))
             elif state not in ("running", "restarting"):
                 warnings.append("Container " + identifier[:12] + " is " + state + "; handle it manually.")
-        elif (project in managed and project not in keep and state in ("running", "restarting")
-              and (managed[project] is None or service in managed[project])):
-            stops.append((identifier, project))
     gates, tasks, browsers = [], [], []
     for w in workspaces:
         browsers.extend(w.browsers)
@@ -251,16 +303,17 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
               else "Current workspace: " + colored_name(workspaces[0].name) + " (Compose disabled)")
     for warning in warnings:
         print(color("Warning: " + warning, "warning", sys.stderr), file=sys.stderr)
-    print("Switch plan: " + str(len(stops)) + " stop(s), " + str(len(starts))
+    print("Switch plan: " + str(len(shutdown.containers)) + " stop(s), " + str(len(starts))
           + " start(s), " + str(len(tasks)) + " terminal task(s), " + str(len(browsers)) + " browser URL(s).")
-    if active:
-        print("Scope: only other registered workspaces on this Docker target may be stopped.")
+    print("Tracked commands to stop: " + str(len(shutdown.tasks)))
+    if has_compose:
+        print("Scope: container stops affect only other registered workspaces on this Docker target.")
+    print("Tracked command stops affect other registered workspaces on this machine.")
     if existing is None:
         print("Would register workspace: " + colored_name(name) + " -> " + str(directory))
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
-    print("Locked projects: " + (", ".join(dwork_registry.locked_projects(entries, target)) or "none"))
-    for identifier, project in stops:
-        print(color("Would stop: ", "stop") + identifier[:12] + " (" + colored_name(project) + ")")
+    print("Locked projects: " + (", ".join(dwork_registry.locked_projects(entries, shutdown_target)) or "none"))
+    show_shutdown_plan(shutdown, entries)
     for identifier, project, service in starts:
         print(color("Would start existing: ", "start") + identifier[:12] + " (" + colored_name(project + "/" + service) + ")")
     for task in tasks:
@@ -274,7 +327,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         print("Would open " + dwork_browsers.browser_label(browser) + ": " + browser.url + confirmation)
         if browser.wait_url is not None:
             print("Would wait for HTTP readiness: " + browser.wait_url + " (timeout " + str(browser.timeout) + "s)")
-    if not stops and not starts and not tasks and not browsers:
+    if not shutdown.containers and not shutdown.tasks and not starts and not tasks and not browsers:
         print("No container changes needed.")
     # First-time activation already asks for combined registration/switch consent;
     # discovered groups retain their separate group prompt. Child opt-outs must
@@ -301,21 +354,13 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             print("Cancelled; no workspace registered and no containers or terminals changed.")
             return 0
         entries.append(candidate)
-    # A user can edit lock policy while a discovery/registration prompt is open.
-    locks_changed = dwork_registry.refresh_locks(entries) or locks_changed
-    protected = set(dwork_registry.locked_projects(entries, target))
-    for identifier, project in stops:
-        if project in protected:
-            print("Skipped stop: " + colored_name(project) + " is now locked.")
-    stops = [(identifier, project) for identifier, project in stops if project not in protected]
+    shutdown, changed = recheck_shutdown(shutdown, entries, shutdown_target, keep)
+    locks_changed = changed or locks_changed
     if existing is None or locks_changed:
         dwork_registry.save_registry(entries)
     if existing is None:
         print("Registered " + colored_name(name) + " at " + str(directory) + ".")
     actions = []
-    for identifier, project in stops:
-        actions.append(("stop " + identifier + " (" + project + ")",
-                        lambda identifier=identifier: dwork_docker.docker("stop", identifier)))
     for identifier, project, service in starts:
         actions.append(("start " + identifier + " (" + project + "/" + service + ")",
                         lambda identifier=identifier: dwork_docker.docker("start", identifier)))
@@ -323,19 +368,21 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         actions.append(("wait for healthy " + ", ".join(ids),
                         lambda ids=ids, timeout=timeout: dwork_docker.wait_healthy(ids, timeout)))
     completed = []
-    pending = [label for label, _ in actions] + [
+    pending = shutdown_steps(shutdown, entries) + [label for label, _ in actions] + [
         ("background task " if task.window == "none" else "terminal ") + task.title for task in tasks] + [
         "browser " + browser.url for browser in browsers]
     step = "before execution"
     try:
+        if shutdown.containers or shutdown.tasks:
+            step = "workspace shutdown"
+            stop_workspaces(shutdown, entries, "Switch", completed, pending)
         for label, operation in actions:
             step = label
-            style = "stop" if label.startswith("stop ") else "start" if label.startswith("start ") else "warning"
+            style = "start" if label.startswith("start ") else "warning"
             print("Executing: " + color(label, style), flush=True)
             operation()
-            if label.startswith(("stop ", "start ")):
-                verb, detail = label.split(" ", 1)
-                print(color(("Stopped: " if verb == "stop" else "Started: ") + detail, style), flush=True)
+            if label.startswith("start "):
+                print(color("Started: " + label.removeprefix("start "), style), flush=True)
             completed.append(label)
             pending.pop(0)
         for task in tasks:

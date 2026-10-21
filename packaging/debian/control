@@ -2,7 +2,7 @@ Source: dwork
 Section: devel
 Priority: optional
 Maintainer: Hayyan Hami <hayyaun@users.noreply.github.com>
-Build-Depends: debhelper-compat (= 13), python3 (>= 3.10), python3-yaml, make, zsh
+Build-Depends: debhelper-compat (= 13), python3 (>= 3.10), python3-yaml, python3-jsonschema, make, zsh, bash-completion
 Standards-Version: 4.7.0
 Homepage: https://github.com/hayyaun/dwork
 Rules-Requires-Root: no
@@ -11,6 +11,7 @@ Package: dwork
 Architecture: all
 Depends: ${misc:Depends}, python3 (>= 3.10), python3-yaml
 Suggests: docker.io, gnome-terminal, konsole, xfce4-terminal, xterm
+Recommends: bash-completion
 Description: switch development workspaces and resume existing containers
  Resume existing Docker Compose containers, stop other projects, wait for
  healthy dependencies, and confirm before launching configured terminals.

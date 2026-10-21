@@ -176,7 +176,8 @@ locked: true
 
 `locked` is a boolean, defaulting to `false`. A locked workspace remains registered
 and visible in `dwork list`, but its containers are excluded from both workspace
-switch stops and `dwork down`. Its tracked host commands also stay running on `down`.
+switch stops and `dwork down`. Its tracked host commands also stay running during
+both operations.
 It can still be activated and its existing containers
 started. Strings such as `"true"`, numbers, and null are rejected.
 
@@ -215,7 +216,9 @@ compose:
 - Only other registered workspaces on the same Docker target may be stopped,
   respecting their registered service selections, `locked`, and `DWORK_KEEP_PROJECTS`.
   Unregistered projects stay running. See [remembered workspaces](../workspaces/README.md).
-  When all selected workspaces disable Compose, no Docker commands are run.
+  A host-only destination still shuts down outgoing Compose workspaces on the
+  current Docker target when Compose registrations exist. No Docker commands run
+  when the entire registry and selected workspace are host-only.
 
 When `enabled: false`, omit `files`, `services`, Compose CLI options, and health
 prerequisites.
@@ -254,7 +257,8 @@ run `dwork register NAME` with the intended options before switching again.
 
 Visible commands run in the foreground of their new terminal. dwork checks dependencies
 and reports immediate launcher failures. New commands are supervised and stopped
-by `dwork down`, while their terminal windows remain open at a shell prompt.
+when switching away from their workspace or by `dwork down`, subject to locks and
+`DWORK_KEEP_PROJECTS`. Their terminal windows remain open at a shell prompt.
 It does not monitor later GUI startup or deduplicate tasks: every invocation
 launches the configured tasks again. See [tracked commands](../terminals/README.md#tracked-commands-and-shutdown).
 
@@ -319,7 +323,7 @@ are not rolled back.
 
 ## Host-only workspace
 
-Disable Compose to run terminal tasks without Docker:
+Disable Compose for a workspace that only needs host commands:
 
 ```yaml
 version: 1
@@ -329,6 +333,11 @@ terminals:
   - title: Frontend
     command: [npm, run, dev]
 ```
+
+If all registered workspaces are host-only, activation and shutdown need no Docker
+connection. When Compose registrations exist, activation still needs Docker to
+shut down their eligible outgoing containers on the current target. This shared
+switch/shutdown behavior was added after release 0.3.0.
 
 ## browsers
 

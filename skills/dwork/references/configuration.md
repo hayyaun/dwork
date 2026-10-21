@@ -6,6 +6,15 @@ https://github.com/hayyaun/dwork/blob/main/docs/configuration/README.md
 
 ## File and field rules
 
+Shell completion is separate from YAML editor completion. Updated native package
+builds install Bash/Zsh completion files in the platform's discovery directories.
+They are automatic when `bash-completion` or Zsh's `compinit` already searches
+those directories; Homebrew's `brew shellenv` should run before `compinit`.
+Manual source/Python installations, older release packages, and custom prefixes
+may need `source <(dwork completion zsh)` after `compinit`, or the Bash equivalent.
+`dwork.sh` itself does not enable completion. Preserve existing shell choices;
+changing a shell startup file requires the user's authorization.
+
 Use the exact filename `dwork.yml`. The nearest file in the current directory or
 its parents wins; files are not merged. `--project-directory` or an explicit
 Compose `-f`/`--file` changes the search origin. Unknown fields, duplicate keys,
@@ -42,8 +51,7 @@ Only these top-level fields are supported:
   added after 0.3.0; check installed-runtime support before generating it.
 - `locked`: optional boolean, default `false`; keep this workspace's containers
   and tracked host commands running during switches and `dwork down`, while still
-  listing and allowing activation. Switches leave host commands running even
-  without a lock; `down` uses the lock to protect them.
+  listing and allowing activation. Both operations apply the same protection rules.
 - `compose`: optional mapping; Compose is enabled by default.
 - `terminals`: optional list of terminal tasks, default `[]`.
 - `browsers`: optional list of browser URLs, default `[]`.
@@ -84,7 +92,13 @@ Visible terminal windows remain open at a shell prompt; browser windows also
 remain open. `dwork down --dry-run`
 previews without stopping anything or prompting. Commands launched by older versions
 are not tracked. Tracking does not follow commands that daemonize into other groups
-or sessions. Ordinary workspace switches leave existing host tasks running.
+or sessions. Switches share the shutdown planner and executor with `down`, excluding
+the selected registration and all its group members. Outgoing commands stop before
+the batch container stop and any destination startup. A shutdown failure aborts
+activation. This switch behavior was added after 0.3.0; check installed-runtime support.
+Tasks already running in the selected workspace stay running, and approved configured
+tasks are still launched again. Missing outgoing directories retain their saved
+ownership and last known lock policy for shutdown in both operations.
 `locked: true` protects a workspace from both operations. Lock changes are read
 without re-registration; a missing config retains the last recorded policy, and an
 unreadable/invalid lock policy protects the workspace with a warning. To unlock,
@@ -95,7 +109,11 @@ anything. `dwork scan --dry-run` previews without writing or prompting.
 Scanning stops below repository/project markers such as `.git`, `dwork.yml`,
 Compose files, or project manifests. Start a scan inside a nested directory to
 find workspaces below an existing repository boundary.
-With Compose disabled for all selected workspaces, no Docker commands run.
+Switching to a host-only workspace still shuts down eligible outgoing Compose
+containers on the current Docker target when Compose registrations exist. Docker
+is unnecessary only when the selected workspace and entire registry are host-only.
+Local tracked commands are considered across saved Docker targets; container
+shutdown stays scoped to the current Docker target.
 
 ## Terminal tasks
 
@@ -121,9 +139,10 @@ Visible commands use the user's Bash/Zsh login and interactive startup environme
 and run in the foreground in the selected terminal window or tab. Use an existing script for pipelines or
 compound commands. Terminal titles, resolved working directories, and command
 arguments cannot contain NUL, newlines, or semicolons. Repeated dwork invocations
-launch tasks again without deduplication. Commands are supervised for `down`, which
-respects workspace locks, terminates their process groups, and preserves terminal
-windows. Detached commands use noninteractive login shell startup.
+launch tasks again without deduplication. Commands are supervised for outgoing
+workspace shutdown and `down`, which respect workspace locks, terminate their
+process groups, and preserve terminal windows. Detached commands use noninteractive
+login shell startup.
 
 Terminal launching supports Linux graphical desktops with the listed native
 emulators, macOS with Apple Terminal, or WSL2 with Windows Terminal and Windows

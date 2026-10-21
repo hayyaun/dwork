@@ -164,15 +164,28 @@ as a failure; run it manually to inspect its output. A successful launch does no
 guarantee later readiness or success, and there is no implicit log file.
 
 Every activation starts another copy if approved. These commands are tracked and
-stopped by `dwork down`, following the same lock and exclusion rules as visible tasks.
+stopped when switching away or by `dwork down`, following the same lock and
+exclusion rules as visible tasks.
 
 ## Tracked commands and shutdown
+
+If a command finishes while shutdown confirmation is open, its supervisor's
+completed cleanup is recognized and the plan continues. A failed or inaccessible
+controller with a remaining task record still aborts shutdown and activation.
 
 New visible and detached tasks run under a small local supervisor. Run
 `dwork down --dry-run` to see their workspace name, task title, command, PID, and
 whether they will stop or remain protected. `dwork down` shows the same plan and
 requires confirmation before stopping tasks, then containers. Cancelling leaves
-both running. Ordinary workspace switches continue to leave existing host tasks alone.
+both running. Switching uses the same shutdown planner and executor, excluding
+the selected registration and all its group members before activating it. Outgoing
+tracked commands stop before containers or any destination startup. A controller
+failure aborts the remaining shutdown and activation. This switch behavior was
+added after release 0.3.0; check the installed runtime before relying on it.
+
+Tasks already running in the selected workspace are preserved. Activation still
+launches another copy of each approved configured task; stable task IDs and reuse
+are not implemented. Browser windows remain open after switches and `down`.
 
 `locked: true` protects that workspace's tasks, including individual locked children
 of a workspace group. `DWORK_KEEP_PROJECTS` also protects tasks belonging to those
@@ -195,8 +208,9 @@ delegate work to external services need their own lifecycle tools.
 Tracking is local to the operating-system installation/WSL distribution and user. Host tasks
 are considered across all registered workspaces locally, regardless of their saved
 Docker context; container shutdown remains scoped to the current Docker target.
-Host-only workspaces need no Docker connection. If registered Compose workspaces
-exist, Docker must be reachable to build the complete shutdown plan.
+An entirely host-only registry needs no Docker connection. If registered Compose
+workspaces exist, Docker must be reachable to build the complete shutdown plan,
+including when switching to a host-only destination.
 
 Private records live beside the workspace registry in `dwork/tasks/*.json` beneath
 the state directory. Each supervisor uses an authenticated Unix socket in a private

@@ -115,8 +115,10 @@ requested browser URLs. When dwork is available, it runs `dwork --dry-run` and
 reports missing prerequisites
 instead of installing dependencies or starting the workspace. Review its YAML
 and dry-run warnings, then run `dwork` yourself when ready. A normal invocation
-asks before registering a new directory and can stop other registered workspaces
-on the same Docker target before asking about terminal launches. Browser entries
+asks before registering a new directory and stops other eligible registered
+workspaces' tracked commands before their containers and before asking about new
+terminal launches. Containers are scoped to the current Docker target; local
+tracked commands are considered across saved targets. Browser entries
 ask separately after terminal tasks dispatch. Unregistered projects stay running;
 use `DWORK_KEEP_PROJECTS` or `locked: true` for workspaces you want to keep running.
 
@@ -131,6 +133,8 @@ Use a runtime containing these features: macOS tracked tasks need Python 3.13+
 (Linux/WSL need 3.10+). Older dwork releases may reject newer fields; update the
 runtime rather than bypassing schema validation. See the
 [Homebrew version notes](../../packaging/homebrew/README.md) for stable versus HEAD.
+Shared outgoing-command shutdown on switches was added after release 0.3.0;
+updating the skill alone does not add it to an older runtime.
 
 ## Update or remove
 

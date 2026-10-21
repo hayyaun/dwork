@@ -1,6 +1,6 @@
 # Distribution packaging
 
-- [AUR](aur/README.md): validated v0.1.0 recipe, awaiting account registration.
+- [AUR](aur/README.md): v0.3.0 recipe with native completion entries, awaiting account registration.
 - [Homebrew](homebrew/README.md): v0.1.0 formula ready for testing/publishing in a tap.
 - [Python / PyPI](python/README.md): wheel/sdist and console entry point for v0.2.0.
 - [Debian / Ubuntu](debian/README.md): debhelper build for v0.2.0-1.
@@ -14,6 +14,26 @@ to registries or create external repositories/accounts. The existing v0.1.0 tag
 is immutable; new Python/Debian metadata belongs to the next release.
 
 ## Current verification
+
+Current Make and native recipes install Bash completion in the standard loader
+directory and a Zsh autoload entry in the distro's function path (Debian uses
+`vendor-completions`; Fedora/Arch use `site-functions`). Homebrew selects its
+completion helper paths and supports the existing tagged sourceable scripts.
+No shell startup files are edited. Native-file ownership/removal and first-Tab
+discovery are covered by source tests; distro smoke checks verify file placement
+and Zsh registration. These changes apply to new package builds, not existing
+release downloads. JSON Schema test dependencies are declared in native build
+recipes as well as Python CI.
+
+Native-completion verification on 2026-10-21 passed the full source suite
+(262 tests, two skipped), followed by the final 19 installer/completion checks
+after refining framework coverage. Arch's `makepkg --printsrcinfo` agrees with
+the prepared AUR metadata. Fedora/Arch package rebuilds were attempted in
+disposable containers but failed during repository DNS lookup, before building.
+Debian's build is unavailable locally without `debhelper-compat (= 13)`, and
+Homebrew is not installed here. Package-build and Homebrew verification therefore
+remain CI checks before publication; no package was published or installed on
+the host by this change.
 
 On 2026-10-20, the combined checkout passed 70 tests. Python 3.12 wheel/sdist
 builds passed strict twine checks; both artifacts installed in fresh venvs and

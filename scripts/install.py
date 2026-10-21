@@ -11,6 +11,12 @@ import sys
 
 SOURCE = Path(__file__).resolve().parents[1]
 MARKER = ".dwork-install.json"
+COMPLETION_FILES = {
+    "share/bash-completion/completions/dwork",
+    "etc/bash_completion.d/dwork",
+    "share/zsh/site-functions/_dwork",
+    "share/zsh/vendor-completions/_dwork",
+}
 
 class InstallError(Exception):
     pass
@@ -39,6 +45,35 @@ def paths(prefix_text, destdir_text):
 def digest(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
+def completion_path(root, relative):
+    if relative not in COMPLETION_FILES:
+        raise InstallError("Unrecognized completion path: " + str(relative))
+    path = root / relative
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        raise InstallError("Completion paths must remain inside PREFIX/DESTDIR.")
+    for item in (path, *path.parents):
+        if item == root:
+            break
+        if item.is_symlink():
+            raise InstallError("Refusing a linked completion path: " + str(item))
+    return path
+
+def completion_locations(prefix, root, bash_directory, zsh_directory):
+    locations = {}
+    for shell, directory, default, filename in (
+        ("bash", bash_directory, "share/bash-completion/completions", "dwork"),
+        ("zsh", zsh_directory, "share/zsh/site-functions", "_dwork"),
+    ):
+        directory = Path(directory) if directory else prefix / default
+        try:
+            relative = str((directory / filename).relative_to(prefix))
+        except ValueError:
+            raise InstallError("Completion directories must be inside PREFIX.")
+        locations[shell] = (relative, completion_path(root, relative))
+    return locations
+
 def ownership(data, launcher, prefix):
     if not data.exists():
         if launcher.exists():
@@ -52,6 +87,13 @@ def ownership(data, launcher, prefix):
         raise InstallError("Installation marker does not match this PREFIX.")
     if launcher.exists() and (not launcher.is_file() or digest(launcher.read_text()) != record.get("launcher_sha256")):
         raise InstallError("Installed launcher was modified; refusing to overwrite or remove it.")
+    completions = record.get("completions", {})
+    if not isinstance(completions, dict):
+        raise InstallError("Invalid completion ownership record.")
+    for relative, expected_hash in completions.items():
+        path = completion_path(data.parent.parent, relative)
+        if path.exists() and (not path.is_file() or digest(path.read_text()) != expected_hash):
+            raise InstallError("Installed completion was modified; refusing to overwrite or remove it: " + str(path))
     return record
 
 def checked(command):
@@ -68,6 +110,13 @@ def install(args):
             continue
         raise InstallError("Install location cannot be inside copied source documentation/examples.")
     previous = ownership(data, launcher, prefix)
+    locations = completion_locations(prefix, root, args.bash_completion_dir, args.zsh_completion_dir)
+    previous_completions = previous.get("completions", {}) if previous else {}
+    if previous_completions and set(previous_completions) != {relative for relative, _ in locations.values()}:
+        raise InstallError("Completion directories changed; uninstall this PREFIX before changing them.")
+    for relative, path in locations.values():
+        if path.exists() and relative not in previous_completions:
+            raise InstallError("Refusing to overwrite an unrelated completion: " + str(path))
     # Do not follow user-added links while updating managed code or environments.
     for name in ("lib", "docs", "examples", "completions", "venv", "venv/bin", "README.md", "requirements.txt", MARKER):
         path = data / name
@@ -84,6 +133,16 @@ def install(args):
                      + shlex.quote(str(runtime_data / "lib/dwork.py")) + ' "$@"\n')
     record = {"tool": "dwork", "format": 1, "prefix": str(prefix),
               "launcher_sha256": digest(launcher_text), "venv": args.venv == "1"}
+    scripts = {shell: subprocess.check_output([sys.executable, str(SOURCE / "lib/dwork.py"),
+                                               "completion", shell], text=True)
+               for shell in locations}
+    # Zsh autoload expects a function body. Keep the public sourceable script
+    # intact and delegate to it on the first completion request.
+    native_scripts = dict(scripts, zsh="#compdef dwork\nsource "
+                          + shlex.quote(str(runtime_data / "completions/_dwork"))
+                          + '\n_dwork "$@"\n')
+    record["completions"] = {relative: digest(native_scripts[shell])
+                             for shell, (relative, _) in locations.items()}
     data.mkdir(parents=True, exist_ok=True)
     # Record ownership before dependency setup, so an interrupted first install
     # can be safely retried or explicitly uninstalled.
@@ -107,9 +166,10 @@ def install(args):
         completions = data / "completions"
         completions.mkdir(exist_ok=True)
         for shell, filename in (("bash", "dwork.bash"), ("zsh", "_dwork")):
-            script = subprocess.check_output([sys.executable, str(SOURCE / "lib/dwork.py"),
-                                              "completion", shell], text=True)
-            (completions / filename).write_text(script)
+            (completions / filename).write_text(scripts[shell])
+            _, target = locations[shell]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(native_scripts[shell])
         for name in ("examples", "docs"):
             if (SOURCE / name).is_dir():
                 shutil.copytree(SOURCE / name, data / name, dirs_exist_ok=True)
@@ -131,7 +191,11 @@ def install(args):
             print("  export PATH=" + shlex.quote(bindir) + ':"$PATH"')
         print("If you previously sourced dwork.sh, remove that startup line and run: unset -f dwork")
         print("Examples: " + str(data / "examples"))
-        print("Enable Bash completion by adding this to ~/.bashrc:")
+        print("Installed shell completions:")
+        for shell, (relative, _) in locations.items():
+            print("  " + shell + ": " + str(prefix / relative))
+        print("Discovery requires bash-completion or a Zsh fpath directory scanned by compinit.")
+        print("For custom prefixes without discovery, enable Bash completion in ~/.bashrc:")
         print("  source " + shlex.quote(str(runtime_data / "completions/dwork.bash")))
         print("For Zsh, add this after compinit in ~/.zshrc:")
         print("  source " + shlex.quote(str(runtime_data / "completions/_dwork")))
@@ -147,6 +211,8 @@ def uninstall(args):
     expected = (root.resolve() / "share" / "dwork").resolve()
     if data.is_symlink() or data.resolve() != expected or not (data / MARKER).is_file():
         raise InstallError("Refusing to remove a directory outside the expected install location.")
+    for relative in record.get("completions", {}):
+        completion_path(root, relative).unlink(missing_ok=True)
     if launcher.exists():
         launcher.unlink()
     shutil.rmtree(data)
@@ -167,6 +233,8 @@ def main():
         command.add_argument("--destdir", default="")
         if name == "install":
             command.add_argument("--venv", choices=("0", "1"), default="1")
+            command.add_argument("--bash-completion-dir", default="")
+            command.add_argument("--zsh-completion-dir", default="")
     args = parser.parse_args()
     return install(args) if args.command == "install" else uninstall(args)
 

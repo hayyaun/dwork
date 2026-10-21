@@ -11,4 +11,4 @@ override_dh_auto_test:
 	make test PYTHON=/usr/bin/python3
 
 override_dh_auto_install:
-	make install VENV=0 PREFIX=/usr DESTDIR=$(CURDIR)/debian/dwork PYTHON=/usr/bin/python3
+	make install VENV=0 PREFIX=/usr DESTDIR=$(CURDIR)/debian/dwork PYTHON=/usr/bin/python3 ZSH_COMPLETION_DIR=/usr/share/zsh/vendor-completions

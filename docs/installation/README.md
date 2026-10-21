@@ -37,6 +37,14 @@ This is a user install; do not run it with sudo. It creates:
 - `~/.local/share/dwork/lib/dwork.py`: the runtime.
 - `~/.local/share/dwork/venv/`: an isolated Python environment containing PyYAML.
 - `~/.local/share/dwork/examples/` and `docs/`: the shipped guides and examples.
+- `~/.local/share/bash-completion/completions/dwork` and
+  `~/.local/share/zsh/site-functions/_dwork`: native completion files.
+
+Completion is discovered when those paths are searched by the shell's existing
+completion framework. Zsh commonly needs explicit setup for a user/custom prefix;
+system packages and Homebrew select their platform's native directories.
+[Shell completion and manual fallback](../completion/README.md) explains the
+prerequisites. Older published packages may still require explicit sourcing.
 
 The default install downloads PyYAML and its requirements using pip inside that
 environment. It does not install into or alter your system Python. Shell startup
@@ -176,6 +184,11 @@ make install VENV=0 PREFIX=/usr DESTDIR="/absolute/path/to/pkgdir"
 
 This installs into `DESTDIR/usr/bin` and `DESTDIR/usr/share/dwork` while the launcher
 references the final `/usr/share/dwork` location, not the staging path.
+It also stages Bash completion under `usr/share/bash-completion/completions` and
+Zsh completion under `usr/share/zsh/site-functions`. For Debian/Ubuntu, add
+`ZSH_COMPLETION_DIR=/usr/share/zsh/vendor-completions`; the Debian recipe already
+does this. `BASH_COMPLETION_DIR` and `ZSH_COMPLETION_DIR` select supported final
+directories under `PREFIX` and must not include `DESTDIR`.
 The interpreter is the one used for `PYTHON` during installation; select the
 distribution's runtime interpreter explicitly when needed.
 

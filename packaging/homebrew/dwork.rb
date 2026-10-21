@@ -21,7 +21,19 @@ class Dwork < Formula
     # Stable releases and HEAD use the shared Make installer.
     venv = virtualenv_create(libexec, "python3.14")
     venv.pip_install resource("pyyaml")
-    system "gmake", "install", "VENV=0", "PREFIX=#{prefix}", "PYTHON=#{libexec}/bin/python"
+    system "gmake", "install", "VENV=0", "PREFIX=#{prefix}", "PYTHON=#{libexec}/bin/python",
+           "BASH_COMPLETION_DIR=#{bash_completion}", "ZSH_COMPLETION_DIR=#{zsh_completion}"
+    # Also supports tagged releases whose Make installer only provides sourceable scripts.
+    bash_completion.mkpath
+    cp share/"dwork/completions/dwork.bash", bash_completion/"dwork" unless (bash_completion/"dwork").exist?
+    zsh_completion.mkpath
+    unless (zsh_completion/"_dwork").exist?
+      (zsh_completion/"_dwork").write <<~ZSH
+        #compdef dwork
+        source #{(share/"dwork/completions/_dwork").to_s.shellescape}
+        _dwork "$@"
+      ZSH
+    end
   end
 
   def caveats
@@ -34,6 +46,8 @@ class Dwork < Formula
   end
 
   test do
+    assert_path_exists bash_completion/"dwork"
+    assert_path_exists zsh_completion/"_dwork"
     assert_match "Usage: dwork", shell_output("#{bin}/dwork --help")
     (testpath/"dwork.yml").write <<~YAML
       version: 1

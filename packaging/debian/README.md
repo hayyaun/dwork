@@ -10,7 +10,7 @@ the 0.3.0 release; no apt repository or PPA is published by this build.
 On Debian/Ubuntu, install build dependencies through your package manager:
 
 ```sh
-sudo apt install build-essential debhelper python3 python3-yaml zsh lintian
+sudo apt install build-essential debhelper python3 python3-yaml python3-jsonschema bash-completion zsh lintian
 python3 scripts/build-deb.py
 lintian dist/debian/*.deb
 ```
@@ -24,6 +24,12 @@ Inspect with `dpkg-deb --info` and `dpkg-deb --contents`. Install inside a test
 system with `sudo apt install ./dist/debian/dwork_0.3.0-1_all.deb`, then run
 `dwork --help` and a host-only dry-run. Remove with `sudo apt remove dwork`.
 Use apt rather than make uninstall for package-managed installations.
+
+New builds install Bash completion in `/usr/share/bash-completion/completions`
+and Zsh completion in `/usr/share/zsh/vendor-completions`. With the shell's
+completion framework enabled, reopening the shell discovers dwork automatically.
+The package recommends `bash-completion`; JSON Schema validation is a build/test
+dependency only. Previously published assets are not changed by this recipe.
 
 ## Publish
 

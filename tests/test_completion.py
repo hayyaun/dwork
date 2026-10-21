@@ -6,6 +6,7 @@ import select
 import shlex
 import shutil
 import subprocess
+import sys
 import time
 import unittest
 
@@ -82,16 +83,30 @@ class CompletionTests(unittest.TestCase):
         import pty
         import struct
         import termios
-        for shell in ("bash", "zsh"):
+        for shell, autoload in (("bash", False), ("zsh", False), ("zsh", True), ("bash", True)):
             if not shutil.which(shell):
                 continue
-            with self.subTest(shell=shell):
+            if shell == "bash" and autoload and not Path("/usr/share/bash-completion/bash_completion").is_file():
+                continue
+            with self.subTest(shell=shell, autoload=autoload):
                 script = self.script(shell)
+                if autoload:
+                    prefix = self.fixture.base / ("installed prefix" if shell == "zsh" else "installed-prefix")
+                    installed = subprocess.run([
+                        sys.executable, str(legacy.SOURCE.parent / "scripts/install.py"),
+                        "install", "--prefix", str(prefix), "--venv", "0",
+                    ], text=True, capture_output=True)
+                    self.assertEqual(installed.returncode, 0, installed.stderr)
+                    script = prefix / "share/zsh/site-functions/_dwork"
                 master, slave = pty.openpty()
                 process = None
                 try:
                     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 160, 0, 0))
                     env = dict(os.environ, TERM="xterm", INPUTRC="/dev/null", ZDOTDIR=str(self.fixture.base))
+                    if autoload and shell == "bash":
+                        env.update(XDG_DATA_HOME=str(prefix / "share"),
+                                   BASH_COMPLETION_USER_DIR=str(prefix / "share/bash-completion"),
+                                   BASH_COMPLETION_USER_FILE="/dev/null")
                     args = ["bash", "--noprofile", "--norc", "-i"] if shell == "bash" else ["zsh", "-f"]
                     process = subprocess.Popen(args, cwd=self.root, stdin=slave, stdout=slave, stderr=slave, env=env)
                     def until(marker):
@@ -102,7 +117,14 @@ class CompletionTests(unittest.TestCase):
                                 output += os.read(master, 65536)
                         self.assertIn(marker, output, output.decode(errors="replace"))
                     init = "autoload -Uz compinit; compinit -D -i; " if shell == "zsh" else ""
-                    setup = init + "source " + shlex.quote(str(script)) + "; dwork() { if [ \"$1\" = list ]; then printf 'alpha\\nbeta\\n'; else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
+                    load = "source " + shlex.quote(str(script)) + "; "
+                    if autoload:
+                        if shell == "zsh":
+                            init = "fpath=(" + shlex.quote(str(script.parent)) + " $fpath); " + init
+                            load = ""
+                        else:
+                            load = "source /usr/share/bash-completion/bash_completion; "
+                    setup = init + load + "dwork() { if [ \"$1\" = list ]; then printf 'alpha\\nbeta\\n'; else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
                     os.write(master, setup.encode())
                     until(b"\r\nREADY\r\n")
                     for typed, result in ((b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
