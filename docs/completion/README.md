@@ -49,7 +49,26 @@ sourceable paths remain available for users who already configured them.
 These paths apply to new builds from this source. Previously published release
 assets are unchanged and may still require explicit sourcing.
 
-## Manual setup: source, Python, and custom prefixes
+## Source-based installations
+
+Sourcing the current `dwork.sh` automatically enables completion in an interactive
+Bash shell. In an interactive Zsh shell, it does so when `compinit` has already
+defined `compdef`. Keep the dwork sourcing line after Oh My Zsh or your existing
+completion initialization. No additional `source <(dwork completion zsh)` line is
+needed in that setup.
+
+If dwork was sourced before `compinit`, source `dwork.sh` again afterward, or use
+the explicit completion command below. dwork does not initialize `compinit` for
+you. Re-sourcing is supported. Noninteractive shells define the command without
+generating or registering completion. Interactive loading uses one Python
+invocation; if Python or the runtime is unavailable, optional completion loading
+is quietly skipped. Invoke `dwork completion bash|zsh` directly to diagnose a
+generation error. The dwork command retains its normal error reporting.
+
+This behavior is in the current source; older checkouts may still need manual
+completion setup. Shell startup files are not edited by the loader.
+
+## Manual setup: Python packages and custom prefixes
 
 For Bash, add this to `~/.bashrc`:
 
@@ -85,8 +104,8 @@ the installation. Remove any corresponding startup line yourself when uninstalli
 The Zsh script is intended to be sourced after `compinit`.
 
 Python package installations support the same `dwork completion bash|zsh` commands
-but do not install native completion files. `dwork.sh` also keeps its existing
-behavior: it defines the command and leaves completion setup explicit.
+but do not install native completion files. These commands also remain available
+for older source checkouts and for explicitly reloading completion.
 
 ## Examples
 

@@ -10,10 +10,14 @@ Shell completion is separate from YAML editor completion. Updated native package
 builds install Bash/Zsh completion files in the platform's discovery directories.
 They are automatic when `bash-completion` or Zsh's `compinit` already searches
 those directories; Homebrew's `brew shellenv` should run before `compinit`.
-Manual source/Python installations, older release packages, and custom prefixes
-may need `source <(dwork completion zsh)` after `compinit`, or the Bash equivalent.
-`dwork.sh` itself does not enable completion. Preserve existing shell choices;
-changing a shell startup file requires the user's authorization.
+The current `dwork.sh` enables completion automatically when sourced interactively;
+Zsh requires it after Oh My Zsh/`compinit`. If sourced earlier, source it again
+after initialization. It does not run `compinit` or generate completion in
+noninteractive shells; missing Python/runtime dependencies quietly skip optional
+loading. Python installations, older source/release packages, and custom prefixes
+may still need `source <(dwork completion zsh)` after `compinit`, or the Bash
+equivalent. Preserve existing shell choices; changing a shell startup file
+requires the user's authorization.
 
 Use the exact filename `dwork.yml`. The nearest file in the current directory or
 its parents wins; files are not merged. `--project-directory` or an explicit

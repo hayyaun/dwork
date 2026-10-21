@@ -161,8 +161,12 @@ standard shell directories. With Bash's `bash-completion` framework or Zsh's
 This applies to builds containing the updated packaging; older release assets
 may still need the manual setup below.
 
-For manual sourcing, Python packages, or a prefix outside your shell's completion
-search path, enable once in your shell startup file:
+Sourcing the current `dwork.sh` also enables completion in interactive Bash and
+Zsh. For Zsh, source it after Oh My Zsh or your existing `compinit` setup.
+No separate completion line is needed for this source-based setup.
+
+For Python packages, older source checkouts, or a prefix outside your shell's
+completion search path, enable once in your shell startup file:
 
 ```sh
 # Bash (~/.bashrc)

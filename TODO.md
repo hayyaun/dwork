@@ -47,7 +47,8 @@
 ## CLI and releases
 
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
-- [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Source/Python and unsearched prefixes keep explicit setup.
+- [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Python and unsearched prefixes keep explicit setup.
+- [x] Load completion automatically when `dwork.sh` is sourced in interactive Bash/Zsh, respecting existing Zsh initialization, noninteractive use, and missing dependencies; test repeated sourcing and real Tab input.
 - [x] Document existing exit codes: 0 for success, 1 for failures, and 130 for interruption.
 - [x] Add `--version` with one version source shared by source/Make installs, package metadata, and release validation.
 - [ ] Add JSON output and explicit noninteractive behavior preserving confirmation controls.

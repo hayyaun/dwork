@@ -83,13 +83,18 @@ class CompletionTests(unittest.TestCase):
         import pty
         import struct
         import termios
-        for shell, autoload in (("bash", False), ("zsh", False), ("zsh", True), ("bash", True)):
+        for shell, mode in (("bash", "manual"), ("zsh", "manual"),
+                            ("zsh", "installed"), ("bash", "installed"),
+                            ("bash", "source"), ("zsh", "source")):
+            autoload = mode == "installed"
             if not shutil.which(shell):
                 continue
             if shell == "bash" and autoload and not Path("/usr/share/bash-completion/bash_completion").is_file():
                 continue
-            with self.subTest(shell=shell, autoload=autoload):
+            with self.subTest(shell=shell, mode=mode):
                 script = self.script(shell)
+                if mode == "source":
+                    script = legacy.SOURCE
                 if autoload:
                     prefix = self.fixture.base / ("installed prefix" if shell == "zsh" else "installed-prefix")
                     installed = subprocess.run([
@@ -118,6 +123,8 @@ class CompletionTests(unittest.TestCase):
                         self.assertIn(marker, output, output.decode(errors="replace"))
                     init = "autoload -Uz compinit; compinit -D -i; " if shell == "zsh" else ""
                     load = "source " + shlex.quote(str(script)) + "; "
+                    if mode == "source":
+                        load += load  # Re-sourcing must leave completion usable.
                     if autoload:
                         if shell == "zsh":
                             init = "fpath=(" + shlex.quote(str(script.parent)) + " $fpath); " + init

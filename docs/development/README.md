@@ -5,6 +5,7 @@
 ## Source layout
 
 - [`dwork.sh`](../../dwork.sh): the Bash/Zsh function and public source entry point.
+  Interactive sourcing also loads completion; Zsh requires existing `compinit`.
 - [`lib/dwork.py`](../../lib/dwork.py): thin entry point shared by source and installed commands.
 - [`lib/dwork_cli.py`](../../lib/dwork_cli.py): argument routing, shell completion,
   diagnostics, and CLI error/interrupt handling.
@@ -41,6 +42,10 @@
 
 `test_config_commands.py` checks version reporting, deterministic initialization,
 overwrite protection, and validation without registry/container operations.
+`test_loader.py` checks that noninteractive sourcing never generates completion,
+interactive optional loading tolerates missing dependencies, and Zsh requires
+existing completion initialization. Real Tab tests also source `dwork.sh` twice
+in interactive Bash/Zsh without a separate completion command.
 `test_schema.py` validates the schema, shipped examples, and generated starters,
 compares valid/invalid configurations and defaults against the real loader, and
 checks that editor comments point to the schema's published identity. It uses

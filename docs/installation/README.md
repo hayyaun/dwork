@@ -171,6 +171,13 @@ Adjust the path to your clone. Load it in the current shell with:
 Keep `dwork.sh` and `lib/` together. This method uses the `python3` on your PATH;
 install PyYAML separately for YAML support (Ubuntu: `sudo apt install python3-yaml`).
 
+The current loader enables completion automatically in interactive Bash and Zsh.
+In Zsh, put the source line after Oh My Zsh or your existing `compinit` setup;
+the loader does not initialize the completion system itself. If it was sourced
+earlier, source it again after `compinit`. Noninteractive shells skip completion,
+and missing Python/runtime dependencies do not interrupt shell startup.
+See [source-based completion](../completion/README.md#source-based-installations).
+
 To remove the source-based setup, remove its startup line and run `unset -f dwork`.
 
 ## Package-maintainer installation

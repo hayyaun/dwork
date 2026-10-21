@@ -37,9 +37,11 @@ A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
 Native package builds with the updated installer place completion files in the
 platform's discovery directories; the shell still needs its completion framework
-enabled. Source/Python installs and prefixes outside the shell's search path need
-explicit completion setup. Do not assume older published assets include the new
-paths; see the bundled reference before suggesting a shell change.
+enabled. Current `dwork.sh` enables completion when sourced interactively; Zsh
+requires sourcing after Oh My Zsh/`compinit`. Python installs, older source
+checkouts, and prefixes outside the shell's search path need explicit setup.
+Do not assume older published assets include the new paths or loader behavior;
+see the bundled reference before suggesting a shell change.
 Verified 0.3.0 packages are available from
 [GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0); select the
 appropriate platform package and verify its checksum before installation.
