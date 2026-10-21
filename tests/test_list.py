@@ -1,4 +1,5 @@
 """Workspace tables preserve status details and align in terminals and plain logs."""
+
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -42,8 +43,12 @@ class ListTests(unittest.TestCase):
     def entry(self, name, *, host=False, locked=False, services=None, directory=None):
         directory = directory or self.root / name
         directory.mkdir(parents=True)
-        workspace = Workspace(name, directory, {}, enabled=not host, selected=services, locked=locked)
-        return dwork_registry.registration(directory, [], [workspace], None if host else TARGET, name)
+        workspace = Workspace(
+            name, directory, {}, enabled=not host, selected=services, locked=locked
+        )
+        return dwork_registry.registration(
+            directory, [], [workspace], None if host else TARGET, name
+        )
 
     def show(self, entries, stream=None):
         stream = stream if stream is not None else io.StringIO()
@@ -81,11 +86,13 @@ class ListTests(unittest.TestCase):
 
     def test_container_counts_respect_service_selection_and_restarting_state(self):
         entry = self.entry("app", services=["web"])
-        self.inventory.return_value = [legacy.container("a", "app", "web", "running"),
-                                       legacy.container("b", "app", "web", "restarting"),
-                                       legacy.container("c", "app", "web", "exited"),
-                                       legacy.container("d", "app", "db", "running"),
-                                       legacy.container("e", "unregistered", "web", "running")]
+        self.inventory.return_value = [
+            legacy.container("a", "app", "web", "running"),
+            legacy.container("b", "app", "web", "restarting"),
+            legacy.container("c", "app", "web", "exited"),
+            legacy.container("d", "app", "db", "running"),
+            legacy.container("e", "unregistered", "web", "running"),
+        ]
         output, _ = self.show([entry])
         self.assertIn("2/3 containers running", output)
 
@@ -101,8 +108,10 @@ class ListTests(unittest.TestCase):
 
     def test_group_locks_identify_protected_projects(self):
         entry = self.entry("stack")
-        entry["members"] = [dict(entry["members"][0], project="db", locked=True),
-                            dict(entry["members"][0], project="api", locked=False)]
+        entry["members"] = [
+            dict(entry["members"][0], project="db", locked=True),
+            dict(entry["members"][0], project="api", locked=False),
+        ]
         output, _ = self.show([entry])
         self.assertEqual(re.split(r" {2,}", output.splitlines()[1])[2], "db")
 

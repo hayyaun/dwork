@@ -1,4 +1,5 @@
 """Build unsigned Debian binaries in a temporary source tree."""
+
 import argparse
 from pathlib import Path
 import shutil
@@ -6,6 +7,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -17,8 +19,13 @@ def main():
     with tempfile.TemporaryDirectory(prefix="dwork-debian-") as temp:
         work = Path(temp)
         source = work / "dwork"
-        shutil.copytree(ROOT, source, ignore=shutil.ignore_patterns(
-            ".git", "dist", "build", "*.egg-info", ".venv*", "__pycache__", "*.pyc"))
+        shutil.copytree(
+            ROOT,
+            source,
+            ignore=shutil.ignore_patterns(
+                ".git", "dist", "build", "*.egg-info", ".venv*", "__pycache__", "*.pyc"
+            ),
+        )
         shutil.copytree(ROOT / "packaging/debian", source / "debian")
         (source / "debian/README.md").unlink()
         (source / "debian/rules").chmod(0o755)
@@ -30,6 +37,7 @@ def main():
         for artifact in artifacts:
             shutil.copy2(artifact, output / artifact.name)
     print("Debian artifacts: " + str(output))
+
 
 if __name__ == "__main__":
     main()

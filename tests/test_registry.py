@@ -43,9 +43,14 @@ class RegistryTests(unittest.TestCase):
             with self.subTest(shell=shell):
                 self.state.unlink(missing_ok=True)
                 result, changes, _ = self.fixture.run_dwork(
-                    shell, answer="y\n", register_current=False,
-                    containers=[legacy.container("a", "main"),
-                                legacy.container("b", "unregistered", state="running")])
+                    shell,
+                    answer="y\n",
+                    register_current=False,
+                    containers=[
+                        legacy.container("a", "main"),
+                        legacy.container("b", "unregistered", state="running"),
+                    ],
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("Register and switch?", result.stdout)
                 self.assertEqual(changes, [["start", "a"]])
@@ -66,12 +71,17 @@ class RegistryTests(unittest.TestCase):
             for answer in ("", "\n", "n\n", "yes\n", "Y\n"):
                 with self.subTest(shell=shell, answer=answer):
                     result, changes, _ = self.fixture.run_dwork(
-                        shell, answer=answer, register_current=False, containers=items)
+                        shell, answer=answer, register_current=False, containers=items
+                    )
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(changes, [["stop", "b"], ["start", "a"]] if answer == "Y\n" else [])
+                    self.assertEqual(
+                        changes, [["stop", "b"], ["start", "a"]] if answer == "Y\n" else []
+                    )
                     self.assertEqual(self.state.read_bytes(), before)
-                    self.assertLess(result.stdout.index("Would start existing:"),
-                                    result.stdout.index("Apply the listed workspace plan?"))
+                    self.assertLess(
+                        result.stdout.index("Would start existing:"),
+                        result.stdout.index("Apply the listed workspace plan?"),
+                    )
 
     def test_root_confirm_is_live_and_applies_from_nested_directory(self):
         self.register()
@@ -81,18 +91,22 @@ class RegistryTests(unittest.TestCase):
         for value in (True, False):
             (self.root / "dwork.yml").write_text(json.dumps({"version": 1, "confirm": value}))
             for args in ("", "up"):
-                result, changes, _ = self.run_cli(args, answer="", cwd=nested,
-                    containers=[legacy.container("a", "main")])
+                result, changes, _ = self.run_cli(
+                    args, answer="", cwd=nested, containers=[legacy.container("a", "main")]
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(changes, [] if value else [["start", "a"]])
                 self.assertEqual("Apply the listed workspace plan?" in result.stdout, value)
                 self.assertEqual(self.state.read_bytes(), before)
-            result, changes, _ = self.run_cli("--dry-run", answer="", cwd=nested,
-                containers=[legacy.container("a", "main")])
+            result, changes, _ = self.run_cli(
+                "--dry-run", answer="", cwd=nested, containers=[legacy.container("a", "main")]
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [])
             self.assertNotIn("(y/N)", result.stdout)
-            self.assertIn("confirmation: required" if value else "skipped (confirm: false)", result.stdout)
+            self.assertIn(
+                "confirmation: required" if value else "skipped (confirm: false)", result.stdout
+            )
 
     def test_root_confirm_false_keeps_first_registration_consent(self):
         (self.root / "dwork.yml").write_text("version: 1\nconfirm: false\n")
@@ -125,25 +139,32 @@ class RegistryTests(unittest.TestCase):
     def test_up_requires_confirmation_after_plan_and_preview_never_prompts(self):
         self.register()
         before = self.state.read_bytes()
-        for args, answer, expected in (("up", "", []), ("up", "\n", []),
-                                        ("up", "n\n", []),
-                                        ("up", "Y\n", [["start", "a"]]),
-                                        ("up --dry-run", "", [])):
+        for args, answer, expected in (
+            ("up", "", []),
+            ("up", "\n", []),
+            ("up", "n\n", []),
+            ("up", "Y\n", [["start", "a"]]),
+            ("up --dry-run", "", []),
+        ):
             with self.subTest(args=args, answer=answer):
-                result, changes, _ = self.run_cli(args, answer=answer,
-                    containers=[legacy.container("a", "main")])
+                result, changes, _ = self.run_cli(
+                    args, answer=answer, containers=[legacy.container("a", "main")]
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(changes, expected)
                 self.assertEqual(self.state.read_bytes(), before)
                 if args == "up":
-                    self.assertLess(result.stdout.index("Would start existing:"),
-                                    result.stdout.index("Apply the listed"))
+                    self.assertLess(
+                        result.stdout.index("Would start existing:"),
+                        result.stdout.index("Apply the listed"),
+                    )
                 else:
                     self.assertNotIn("(y/N)", result.stdout)
 
     def test_up_decline_does_not_register_new_workspace(self):
-        result, changes, _ = self.run_cli("up", answer="n\n",
-            containers=[legacy.container("a", "main")])
+        result, changes, _ = self.run_cli(
+            "up", answer="n\n", containers=[legacy.container("a", "main")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         self.assertFalse(self.state.exists())
@@ -163,8 +184,9 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result.stdout, "new-app\n")
         self.assertEqual(calls, [])
         (self.root / "dwork.yml").unlink()
-        result, changes, _ = self.run_cli("switch new-app", cwd=self.fixture.base,
-                                         containers=[legacy.container("a", "main")])
+        result, changes, _ = self.run_cli(
+            "switch new-app", cwd=self.fixture.base, containers=[legacy.container("a", "main")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
         result, changes, calls = self.run_cli("switch old")
@@ -179,14 +201,16 @@ class RegistryTests(unittest.TestCase):
         self.fixture.model(other, "other")
         self.register(other, name="taken")
         before = self.state.read_bytes()
-        for args, message in (("rename old taken", "already registered"),
-                              ("rename old old", "already registered"),
-                              ("rename missing fresh", "Unknown workspace"),
-                              ("rename old bad/name", "Workspace name must"),
-                              ("rename old ''", "Workspace name must"),
-                              ("rename old", "Usage:"),
-                              ("rename old fresh extra", "Usage:"),
-                              ("rename --dry-run old fresh", "Usage:")):
+        for args, message in (
+            ("rename old taken", "already registered"),
+            ("rename old old", "already registered"),
+            ("rename missing fresh", "Unknown workspace"),
+            ("rename old bad/name", "Workspace name must"),
+            ("rename old ''", "Workspace name must"),
+            ("rename old", "Usage:"),
+            ("rename old fresh extra", "Usage:"),
+            ("rename --dry-run old fresh", "Usage:"),
+        ):
             with self.subTest(args=args):
                 result, changes, calls = self.run_cli(args)
                 self.assertEqual(result.returncode, 1, result.stdout)
@@ -197,8 +221,9 @@ class RegistryTests(unittest.TestCase):
 
     def test_decline_eof_and_dry_run_do_not_register_or_mutate(self):
         for args, answer in (("", ""), ("", "n\n"), ("--dry-run", "y\n")):
-            result, changes, _ = self.run_cli(args, answer=answer,
-                                             containers=[legacy.container("a", "main")])
+            result, changes, _ = self.run_cli(
+                args, answer=answer, containers=[legacy.container("a", "main")]
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [])
             self.assertFalse(self.state.exists())
@@ -214,13 +239,17 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("NAME", result.stdout.splitlines()[0])
         self.assertIn("PATH", result.stdout.splitlines()[0])
         self.assertRegex(result.stdout, r"(?m)^my-app\s+.*  " + re.escape(str(self.root)) + r"$")
-        result, changes, _ = self.run_cli("switch my-app", cwd=self.fixture.base,
-                                         containers=[legacy.container("a", "main")])
+        result, changes, _ = self.run_cli(
+            "switch my-app", cwd=self.fixture.base, containers=[legacy.container("a", "main")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
         before = self.state.read_bytes()
-        result, changes, _ = self.run_cli("switch my-app --dry-run", cwd=self.fixture.base,
-                                         containers=[legacy.container("a", "main")])
+        result, changes, _ = self.run_cli(
+            "switch my-app --dry-run",
+            cwd=self.fixture.base,
+            containers=[legacy.container("a", "main")],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         self.assertEqual(self.state.read_bytes(), before)
@@ -237,10 +266,12 @@ class RegistryTests(unittest.TestCase):
         (other / "dwork.yml").write_text("version: 1\ncompose: {services: [db]}\n")
         self.register(other)
         self.register()
-        items = [legacy.container("a", "main"),
-                 legacy.container("b", "other", "db", "running"),
-                 legacy.container("c", "other", "app", "running"),
-                 legacy.container("d", "unknown", state="running")]
+        items = [
+            legacy.container("a", "main"),
+            legacy.container("b", "other", "db", "running"),
+            legacy.container("c", "other", "app", "running"),
+            legacy.container("d", "unknown", state="running"),
+        ]
         result, changes, _ = self.run_cli(containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"], ["start", "a"]])
@@ -256,7 +287,9 @@ class RegistryTests(unittest.TestCase):
         self.fixture.model(other, "other")
         self.register(other, DWORK_TEST_CONTEXT="remote")
         self.register()
-        result, changes, _ = self.run_cli(containers=[legacy.container("b", "other", state="running")])
+        result, changes, _ = self.run_cli(
+            containers=[legacy.container("b", "other", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         for override in ({"DWORK_TEST_CONTEXT": "remote"}, {"DWORK_TEST_DAEMON": "new-daemon"}):
@@ -285,7 +318,9 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(changes, [])
         self.register(name="main")
-        result, changes, _ = self.run_cli("switch main", containers=[legacy.container("a", "renamed")])
+        result, changes, _ = self.run_cli(
+            "switch main", containers=[legacy.container("a", "renamed")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
 
@@ -293,9 +328,13 @@ class RegistryTests(unittest.TestCase):
         custom = self.root / "custom.json"
         custom.write_text(json.dumps({"name": "custom", "services": {"web": {}}}))
         self.register(name="app -f custom.json", COMPOSE_PROFILES="dev")
-        result, changes, calls = self.run_cli("switch app", cwd=self.fixture.base,
-                                             containers=[legacy.container("a", "custom")],
-                                             COMPOSE_FILE="missing.yaml", COMPOSE_PROFILES="wrong")
+        result, changes, calls = self.run_cli(
+            "switch app",
+            cwd=self.fixture.base,
+            containers=[legacy.container("a", "custom")],
+            COMPOSE_FILE="missing.yaml",
+            COMPOSE_PROFILES="wrong",
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
         self.assertIn("custom.json", calls[0])
@@ -318,49 +357,83 @@ class RegistryTests(unittest.TestCase):
         nested = self.root / "nested"
         nested.mkdir()
         for directory, name in ((self.root, "wrong-parent"), (nested, "intended-child")):
-            (directory / "compose.dev.yaml").write_text(json.dumps({"name": name, "services": {"web": {}}}))
+            (directory / "compose.dev.yaml").write_text(
+                json.dumps({"name": name, "services": {"web": {}}})
+            )
         self.register(nested, "app -f compose.dev.yaml")
         entry = self.entries()[0]
         self.assertEqual(entry["path"], str(nested))
         self.assertEqual(entry["members"][0]["project"], "intended-child")
-        result, changes, _ = self.run_cli("switch app", cwd=self.fixture.base,
-            containers=[legacy.container("a", "intended-child"), legacy.container("b", "wrong-parent")])
+        result, changes, _ = self.run_cli(
+            "switch app",
+            cwd=self.fixture.base,
+            containers=[
+                legacy.container("a", "intended-child"),
+                legacy.container("b", "wrong-parent"),
+            ],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
 
     def test_nested_compose_context_is_separate_from_yaml_paths(self):
-        (self.root / "dwork.yml").write_text(json.dumps({"version": 1,
-            "compose": {"files": ["configured.yaml"]}, "terminals": [{"command": ["echo"]}]}))
+        (self.root / "dwork.yml").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "compose": {"files": ["configured.yaml"]},
+                    "terminals": [{"command": ["echo"]}],
+                }
+            )
+        )
         nested = self.root / "nested"
         nested.mkdir()
-        cases = [([], {}), (["-f", "one.yaml", "-f", "two.yaml"], {}),
-                 (["--file=one.yaml"], {}), (["-f", "-"], {}),
-                 (["--env-file", ".env.dev"], {}), (["--env-file=.env.dev"], {}),
-                 (["--project-directory", "."], {}), (["--project-directory=."], {}),
-                 ([], {"COMPOSE_FILE": "one.yaml:two.yaml"}),
-                 ([], {"COMPOSE_ENV_FILES": ".env.dev,.env.local"})]
+        cases = [
+            ([], {}),
+            (["-f", "one.yaml", "-f", "two.yaml"], {}),
+            (["--file=one.yaml"], {}),
+            (["-f", "-"], {}),
+            (["--env-file", ".env.dev"], {}),
+            (["--env-file=.env.dev"], {}),
+            (["--project-directory", "."], {}),
+            (["--project-directory=."], {}),
+            ([], {"COMPOSE_FILE": "one.yaml:two.yaml"}),
+            ([], {"COMPOSE_ENV_FILES": ".env.dev,.env.local"}),
+        ]
         for options, environment in cases:
-            with self.subTest(options=options, environment=environment), \
-                    dwork_config.compose_environment(environment), \
-                    patch.object(dwork_docker, "read_model", return_value=("demo", {"web": {}})) as model:
+            with (
+                self.subTest(options=options, environment=environment),
+                dwork_config.compose_environment(environment),
+                patch.object(
+                    dwork_docker, "read_model", return_value=("demo", {"web": {}})
+                ) as model,
+            ):
                 workspaces, discovered = dwork_config.discover(nested, options)
                 self.assertFalse(discovered)
                 explicit = bool(options or environment)
                 self.assertEqual(model.call_args.args[0], nested if explicit else self.root)
                 self.assertEqual(workspaces[0].directory, self.root)
                 self.assertEqual(workspaces[0].terminals[0].cwd, self.root)
-                self.assertEqual(model.call_args.args[1][-len(options):] if options else [], options)
-                if not any(arg in ("-f", "--file") or arg.startswith("--file=") for arg in options) \
-                        and not environment.get("COMPOSE_FILE"):
-                    self.assertEqual(model.call_args.args[1][:2], ["-f", str(self.root / "configured.yaml")])
+                self.assertEqual(
+                    model.call_args.args[1][-len(options) :] if options else [], options
+                )
+                if not any(
+                    arg in ("-f", "--file") or arg.startswith("--file=") for arg in options
+                ) and not environment.get("COMPOSE_FILE"):
+                    self.assertEqual(
+                        model.call_args.args[1][:2], ["-f", str(self.root / "configured.yaml")]
+                    )
 
     def test_discovered_children_are_one_switchable_workspace(self):
         (self.root / "compose.yaml").unlink()
         self.fixture.model(self.root / "backend", "api")
         self.fixture.model(self.root / "frontend", "ui")
         self.register(name="stack")
-        result, changes, _ = self.run_cli("switch stack", cwd=self.fixture.base, answer="y\n",
-                                         containers=[legacy.container("a", "api"), legacy.container("b", "ui")])
+        result, changes, _ = self.run_cli(
+            "switch stack",
+            cwd=self.fixture.base,
+            answer="y\n",
+            containers=[legacy.container("a", "api"), legacy.container("b", "ui")],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"], ["start", "b"]])
         self.assertEqual(len(self.entries()[0]["members"]), 2)
@@ -377,7 +450,9 @@ class RegistryTests(unittest.TestCase):
         other = self.fixture.base / "other"
         self.fixture.model(other, "other")
         self.register(other)
-        result, changes, _ = self.run_cli(cwd=other, containers=[legacy.container("a", "main", state="running")])
+        result, changes, _ = self.run_cli(
+            cwd=other, containers=[legacy.container("a", "main", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
@@ -404,8 +479,9 @@ class RegistryTests(unittest.TestCase):
     def test_group_decline_does_not_register(self):
         (self.root / "compose.yaml").unlink()
         self.fixture.model(self.root / "backend", "api")
-        result, changes, _ = self.run_cli(answer="y\nn\n",
-                                         containers=[legacy.container("a", "api")])
+        result, changes, _ = self.run_cli(
+            answer="y\nn\n", containers=[legacy.container("a", "api")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         self.assertFalse(self.state.exists())
@@ -413,19 +489,24 @@ class RegistryTests(unittest.TestCase):
     def test_switch_uses_destination_terminal_and_keeps_session_confirmation(self):
         (self.root / "dwork.yml").write_text(
             "version: 1\ncompose: {enabled: false}\nterminals:\n"
-            "  - title: Destination\n    command: [echo, ready]\n")
+            "  - title: Destination\n    command: [echo, ready]\n"
+        )
         launcher = self.fixture.bin / "powershell.exe"
-        launcher.write_text('''#!/usr/bin/env python3
+        launcher.write_text("""#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
     stream.write(json.dumps(["terminal", *sys.argv[1:]]) + "\\n")
-''')
+""")
         launcher.chmod(0o755)
         self.register(name="host")
         for answer, count in (("n\n", 0), ("y\n", 1)):
             result, changes, calls = self.run_cli(
-                "switch host", cwd=self.fixture.base, answer=answer,
-                WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                "switch host",
+                cwd=self.fixture.base,
+                answer=answer,
+                WSL_DISTRO_NAME="Ubuntu",
+                SHELL="/bin/bash",
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [])
             self.assertIn("Open terminal 'Destination'", result.stdout)
@@ -471,7 +552,14 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
         self.assertEqual(calls, [])
 
     def test_usage_errors_do_not_mutate(self):
-        for args in ("switch", "forget", "switch nope", "list extra", "recognize", "register --dry-run"):
+        for args in (
+            "switch",
+            "forget",
+            "switch nope",
+            "list extra",
+            "recognize",
+            "register --dry-run",
+        ):
             result, changes, _ = self.run_cli(args)
             self.assertEqual(result.returncode, 1, args)
             self.assertEqual(changes, [])

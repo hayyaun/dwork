@@ -10,6 +10,8 @@
 
 - [x] Separate data-only configuration parsing from path/Compose resolution, registry persistence from pure ownership/protection policy, and launch preparation from dispatch; retain confirmation and live lock checks and cover the boundaries with regression tests.
 
+- [x] Add pinned Ruff lint/format and gradual mypy checks in local/CI quality gates; verify the exact checkout through Homebrew alongside stable-release checks using one recipe template, checksum manifests, and offline archive regressions.
+
 ## Switching policies
 
 - [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.

@@ -1,4 +1,5 @@
 """Pure ownership and protection rules for containers and tracked commands."""
+
 from dwork_common import DworkError
 
 
@@ -8,8 +9,15 @@ def member_locked(entry, member):
 
 
 def locked_projects(entries, target):
-    return sorted({m["project"] for e in entries if e["target"] == target
-                   for m in e["members"] if m["enabled"] and member_locked(e, m)})
+    return sorted(
+        {
+            m["project"]
+            for e in entries
+            if e["target"] == target
+            for m in e["members"]
+            if m["enabled"] and member_locked(e, m)
+        }
+    )
 
 
 def check_ownership(entries, candidate):
@@ -18,10 +26,16 @@ def check_ownership(entries, candidate):
         if entry["path"] == candidate["path"]:
             continue
         if entry["target"] == candidate["target"] and projects.intersection(
-                m["project"] for m in entry["members"] if m["enabled"]):
-            raise DworkError("Compose project already registered to " + entry["name"]
-                             + " (" + entry["path"] + "). Use a distinct Compose project name"
-                             + " or forget the old registration; nothing changed.")
+            m["project"] for m in entry["members"] if m["enabled"]
+        ):
+            raise DworkError(
+                "Compose project already registered to "
+                + entry["name"]
+                + " ("
+                + entry["path"]
+                + "). Use a distinct Compose project name"
+                + " or forget the old registration; nothing changed."
+            )
 
 
 def registered_services(entries, target):
@@ -34,7 +48,9 @@ def registered_services(entries, target):
             if member["enabled"] and not member_locked(entry, member):
                 project = member["project"]
                 if project in managed:
-                    raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
+                    raise DworkError(
+                        "Ambiguous registered Compose project: " + project + "; nothing changed."
+                    )
                 managed[project] = member["services"]
     return managed
 
@@ -43,8 +59,14 @@ def task_protection(record, entries, keep):
     entry = next((e for e in entries if e["path"] == record["workspace"]), None)
     if entry is None:
         return "workspace no longer registered"
-    member = next((m for m in entry["members"] if m["directory"] == record["directory"]
-                   and m["project"] == record["project"]), None)
+    member = next(
+        (
+            m
+            for m in entry["members"]
+            if m["directory"] == record["directory"] and m["project"] == record["project"]
+        ),
+        None,
+    )
     if member is None:
         return "workspace ownership changed"
     if member_locked(entry, member):
@@ -52,5 +74,3 @@ def task_protection(record, entries, keep):
     if member["project"] in keep:
         return "DWORK_KEEP_PROJECTS"
     return None
-
-

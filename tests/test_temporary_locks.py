@@ -1,4 +1,5 @@
 """Local workspace locks preserve YAML policy and protect shutdown boundaries."""
+
 import fcntl
 import json
 import unittest
@@ -45,12 +46,20 @@ class TemporaryLockTests(unittest.TestCase):
             result, changes, calls = self.cli(command)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((changes, calls), ([], []))
-            self.assertTrue(all(not entry.get("temporary_locked", False) for entry in self.entries()))
-        self.assertEqual(configs, [(directory / "dwork.yml").read_bytes() for directory in directories])
+            self.assertTrue(
+                all(not entry.get("temporary_locked", False) for entry in self.entries())
+            )
+        self.assertEqual(
+            configs, [(directory / "dwork.yml").read_bytes() for directory in directories]
+        )
 
     def test_unknown_batch_name_changes_nothing(self):
         self.register("infra")
-        for command in ("lock infra missing", "unlock infra missing", "lock infra missing --dry-run"):
+        for command in (
+            "lock infra missing",
+            "unlock infra missing",
+            "lock infra missing --dry-run",
+        ):
             before = self.state.read_bytes()
             result, changes, calls = self.cli(command)
             self.assertNotEqual(result.returncode, 0)
@@ -78,8 +87,11 @@ class TemporaryLockTests(unittest.TestCase):
         self.register("app")
         result, _, _ = self.cli("lock infra")
         self.assertEqual(result.returncode, 0, result.stderr)
-        items = [legacy.container("a", "infra", state="running"),
-                 legacy.container("b", "other", state="running"), legacy.container("c", "app")]
+        items = [
+            legacy.container("a", "infra", state="running"),
+            legacy.container("b", "other", state="running"),
+            legacy.container("c", "app"),
+        ]
         result, changes, _ = self.cli("switch app", containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"], ["start", "c"]])
@@ -98,13 +110,17 @@ class TemporaryLockTests(unittest.TestCase):
         for command in ("lock infra app kept", "unlock infra app kept"):
             result, _, _ = self.cli(command)
             self.assertEqual(result.returncode, 0, result.stderr)
-        items = [legacy.container("a", "infra", state="running"),
-                 legacy.container("b", "app", state="running"),
-                 legacy.container("c", "kept", state="running")]
+        items = [
+            legacy.container("a", "infra", state="running"),
+            legacy.container("b", "app", state="running"),
+            legacy.container("c", "kept", state="running"),
+        ]
         result, changes, _ = self.cli("down", containers=items, DWORK_KEEP_PROJECTS="kept")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"]])
-        self.assertTrue(next(e for e in self.entries() if e["name"] == "infra")["members"][0]["locked"])
+        self.assertTrue(
+            next(e for e in self.entries() if e["name"] == "infra")["members"][0]["locked"]
+        )
 
     def test_group_lock_protects_all_members_and_unlock_restores_child_policy(self):
         group = self.root / "group"
@@ -114,7 +130,10 @@ class TemporaryLockTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         result, _, _ = self.cli("lock stack")
         self.assertEqual(result.returncode, 0, result.stderr)
-        items = [legacy.container("a", "db", state="running"), legacy.container("b", "api", state="running")]
+        items = [
+            legacy.container("a", "db", state="running"),
+            legacy.container("b", "api", state="running"),
+        ]
         result, changes, _ = self.cli("down", containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
@@ -136,13 +155,17 @@ class TemporaryLockTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(self.entries()[0]["temporary_locked"])
         directory.rename(self.root / "moved")
-        result, changes, _ = self.cli("down", containers=[legacy.container("a", "infra", state="running")])
+        result, changes, _ = self.cli(
+            "down", containers=[legacy.container("a", "infra", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         result, changes, calls = self.cli("unlock shared")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((changes, calls), ([], []))
-        result, changes, _ = self.cli("down", containers=[legacy.container("a", "infra", state="running")])
+        result, changes, _ = self.cli(
+            "down", containers=[legacy.container("a", "infra", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 

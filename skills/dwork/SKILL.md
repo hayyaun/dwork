@@ -153,8 +153,10 @@ host-only registry needs no Docker. Local tracked commands are considered across
 saved Docker targets; container shutdown stays scoped to the current target.
 
 Inspect warnings as well as the exit status: a successful dry run can still warn
-about missing containers or blocked terminal launches. If dwork or a dependency
-is unavailable, report what was checked statically and what remains unverified;
+about missing containers or blocked terminal launches. For installation evidence,
+distinguish stable-release checks from exact-checkout checks; a successful stable Homebrew run does not validate unpublished code. Quality
+tools are development-only and are not prerequisites for generating workspace YAML.
+If dwork or a dependency is unavailable, report what was checked statically and what remains unverified;
 do not install anything or claim runtime validation. If the installed dwork
 rejects a field, check its version/docs rather than bypassing validation.
 Use `dwork doctor` for dependency diagnostics when needed; it checks opener

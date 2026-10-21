@@ -1,4 +1,5 @@
 """Behavior tests using a fake Docker executable; never contacts Docker."""
+
 import json
 import os
 from pathlib import Path
@@ -63,11 +64,16 @@ else:
     sys.exit("Forbidden Docker command")
 """
 
+
 def container(identifier, project, service="web", state="exited"):
-    return {"Id": identifier, "Config": {"Labels": {
-        "com.docker.compose.project": project,
-        "com.docker.compose.service": service}},
-        "State": {"Status": state}}
+    return {
+        "Id": identifier,
+        "Config": {
+            "Labels": {"com.docker.compose.project": project, "com.docker.compose.service": service}
+        },
+        "State": {"Status": state},
+    }
+
 
 class DworkTests(unittest.TestCase):
     def setUp(self):
@@ -82,9 +88,12 @@ class DworkTests(unittest.TestCase):
         executable.write_text(FAKE_DOCKER)
         executable.chmod(0o755)
         # Direct-import tests need the same fake Docker availability as CLI tests.
-        environment = patch.dict(os.environ, {
-            "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
-        })
+        environment = patch.dict(
+            os.environ,
+            {
+                "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
+            },
+        )
         environment.start()
         self.addCleanup(environment.stop)
         self.log = self.base / "docker.jsonl"
@@ -93,47 +102,96 @@ class DworkTests(unittest.TestCase):
 
     def model(self, directory, name, **extra):
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "compose.yaml").write_text(json.dumps({
-            "name": name, "services": {"web": {}}, **extra}))
+        (directory / "compose.yaml").write_text(
+            json.dumps({"name": name, "services": {"web": {}}, **extra})
+        )
 
-    def run_dwork(self, shell, args="", answer="", containers=(), cwd=None,
-                  register_current=True, managed_projects=(), **overrides):
+    def run_dwork(
+        self,
+        shell,
+        args="",
+        answer="",
+        containers=(),
+        cwd=None,
+        register_current=True,
+        managed_projects=(),
+        **overrides,
+    ):
         env = {k: v for k, v in os.environ.items() if not k.startswith(("COMPOSE_", "DWORK_"))}
-        env.update(PATH=str(self.bin) + os.pathsep + env["PATH"],
-                   DWORK_TEST_LOG=str(self.log),
-                   XDG_STATE_HOME=str(self.base / "state"),
-                   DWORK_TEST_CONTAINERS=json.dumps(containers))
+        env.update(
+            PATH=str(self.bin) + os.pathsep + env["PATH"],
+            DWORK_TEST_LOG=str(self.log),
+            XDG_STATE_HOME=str(self.base / "state"),
+            DWORK_TEST_CONTAINERS=json.dumps(containers),
+        )
         env.update(overrides)
         source = ". " + shlex.quote(str(SOURCE)) + "\ndwork "
         for project in managed_projects:
             directory = self.base / ("registered-" + project)
             self.model(directory, project)
-            subprocess.run([shell, "-c", source + "register"], cwd=directory,
-                           input="", text=True, capture_output=True, env=env, check=True)
+            subprocess.run(
+                [shell, "-c", source + "register"],
+                cwd=directory,
+                input="",
+                text=True,
+                capture_output=True,
+                env=env,
+                check=True,
+            )
         # Existing behavior tests exercise already-registered workspaces. Registry
         # tests disable this setup to exercise the first-run consent path itself.
-        if register_current and not args.startswith(("init", "validate", "--version", "register", "scan", "list", "switch", "forget", "down")):
+        if register_current and not args.startswith(
+            (
+                "init",
+                "validate",
+                "--version",
+                "register",
+                "scan",
+                "list",
+                "switch",
+                "forget",
+                "down",
+            )
+        ):
             words = shlex.split(args)
             if words and words[0] in ("--dry-run", "status", "doctor"):
                 words.pop(0)
-            registration = subprocess.run([shell, "-c", source + "register " + shlex.join(words)],
-                                          cwd=cwd or self.root, input="", text=True, capture_output=True, env=env)
+            registration = subprocess.run(
+                [shell, "-c", source + "register " + shlex.join(words)],
+                cwd=cwd or self.root,
+                input="",
+                text=True,
+                capture_output=True,
+                env=env,
+            )
             # Existing behavior tests auto-register and approve the single-workspace
             # activation gate; registry tests exercise that consent explicitly.
-            if registration.returncode == 0 and (not args or args.startswith("-")) and not args.startswith("--dry-run"):
-                entry = json.loads((Path(env["XDG_STATE_HOME"]) / "dwork/workspaces.json").read_text())["workspaces"][-1]
+            if (
+                registration.returncode == 0
+                and (not args or args.startswith("-"))
+                and not args.startswith("--dry-run")
+            ):
+                entry = json.loads(
+                    (Path(env["XDG_STATE_HOME"]) / "dwork/workspaces.json").read_text()
+                )["workspaces"][-1]
                 if len(entry["members"]) == 1 and entry["members"][0]["directory"] == entry["path"]:
                     config_path = Path(entry["path"]) / "dwork.yml"
                     confirm = True
                     if config_path.is_file():
                         import yaml
+
                         confirm = yaml.safe_load(config_path.read_text()).get("confirm", True)
                     if confirm:
                         answer = "y\n" + answer
         self.log.write_text("")
         result = subprocess.run(
             [shell, "-c", ". " + shlex.quote(str(SOURCE)) + "\ndwork " + args],
-            cwd=cwd or self.root, input=answer, text=True, capture_output=True, env=env)
+            cwd=cwd or self.root,
+            input=answer,
+            text=True,
+            capture_output=True,
+            env=env,
+        )
         calls = [json.loads(line) for line in self.log.read_text().splitlines()]
         mutations = [call for call in calls if call[0] in ("stop", "start")]
         return result, mutations, calls
@@ -141,15 +199,22 @@ class DworkTests(unittest.TestCase):
     def test_children_switch_together(self):
         self.model(self.root / "backend", "api")
         self.model(self.root / "frontend", "ui")
-        inventory = [container("a", "api"), container("b", "ui", state="created"),
-                     container("c", "api", state="running"),
-                     container("d", "outside", state="running"),
-                     container("e", "infra", state="running")]
+        inventory = [
+            container("a", "api"),
+            container("b", "ui", state="created"),
+            container("c", "api", state="running"),
+            container("d", "outside", state="running"),
+            container("e", "infra", state="running"),
+        ]
         for shell in self.shells:
             with self.subTest(shell=shell):
                 result, changes, _ = self.run_dwork(
-                    shell, answer="Y\n", containers=inventory, DWORK_KEEP_PROJECTS="infra",
-                    managed_projects=("outside", "infra"))
+                    shell,
+                    answer="Y\n",
+                    containers=inventory,
+                    DWORK_KEEP_PROJECTS="infra",
+                    managed_projects=("outside", "infra"),
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(changes, [["stop", "d"], ["start", "a"], ["start", "b"]])
                 self.assertIn("(y/N)", result.stdout)
@@ -169,8 +234,9 @@ class DworkTests(unittest.TestCase):
     def test_dry_run_does_not_prompt(self):
         self.model(self.root / "backend", "api")
         for shell in self.shells:
-            result, changes, _ = self.run_dwork(shell, "--dry-run",
-                                               containers=[container("a", "api")])
+            result, changes, _ = self.run_dwork(
+                shell, "--dry-run", containers=[container("a", "api")]
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [])
             self.assertNotIn("(y/N)", result.stdout)
@@ -236,17 +302,18 @@ class DworkTests(unittest.TestCase):
     def test_explicit_config_does_not_discover_children(self):
         self.model(self.root / "backend", "api")
         for shell in self.shells:
-            result, changes, _ = self.run_dwork(
-                shell, "-f missing.yaml", answer="y\n")
+            result, changes, _ = self.run_dwork(shell, "-f missing.yaml", answer="y\n")
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [])
             self.assertNotIn("(y/N)", result.stdout)
 
     def test_existing_only_and_missing_warnings(self):
         self.model(self.root, "main")
-        inventory = [container("a", "main", state="running"),
-                     container("b", "main", service="old-job"),
-                     container("c", "main", service="paused", state="paused")]
+        inventory = [
+            container("a", "main", state="running"),
+            container("b", "main", service="old-job"),
+            container("c", "main", service="paused", state="paused"),
+        ]
         for shell in self.shells:
             result, changes, _ = self.run_dwork(shell, containers=inventory)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -261,9 +328,11 @@ class DworkTests(unittest.TestCase):
         self.model(self.root, "main")
         for shell in self.shells:
             result, changes, _ = self.run_dwork(
-                shell, containers=[container("a", "main"),
-                                   container("b", "other", state="running")],
-                DWORK_TEST_FAIL="stop", managed_projects=("other",))
+                shell,
+                containers=[container("a", "main"), container("b", "other", state="running")],
+                DWORK_TEST_FAIL="stop",
+                managed_projects=("other",),
+            )
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [["stop", "b"]])
 
@@ -274,6 +343,7 @@ class DworkTests(unittest.TestCase):
             result, changes, _ = self.run_dwork(shell, answer="y\n")
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,6 +23,7 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["jsonschema>=4.18,<5"]
+quality = ["ruff==0.17.1", "mypy==2.4.0", "types-PyYAML==6.0.12.20260906"]
 
 [project.scripts]
 dwork = "dwork:cli"
@@ -59,3 +60,34 @@ package-dir = {"" = "lib"}
 
 [tool.setuptools.dynamic]
 version = {attr = "dwork_version.__version__"}
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = ["graphify-out"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# These tests locate the source checkout before importing runtime modules.
+"tests/test_examples.py" = ["E402"]
+"tests/test_schema.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.10"
+platform = "linux"
+mypy_path = "lib"
+files = ["lib", "scripts"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["dwork_common", "dwork_launch", "dwork_plans", "dwork_process"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_calls = true
+warn_return_any = true
+no_implicit_reexport = true

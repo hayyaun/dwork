@@ -49,7 +49,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential debhelper python3-yaml python3-jsonschema bash-completion zsh lintian
-          python -m pip install build twine '.[test]'
+          python -m pip install build twine '.[test,quality]'
+      - name: Check source quality
+        run: make quality
       - name: Test source
         run: make test
       - name: Build and verify Python distributions

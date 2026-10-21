@@ -20,10 +20,14 @@ the full suite; `make test` locally reports all failures in one run.
 1. Keep the MIT license and copyright notice in distributions.
 2. Commit the exact source being released. Synchronize the Python metadata and
    Debian upstream version with the intended tag; keep existing tags unchanged.
-3. Run `make test`, Python wheel/sdist verification, and the relevant channel build.
+3. Run `make quality`, `make test`, Python wheel/sdist verification, and the relevant
+   channel build. Homebrew stable and exact-checkout jobs establish different source
+   coverage; record which revision and mode passed.
 4. Tag the tested commit and publish the matching GitHub release. Never rewrite
    existing release tags or reuse a published PyPI version.
 5. Update fixed source URLs, checksums, versions, and channel metadata together.
+   For Homebrew, update `stable.json` and the shared template as needed, regenerate
+   `dwork.rb`, and run its parity check before copying it to a tap.
 
 ## Automated GitHub release assets
 
@@ -38,7 +42,7 @@ git tag -a v0.3.0 -m "Release 0.3.0"
 git push origin v0.3.0
 ```
 
-The workflow runs source tests, builds and smoke-tests the Python wheel and
+The workflow runs the pinned quality baseline and source tests, builds and smoke-tests the Python wheel and
 source distribution, then builds, lints, installs, and smoke-tests the Debian
 package on Ubuntu 24.04. Two more jobs build from the tagged Git checkout in
 `fedora:44` and `archlinux:base-devel` containers using `rpmbuild` and `makepkg`.
@@ -78,7 +82,7 @@ Homebrew/AUR updates, and apt repository publication remain separate manual work
 
 ## Channel guides
 
-- [AUR](../../packaging/aur/README.md): v0.1.0 PKGBUILD and generated .SRCINFO,
+- [AUR](../../packaging/aur/README.md): v0.3.0 PKGBUILD and generated .SRCINFO,
   validated on Arch. AUR account registration was temporarily closed on
   2026-10-20; recheck availability before submission. Push recipes to AUR's
   separate SSH Git repository, not package binaries.

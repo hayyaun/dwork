@@ -1,4 +1,5 @@
 """CLI routing, shell completion, diagnostics, and friendly exit handling."""
+
 from pathlib import Path
 import sys
 
@@ -13,15 +14,37 @@ import dwork_terminals
 import dwork_workspaces
 
 
-COMMANDS = ("init", "validate", "register", "scan", "list", "switch", "rename", "forget", "lock", "unlock", "down", "status", "doctor", "completion")
-ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "up", "ps": "status"}
+COMMANDS = (
+    "init",
+    "validate",
+    "register",
+    "scan",
+    "list",
+    "switch",
+    "rename",
+    "forget",
+    "lock",
+    "unlock",
+    "down",
+    "status",
+    "doctor",
+    "completion",
+)
+ALIASES = {
+    "reg": "register",
+    "ls": "list",
+    "sw": "switch",
+    "rm": "forget",
+    "up": "up",
+    "ps": "status",
+}
 
 
 def completion_script(shell):
     """Generate portable shell integrations; dynamic names use the public names API."""
     commands = " ".join((*COMMANDS, *ALIASES))
     if shell == "bash":
-        script = r'''# Bash completion for dwork. Source this file from ~/.bashrc.
+        script = r"""# Bash completion for dwork. Source this file from ~/.bashrc.
 _dwork_complete() {
     local cur="${COMP_WORDS[COMP_CWORD]}" prev="${COMP_WORDS[COMP_CWORD-1]}"
     local cmd="${COMP_WORDS[1]}" choices candidate
@@ -65,9 +88,9 @@ _dwork_complete() {
     COMPREPLY=( $(compgen -W "$choices" -- "$cur") )
 }
 complete -o bashdefault -o default -F _dwork_complete dwork
-'''
+"""
     elif shell == "zsh":
-        script = r'''#compdef dwork
+        script = r"""#compdef dwork
 # Source this file after compinit in ~/.zshrc.
 _dwork() {
     local cmd="${words[2]}" prev="${words[CURRENT-1]}"
@@ -111,7 +134,7 @@ _dwork() {
 if (( $+functions[compdef] )); then
     compdef _dwork dwork
 fi
-'''
+"""
     else:
         raise DworkError("Usage: dwork completion bash|zsh")
     return script.replace("@COMMANDS@", commands)
@@ -131,41 +154,64 @@ def doctor(directory, options):
             print("  Fix: " + hint, file=sys.stderr)
             return None
 
-    workspaces = check("Workspace configuration and Compose compatibility",
-                       lambda: dwork_config.discover(directory, options)[0],
-                       "Check dwork.yml and Compose options; Compose must support config --no-interpolate --no-env-resolution --format json.")
+    workspaces = check(
+        "Workspace configuration and Compose compatibility",
+        lambda: dwork_config.discover(directory, options)[0],
+        "Check dwork.yml and Compose options; Compose must support config --no-interpolate --no-env-resolution --format json.",
+    )
     if workspaces is None:
         print("Run dwork --dry-run after fixing configuration to inspect the switch plan.")
         return 1
     if any(w.enabled for w in workspaces):
-        check("Docker target", dwork_docker.show_target,
-              "Install Docker CLI and check docker context show, DOCKER_CONTEXT, and DOCKER_HOST.")
-        containers = check("Docker access and container inventory", dwork_docker.inventory,
-                           "Check docker info, daemon availability, and permissions for the selected Docker target.")
+        check(
+            "Docker target",
+            dwork_docker.show_target,
+            "Install Docker CLI and check docker context show, DOCKER_CONTEXT, and DOCKER_HOST.",
+        )
+        containers = check(
+            "Docker access and container inventory",
+            dwork_docker.inventory,
+            "Check docker info, daemon availability, and permissions for the selected Docker target.",
+        )
         if containers is not None:
             dwork_docker.show_status(workspaces, containers)
             for workspace in workspaces:
                 for task in workspace.terminals:
                     for service in task.healthy:
-                        matches = dwork_docker.service_containers(containers, workspace.name, service)
+                        matches = dwork_docker.service_containers(
+                            containers, workspace.name, service
+                        )
                         if not matches or any(not c["State"].get("Health") for c in matches):
                             failures.append("health prerequisite")
-                            print("FAIL: " + workspace.name + "/" + service
-                                  + " requires existing containers with Docker health checks."
-                                  + " Complete project setup and configure healthcheck manually.", file=sys.stderr)
+                            print(
+                                "FAIL: "
+                                + workspace.name
+                                + "/"
+                                + service
+                                + " requires existing containers with Docker health checks."
+                                + " Complete project setup and configure healthcheck manually.",
+                                file=sys.stderr,
+                            )
     else:
         print("Docker checks skipped: Compose is disabled.")
     for workspace in workspaces:
         for task in workspace.terminals:
-            check("Shell, command, and terminal for " + task.title,
-                  lambda task=task: dwork_terminals.preflight_terminals([task]),
-                  "Check SHELL (Bash/Zsh), command PATH, graphical session, and configured launcher or DWORK_TERMINAL.")
+            check(
+                "Shell, command, and terminal for " + task.title,
+                lambda task=task: dwork_terminals.preflight_terminals([task]),
+                "Check SHELL (Bash/Zsh), command PATH, graphical session, and configured launcher or DWORK_TERMINAL.",
+            )
         for browser in workspace.browsers:
-            check("Browser opener for " + browser.url,
-                  lambda browser=browser: dwork_browsers.preflight_browsers([browser]),
-                  "Check the selected browser, graphical session, and xdg-open on Linux, or Windows PowerShell interop on WSL.")
-    print("Doctor: " + (str(len(failures)) + " check(s) failed." if failures else "all checks passed.")
-          + " No containers, terminals, or browser URLs changed.")
+            check(
+                "Browser opener for " + browser.url,
+                lambda browser=browser: dwork_browsers.preflight_browsers([browser]),
+                "Check the selected browser, graphical session, and xdg-open on Linux, or Windows PowerShell interop on WSL.",
+            )
+    print(
+        "Doctor: "
+        + (str(len(failures)) + " check(s) failed." if failures else "all checks passed.")
+        + " No containers, terminals, or browser URLs changed."
+    )
     return 1 if failures else 0
 
 
@@ -196,25 +242,49 @@ def main():
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
-        print("Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status.")
+        print(
+            "Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status."
+        )
         print("register: remember without switching; list: show remembered directories and status.")
         print("init: create a minimal local dwork.yml without overwriting; --dry-run previews it.")
-        print("validate: check configuration and Compose references without inspecting running workloads.")
-        print("scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories.")
+        print(
+            "validate: check configuration and Compose references without inspecting running workloads."
+        )
+        print(
+            "scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories."
+        )
         print("switch: activate a remembered workspace; forget: remove only its registration.")
-        print("lock/unlock: add/remove local temporary protection until explicitly unlocked; preserve dwork.yml locks.")
-        print("down: stop registered containers on this Docker target and locally tracked commands; respect exclusions.")
-        print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
+        print(
+            "lock/unlock: add/remove local temporary protection until explicitly unlocked; preserve dwork.yml locks."
+        )
+        print(
+            "down: stop registered containers on this Docker target and locally tracked commands; respect exclusions."
+        )
+        print(
+            "status: read-only workspace/container state; doctor: read-only dependency diagnostics."
+        )
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
         print("With no default config, discover immediate child directories only.")
         print("Child-project switching requires confirmation (y/N).")
-        print("dwork and up confirm the plan (y/N); root confirm: false skips that activation prompt.")
-        print("Registration, group, task, and down confirmations are separate; --dry-run never prompts.")
-        print("Each terminal and browser URL asks (y/N) unless that task sets confirm: false in dwork.yml.")
-        print("Browser URLs use the default or configured browser; WSL uses Windows browsers. Set wait_for: false to skip readiness.")
-        print("Dry-run previews containers, health prerequisites, terminals, and browser URLs without mutation.")
+        print(
+            "dwork and up confirm the plan (y/N); root confirm: false skips that activation prompt."
+        )
+        print(
+            "Registration, group, task, and down confirmations are separate; --dry-run never prompts."
+        )
+        print(
+            "Each terminal and browser URL asks (y/N) unless that task sets confirm: false in dwork.yml."
+        )
+        print(
+            "Browser URLs use the default or configured browser; WSL uses Windows browsers. Set wait_for: false to skip readiness."
+        )
+        print(
+            "Dry-run previews containers, health prerequisites, terminals, and browser URLs without mutation."
+        )
         print("Only other registered workspaces on this Docker target may be stopped.")
-        print("Workspaces with locked: true or temporary CLI locks never stop during a switch or down.")
+        print(
+            "Workspaces with locked: true or temporary CLI locks never stop during a switch or down."
+        )
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
         print("DWORK_TERMINAL: " + ", ".join(LAUNCHERS) + ".")
@@ -227,16 +297,22 @@ def main():
         if not options or any(value.startswith("-") for value in options):
             raise DworkError("Usage: dwork " + mode + " NAME... [--dry-run]")
         if preview:
-            return dwork_registry.set_temporary_locks(dwork_registry.read_registry(), options, mode == "lock", True)
+            return dwork_registry.set_temporary_locks(
+                dwork_registry.read_registry(), options, mode == "lock", True
+            )
         with dwork_registry.registry_lock():
-            return dwork_registry.set_temporary_locks(dwork_registry.read_registry(), options, mode == "lock")
+            return dwork_registry.set_temporary_locks(
+                dwork_registry.read_registry(), options, mode == "lock"
+            )
     if mode == "init":
         if options:
             raise DworkError("Usage: dwork init [--dry-run]")
         return dwork_config.init_workspace(directory, preview)
     if mode == "validate":
         if preview:
-            raise DworkError("Usage: dwork validate [Docker Compose global options]; validation is already read-only.")
+            raise DworkError(
+                "Usage: dwork validate [Docker Compose global options]; validation is already read-only."
+            )
         workspaces, _ = dwork_config.discover(directory, options)
         for workspace in workspaces:
             print("Valid workspace configuration: " + str(workspace.directory))
@@ -269,7 +345,9 @@ def main():
             if entry is None:
                 raise DworkError("Unknown workspace: " + name + ". Run dwork list.")
             if any(e["name"] == new_name for e in entries):
-                raise DworkError("Workspace name already registered: " + new_name + ". Choose an available name.")
+                raise DworkError(
+                    "Workspace name already registered: " + new_name + ". Choose an available name."
+                )
             entry["name"] = new_name
             dwork_registry.save_registry(entries)
         print("Renamed " + colored_name(name) + " to " + colored_name(new_name) + ".")
@@ -291,12 +369,16 @@ def main():
     name = None
     if mode in ("switch", "forget"):
         if not options or options[0].startswith("-"):
-            raise DworkError("Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else ""))
+            raise DworkError(
+                "Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else "")
+            )
         name = options.pop(0)
         if mode == "switch" and options == ["--dry-run"]:
             preview, options = True, []
         if options or (mode == "forget" and preview):
-            raise DworkError("Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else ""))
+            raise DworkError(
+                "Usage: dwork " + mode + " NAME" + (" [--dry-run]" if mode == "switch" else "")
+            )
     elif mode == "register":
         if preview:
             raise DworkError("Use dwork --dry-run to preview; register only saves a workspace.")
@@ -305,9 +387,13 @@ def main():
     if mode in ("activate", "up") and options and not options[0].startswith("-"):
         raise DworkError("Unknown command: " + options[0] + ". See dwork --help.")
     if preview:
-        return dwork_workspaces.registry_command(directory, options, mode, preview, name, dwork_registry.read_registry())
+        return dwork_workspaces.registry_command(
+            directory, options, mode, preview, name, dwork_registry.read_registry()
+        )
     with dwork_registry.registry_lock():
-        return dwork_workspaces.registry_command(directory, options, mode, preview, name, dwork_registry.read_registry())
+        return dwork_workspaces.registry_command(
+            directory, options, mode, preview, name, dwork_registry.read_registry()
+        )
 
 
 def cli():

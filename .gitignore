@@ -6,3 +6,6 @@ dist/
 *.egg-info/
 .venv*/
 graphify-out/
+
+.ruff_cache/
+.mypy_cache/

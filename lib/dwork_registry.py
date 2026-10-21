@@ -1,4 +1,5 @@
 """Registration workflows, live YAML lock refresh, consent, and display."""
+
 from pathlib import Path
 import os
 import re
@@ -7,22 +8,48 @@ import sys
 from dwork_common import DworkError, color, colored_name
 import dwork_config
 import dwork_docker
-from dwork_registry_store import read_registry, registry_lock, registry_path, save_registry
-from dwork_registry_policy import check_ownership, locked_projects, member_locked, registered_services
+from dwork_registry_store import (
+    read_registry as read_registry,
+    registry_lock as registry_lock,
+    registry_path as registry_path,
+    save_registry,
+)
+from dwork_registry_policy import (
+    check_ownership as check_ownership,
+    locked_projects as locked_projects,
+    member_locked,
+    registered_services as registered_services,
+)
 
 
 def validate_workspace_name(name):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
-        raise DworkError("Workspace name must contain letters, digits, dots, underscores, or hyphens"
-                         + " and start with a letter or digit.")
+        raise DworkError(
+            "Workspace name must contain letters, digits, dots, underscores, or hyphens"
+            + " and start with a letter or digit."
+        )
 
 
 def registration(directory, options, workspaces, target, name, direct=False):
-    entry = {"name": name, "path": str(directory.resolve()), "options": list(options),
-            "environment": {key: os.environ[key] for key in dwork_config.COMPOSE_ENV if key in os.environ},
-            "target": target,
-            "members": [{"project": w.name, "directory": str(w.directory.resolve()),
-                         "enabled": w.enabled, "services": w.selected, "locked": w.locked} for w in workspaces]}
+    entry = {
+        "name": name,
+        "path": str(directory.resolve()),
+        "options": list(options),
+        "environment": {
+            key: os.environ[key] for key in dwork_config.COMPOSE_ENV if key in os.environ
+        },
+        "target": target,
+        "members": [
+            {
+                "project": w.name,
+                "directory": str(w.directory.resolve()),
+                "enabled": w.enabled,
+                "services": w.selected,
+                "locked": w.locked,
+            }
+            for w in workspaces
+        ],
+    }
     if direct:
         entry["direct"] = True
     return entry
@@ -45,8 +72,19 @@ def refresh_locks(entries):
                 pass  # Retain the last known policy when a directory/config disappears.
             except (DworkError, OSError, ValueError, TypeError) as error:
                 locked = True
-                print(color("Warning: protecting " + member["project"] + "; cannot read lock policy in "
-                            + str(path) + ": " + str(error), "warning", sys.stderr), file=sys.stderr)
+                print(
+                    color(
+                        "Warning: protecting "
+                        + member["project"]
+                        + "; cannot read lock policy in "
+                        + str(path)
+                        + ": "
+                        + str(error),
+                        "warning",
+                        sys.stderr,
+                    ),
+                    file=sys.stderr,
+                )
             changed = changed or member.get("locked", False) != locked
             member["locked"] = locked
     return changed
@@ -58,11 +96,16 @@ def set_temporary_locks(entries, names, locked, preview=False):
     selected = {entry["name"]: entry for entry in entries}
     missing = [name for name in names if name not in selected]
     if missing:
-        raise DworkError("Unknown workspace(s): " + ", ".join(missing) + ". Run dwork list; nothing changed.")
+        raise DworkError(
+            "Unknown workspace(s): " + ", ".join(missing) + ". Run dwork list; nothing changed."
+        )
     if preview:
         for name in names:
-            print(("Would temporarily lock " if locked else "Would remove temporary lock from ")
-                  + colored_name(name) + ".")
+            print(
+                ("Would temporarily lock " if locked else "Would remove temporary lock from ")
+                + colored_name(name)
+                + "."
+            )
         return 0
     changed = False
     for name in names:
@@ -76,18 +119,35 @@ def set_temporary_locks(entries, names, locked, preview=False):
     if changed:
         save_registry(entries)
     for name in names:
-        print(("Temporarily locked " if locked else "Removed temporary lock from ") + colored_name(name) + ".")
-    print("Protected until dwork unlock; dwork.yml files were left unchanged." if locked
-          else "Configured dwork.yml locks still apply; project files were left unchanged.")
+        print(
+            ("Temporarily locked " if locked else "Removed temporary lock from ")
+            + colored_name(name)
+            + "."
+        )
+    print(
+        "Protected until dwork unlock; dwork.yml files were left unchanged."
+        if locked
+        else "Configured dwork.yml locks still apply; project files were left unchanged."
+    )
     return 0
 
 
 def confirm_registration(entry):
-    print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
+    print(
+        "Register workspace "
+        + colored_name(entry["name"], repr(entry["name"]))
+        + " at "
+        + entry["path"]
+        + "?"
+    )
     if all(member_locked(entry, m) for m in entry["members"]):
-        print("This workspace is locked; switches and down will leave its containers and tracked commands running.")
+        print(
+            "This workspace is locked; switches and down will leave its containers and tracked commands running."
+        )
     else:
-        print("Future switches may stop its unlocked managed containers and tracked commands. Unregistered projects stay running.")
+        print(
+            "Future switches may stop its unlocked managed containers and tracked commands. Unregistered projects stay running."
+        )
     try:
         return input("Register and switch? (y/N) ").strip().lower() == "y"
     except EOFError:
@@ -105,13 +165,17 @@ def list_registrations(entries):
             target = dwork_docker.docker_target()
             containers = dwork_docker.inventory()
         except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
-            print(color("Warning: Docker status unavailable: " + str(error), "warning", sys.stderr), file=sys.stderr)
+            print(
+                color("Warning: Docker status unavailable: " + str(error), "warning", sys.stderr),
+                file=sys.stderr,
+            )
     rows = []
     host_commands = False
     for entry in sorted(entries, key=lambda e: e["name"]):
         style = "warning"
         if not Path(entry["path"]).is_dir() or any(
-                not Path(m["directory"]).is_dir() for m in entry["members"]):
+            not Path(m["directory"]).is_dir() for m in entry["members"]
+        ):
             state = "unavailable directory"
         elif entry["target"] is None:
             state = "host-only"
@@ -122,34 +186,63 @@ def list_registrations(entries):
         elif entry["target"] != target:
             state = "different Docker target (" + entry["target"]["context"] + ")"
         else:
-            selected = [c for c in containers for m in entry["members"] if m["enabled"]
-                        and (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") == m["project"]
-                        and (m["services"] is None or (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service") in m["services"])]
+            selected = [
+                c
+                for c in containers
+                for m in entry["members"]
+                if m["enabled"]
+                and (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project")
+                == m["project"]
+                and (
+                    m["services"] is None
+                    or (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service")
+                    in m["services"]
+                )
+            ]
             running = sum(c["State"]["Status"] in ("running", "restarting") for c in selected)
             state = str(running) + "/" + str(len(selected)) + " containers running"
             style = "start" if running else "stop"
         protected = [m["project"] for m in entry["members"] if m.get("locked", False)]
-        locked = "yes" if len(entry["members"]) == 1 and protected else (
-            ", ".join(protected) if protected else "-")
+        locked = (
+            "yes"
+            if len(entry["members"]) == 1 and protected
+            else (", ".join(protected) if protected else "-")
+        )
         if entry.get("temporary_locked", False):
             locked = "temporary" + (" + " + ", ".join(protected) if protected else "")
         # Keep each workspace on one line, even when a filesystem path contains
         # tabs, newlines, or terminal control characters.
-        cells = ["".join(char if char.isprintable() else repr(char)[1:-1] for char in value)
-                 for value in (entry["name"], state, locked, entry["path"])]
+        cells = [
+            "".join(char if char.isprintable() else repr(char)[1:-1] for char in value)
+            for value in (entry["name"], state, locked, entry["path"])
+        ]
         rows.append((*cells, style))
     headers = ("NAME", "STATUS", "LOCKED", "PATH")
-    widths = [max([len(header)] + [len(row[index]) for row in rows])
-              for index, header in enumerate(headers[:-1])]
-    print("  ".join(color(header, "bold") + " " * (width - len(header))
-                    for header, width in zip(headers[:-1], widths))
-          + "  " + color(headers[-1], "bold"))
+    widths = [
+        max([len(header)] + [len(row[index]) for row in rows])
+        for index, header in enumerate(headers[:-1])
+    ]
+    print(
+        "  ".join(
+            color(header, "bold") + " " * (width - len(header))
+            for header, width in zip(headers[:-1], widths)
+        )
+        + "  "
+        + color(headers[-1], "bold")
+    )
     for name, state, locked, path, style in rows:
         # Calculate padding from plain cells; ANSI styling must not affect alignment.
-        print("  ".join((colored_name(name) + " " * (widths[0] - len(name)),
-                         color(state, style) + " " * (widths[1] - len(state)),
-                         color(locked, "warning" if locked != "-" else "dim")
-                         + " " * (widths[2] - len(locked)), path)))
+        print(
+            "  ".join(
+                (
+                    colored_name(name) + " " * (widths[0] - len(name)),
+                    color(state, style) + " " * (widths[1] - len(state)),
+                    color(locked, "warning" if locked != "-" else "dim")
+                    + " " * (widths[2] - len(locked)),
+                    path,
+                )
+            )
+        )
     if host_commands:
         print("\nHost commands: preview tracked commands with dwork down --dry-run.")
     return 0

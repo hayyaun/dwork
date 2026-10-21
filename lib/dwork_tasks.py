@@ -3,6 +3,7 @@
 Each supervisor owns an unreaped child until its group has been stopped. Clients
 never signal a saved PID: a live supervisor authenticates every control request.
 """
+
 import base64
 import json
 import os
@@ -21,16 +22,19 @@ from dwork_common import DworkError
 
 def require_support():
     """Keep the unreaped-child identity guarantee on supported Python builds."""
-    if sys.platform == "darwin" and (sys.version_info < (3, 13)
-            or not hasattr(os, "waitid") or not hasattr(os, "WNOWAIT")):
-        raise DworkError("Tracked terminal and background tasks on macOS require Python 3.13 or newer"
-                         + " with os.waitid support. Install a current Python (for example, brew install python@3.14)"
-                         + " and reinstall dwork using that interpreter.")
+    if sys.platform == "darwin" and (
+        sys.version_info < (3, 13) or not hasattr(os, "waitid") or not hasattr(os, "WNOWAIT")
+    ):
+        raise DworkError(
+            "Tracked terminal and background tasks on macOS require Python 3.13 or newer"
+            + " with os.waitid support. Install a current Python (for example, brew install python@3.14)"
+            + " and reinstall dwork using that interpreter."
+        )
 
 
 def request(record, action):
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.settimeout(7 if action == "stop" else .5)
+        client.settimeout(7 if action == "stop" else 0.5)
         client.connect(record["socket"])
         client.sendall(json.dumps({"token": record["token"], "action": action}).encode() + b"\n")
         with client.makefile("rb") as stream:
@@ -48,8 +52,11 @@ def stop(record, state):
     inaccessible controller with a remaining record must still fail shutdown.
     """
     token = record["token"]
-    if (not isinstance(token, str) or len(token) != 48
-            or any(c not in "0123456789abcdef" for c in token)):
+    if (
+        not isinstance(token, str)
+        or len(token) != 48
+        or any(c not in "0123456789abcdef" for c in token)
+    ):
         raise ValueError("Invalid task controller token")
     try:
         response = request(record, "stop")
@@ -78,10 +85,16 @@ def running(state, *, on_error=None):
     for path in sorted((Path(state) / "tasks").glob("*.json")):
         try:
             record = json.loads(path.read_text())
-            if (not isinstance(record, dict) or any(not isinstance(record.get(key), str) for key in
-                    ("socket", "token", "workspace", "directory", "project", "title"))
-                    or type(record.get("pid")) is not int or not isinstance(record.get("command"), list)
-                    or any(not isinstance(arg, str) for arg in record["command"])):
+            if (
+                not isinstance(record, dict)
+                or any(
+                    not isinstance(record.get(key), str)
+                    for key in ("socket", "token", "workspace", "directory", "project", "title")
+                )
+                or type(record.get("pid")) is not int
+                or not isinstance(record.get("command"), list)
+                or any(not isinstance(arg, str) for arg in record["command"])
+            ):
                 continue
         except (OSError, ValueError, KeyError, TypeError):
             continue
@@ -103,10 +116,17 @@ def running(state, *, on_error=None):
 
 def arguments(task, state, shell):
     require_support()
-    payload = {"state": str(state), "workspace": task.workspace,
-               "directory": task.directory, "project": task.project,
-               "title": task.title, "command": task.command, "cwd": str(task.cwd),
-               "visible": task.window != "none", "shell": shell}
+    payload = {
+        "state": str(state),
+        "workspace": task.workspace,
+        "directory": task.directory,
+        "project": task.project,
+        "title": task.title,
+        "command": task.command,
+        "cwd": str(task.cwd),
+        "visible": task.window != "none",
+        "shell": shell,
+    }
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
     return [sys.executable, str(Path(__file__).resolve()), encoded]
 
@@ -114,8 +134,15 @@ def arguments(task, state, shell):
 def group_keeper():
     """Keep an owned process alive until group cleanup, or kill the group on EOF."""
     try:
-        for signum in (signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT,
-                       signal.SIGTTIN, signal.SIGTTOU, signal.SIGTSTP):
+        for signum in (
+            signal.SIGHUP,
+            signal.SIGTERM,
+            signal.SIGINT,
+            signal.SIGQUIT,
+            signal.SIGTTIN,
+            signal.SIGTTOU,
+            signal.SIGTSTP,
+        ):
             signal.signal(signum, signal.SIG_IGN)
         signal.pthread_sigmask(signal.SIG_SETMASK, ())
         os.write(1, b"1")
@@ -135,17 +162,29 @@ def start_group_keeper(group):
     keeper = None
     ready = False
     try:
-        actions = [(os.POSIX_SPAWN_DUP2, control_read, 0),
-                   (os.POSIX_SPAWN_DUP2, ready_write, 1)]
-        actions.extend((os.POSIX_SPAWN_CLOSE, fd) for fd in
-                       (ready_read, ready_write, control_read, control_write))
-        keeper = os.posix_spawn(sys.executable,
+        actions = [(os.POSIX_SPAWN_DUP2, control_read, 0), (os.POSIX_SPAWN_DUP2, ready_write, 1)]
+        actions.extend(
+            (os.POSIX_SPAWN_CLOSE, fd)
+            for fd in (ready_read, ready_write, control_read, control_write)
+        )
+        keeper = os.posix_spawn(
+            sys.executable,
             [sys.executable, str(Path(__file__).resolve()), "--group-keeper"],
-            os.environ, setpgroup=group, file_actions=actions,
+            os.environ,
+            setpgroup=group,
+            file_actions=actions,
             # An interactive shell can stop its background group before the
             # keeper finishes starting. Block those signals until it ignores them.
-            setsigmask=(signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT,
-                        signal.SIGTTIN, signal.SIGTTOU, signal.SIGTSTP))
+            setsigmask=(
+                signal.SIGHUP,
+                signal.SIGTERM,
+                signal.SIGINT,
+                signal.SIGQUIT,
+                signal.SIGTTIN,
+                signal.SIGTTOU,
+                signal.SIGTSTP,
+            ),
+        )
         os.close(control_read)
         control_read = None
         os.close(ready_write)
@@ -171,6 +210,7 @@ def start_group_keeper(group):
 
 def supervise(spec):
     import shlex
+
     require_support()
     os.chdir(spec["cwd"])
     visible = spec["visible"]
@@ -218,7 +258,7 @@ def supervise(spec):
                 pass
         deadline = time.monotonic() + 5
         while not exited() and time.monotonic() < deadline:
-            time.sleep(.05)
+            time.sleep(0.05)
         try:
             os.killpg(pid, signal.SIGKILL)
         except ProcessLookupError:
@@ -242,13 +282,28 @@ def supervise(spec):
                 endpoint = str(Path(temporary) / "control")
                 server.bind(endpoint)
                 server.listen(4)
-                server.settimeout(.1)
-                command = [spec["shell"], "-lic" if visible else "-lc",
-                           "exec " + shlex.join(spec["command"])]
-                pid = os.posix_spawn(command[0], command, os.environ, setpgroup=0,
-                                     setsigdef=(signal.SIGINT, signal.SIGQUIT, signal.SIGTERM,
-                                                signal.SIGHUP, signal.SIGTTOU, signal.SIGTTIN,
-                                                signal.SIGTSTP, signal.SIGPIPE))
+                server.settimeout(0.1)
+                command = [
+                    spec["shell"],
+                    "-lic" if visible else "-lc",
+                    "exec " + shlex.join(spec["command"]),
+                ]
+                pid = os.posix_spawn(
+                    command[0],
+                    command,
+                    os.environ,
+                    setpgroup=0,
+                    setsigdef=(
+                        signal.SIGINT,
+                        signal.SIGQUIT,
+                        signal.SIGTERM,
+                        signal.SIGHUP,
+                        signal.SIGTTOU,
+                        signal.SIGTTIN,
+                        signal.SIGTSTP,
+                        signal.SIGPIPE,
+                    ),
+                )
                 # Darwin cannot signal a zombie-only group. A live owned member
                 # stays through the final signal, without hiding genuine EPERM.
                 # The unreaped command reserves the group even if it exits before
@@ -258,8 +313,10 @@ def supervise(spec):
                 if visible:
                     os.tcsetpgrp(0, pid)
                     os.killpg(pid, signal.SIGCONT)
-                record = {key: spec[key] for key in
-                          ("workspace", "directory", "project", "title", "command")}
+                record = {
+                    key: spec[key]
+                    for key in ("workspace", "directory", "project", "title", "command")
+                }
                 record.update(socket=endpoint, token=token, pid=pid)
                 record_path = state / (token + ".json")
                 with tempfile.NamedTemporaryFile(mode="w", dir=state, delete=False) as stream:
@@ -272,7 +329,7 @@ def supervise(spec):
                     except socket.timeout:
                         continue
                     with client:
-                        client.settimeout(.5)
+                        client.settimeout(0.5)
                         try:
                             with client.makefile("rb") as stream:
                                 message = json.loads(stream.readline(4096))
@@ -282,14 +339,21 @@ def supervise(spec):
                             if action == "stop":
                                 stop_group()
                                 stopping = True
-                            response = {"token": token, "state": "stopped" if stopping else "running"}
+                            response = {
+                                "token": token,
+                                "state": "stopped" if stopping else "running",
+                            }
                             client.sendall(json.dumps(response).encode() + b"\n")
                         except (OSError, ValueError, TypeError):
                             continue
                 if pid is not None and not stopping:
                     status = os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
                     if status is not None:
-                        exit_code = status.si_status if status.si_code == os.CLD_EXITED else 128 + status.si_status
+                        exit_code = (
+                            status.si_status
+                            if status.si_code == os.CLD_EXITED
+                            else 128 + status.si_status
+                        )
                 stop_group()
                 # Publish completed cleanup before closing the controller socket,
                 # so a concurrent stop cannot see a stale live-task record.

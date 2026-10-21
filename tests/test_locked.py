@@ -50,8 +50,11 @@ class LockedTests(unittest.TestCase):
         self.register("infra", True)
         self.register("other")
         app = self.register("app")
-        items = [legacy.container("a", "infra", state="running"),
-                 legacy.container("b", "other", state="running"), legacy.container("c", "app")]
+        items = [
+            legacy.container("a", "infra", state="running"),
+            legacy.container("b", "other", state="running"),
+            legacy.container("c", "app"),
+        ]
         result, changes, _ = self.run_cli("", cwd=app, containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"], ["start", "c"]])
@@ -66,7 +69,9 @@ class LockedTests(unittest.TestCase):
 
     def test_locked_workspace_can_still_be_activated(self):
         self.register("infra", True)
-        result, changes, _ = self.run_cli("switch infra", containers=[legacy.container("a", "infra")])
+        result, changes, _ = self.run_cli(
+            "switch infra", containers=[legacy.container("a", "infra")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["start", "a"]])
 
@@ -91,7 +96,9 @@ class LockedTests(unittest.TestCase):
     def test_explicit_false_unlocks_without_reregistration(self):
         directory = self.register("infra", True)
         self.configure(directory, "infra", False)
-        result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "infra", state="running")])
+        result, changes, _ = self.run_cli(
+            "down", containers=[legacy.container("a", "infra", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
         self.assertFalse(self.entries()[0]["members"][0]["locked"])
@@ -99,15 +106,23 @@ class LockedTests(unittest.TestCase):
     def test_missing_config_keeps_last_known_lock(self):
         directory = self.register("infra", True)
         (directory / "dwork.yml").unlink()
-        result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "infra", state="running")])
+        result, changes, _ = self.run_cli(
+            "down", containers=[legacy.container("a", "infra", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
 
     def test_invalid_live_policy_is_protected_instead_of_silently_unlocked(self):
         directory = self.register("infra")
-        for config in ('version: 1\nlocked: "false"\n', "version: 1\nlocked: false\nlocked: true\n", "version: 99\n"):
+        for config in (
+            'version: 1\nlocked: "false"\n',
+            "version: 1\nlocked: false\nlocked: true\n",
+            "version: 99\n",
+        ):
             (directory / "dwork.yml").write_text(config)
-            result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "infra", state="running")])
+            result, changes, _ = self.run_cli(
+                "down", containers=[legacy.container("a", "infra", state="running")]
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [])
             self.assertIn("protecting infra", result.stderr)
@@ -127,7 +142,10 @@ class LockedTests(unittest.TestCase):
         self.configure(self.root / "group/api", "api", False)
         result, _, _ = self.run_cli("register stack", cwd=self.root / "group")
         self.assertEqual(result.returncode, 0, result.stderr)
-        items = [legacy.container("a", "db", state="running"), legacy.container("b", "api", state="running")]
+        items = [
+            legacy.container("a", "db", state="running"),
+            legacy.container("b", "api", state="running"),
+        ]
         result, changes, _ = self.run_cli("down", containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"]])
@@ -139,7 +157,9 @@ class LockedTests(unittest.TestCase):
         data = json.loads(self.state.read_text())
         del data["workspaces"][0]["members"][0]["locked"]
         self.state.write_text(json.dumps(data))
-        result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "infra", state="running")])
+        result, changes, _ = self.run_cli(
+            "down", containers=[legacy.container("a", "infra", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
@@ -147,7 +167,9 @@ class LockedTests(unittest.TestCase):
         for value in ("true", "false", 0, 1, None):
             self.configure(self.root, "infra", value)
             with patch.object(dwork_docker, "read_model") as model:
-                with self.assertRaisesRegex(dwork_common.DworkError, "locked must be true or false"):
+                with self.assertRaisesRegex(
+                    dwork_common.DworkError, "locked must be true or false"
+                ):
                     dwork_config.load_workspace(self.root)
             model.assert_not_called()
 
@@ -155,18 +177,37 @@ class LockedTests(unittest.TestCase):
         infra = self.register("infra")
         app = self.root / "app"
         self.configure(app, "app", False)
+
         def accept_and_lock(entry):
             self.configure(infra, "infra", True)
             return True
+
         items = [legacy.container("a", "infra", state="running"), legacy.container("b", "app")]
-        with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}), \
-                patch.object(dwork_config, "discover", return_value=([dwork_common.Workspace("app", app, {"web": {}})], False)), \
-                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(dwork_docker, "show_target"), patch.object(dwork_docker, "inventory", return_value=items), \
-                patch.object(dwork_registry, "confirm_registration", side_effect=accept_and_lock), \
-                patch.object(dwork_docker, "docker") as docker, contextlib.redirect_stdout(io.StringIO()) as output:
+        with (
+            patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}),
+            patch.object(
+                dwork_config,
+                "discover",
+                return_value=([dwork_common.Workspace("app", app, {"web": {}})], False),
+            ),
+            patch.object(
+                dwork_docker,
+                "docker_target",
+                return_value={"context": "default", "daemon": "test-daemon"},
+            ),
+            patch.object(dwork_docker, "show_target"),
+            patch.object(dwork_docker, "inventory", return_value=items),
+            patch.object(dwork_registry, "confirm_registration", side_effect=accept_and_lock),
+            patch.object(dwork_docker, "docker") as docker,
+            contextlib.redirect_stdout(io.StringIO()) as output,
+        ):
             with dwork_registry.registry_lock():
-                self.assertEqual(dwork_workspaces.switch_workspace(app, [], "activate", False, dwork_registry.read_registry()), 0)
+                self.assertEqual(
+                    dwork_workspaces.switch_workspace(
+                        app, [], "activate", False, dwork_registry.read_registry()
+                    ),
+                    0,
+                )
         self.assertIn("Skipped stop: infra is now locked", output.getvalue())
         self.assertEqual([call.args for call in docker.call_args_list], [("start", "b")])
         self.assertEqual(len(self.entries()), 2)

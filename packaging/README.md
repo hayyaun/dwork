@@ -1,56 +1,51 @@
 # Distribution packaging
 
-- [AUR](aur/README.md): v0.3.0 recipe with native completion entries, awaiting account registration.
-- [Homebrew](homebrew/README.md): v0.1.0 formula ready for testing/publishing in a tap.
-- [Python / PyPI](python/README.md): wheel/sdist and console entry point for v0.2.0.
-- [Debian / Ubuntu](debian/README.md): debhelper build for v0.2.0-1.
-- [Fedora and Arch release packages](../docs/publishing/README.md#automated-github-release-assets):
-  native RPM and pacman builds, tests, and installation checks in disposable
-  distro containers. Recipes live in `fedora/` and `arch/`; versions come from
-  the release tag. No package repository or AUR publication is performed.
+- [AUR](aur/README.md): v0.3.0 recipe with native completion entries; submission pending.
+- [Homebrew](homebrew/README.md): v0.3.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
+- [Python / PyPI](python/README.md): v0.3.0 wheel/sdist and console entry point; TestPyPI/PyPI publication pending.
+- [Debian / Ubuntu](debian/README.md): v0.3.0-1 debhelper packaging; no signed apt repository.
+- [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
-`make install` remains supported. Packaging files do not by themselves publish
-to registries or create external repositories/accounts. The existing v0.1.0 tag
-is immutable; new Python/Debian metadata belongs to the next release.
+Verified v0.3.0 Python, Debian/Ubuntu, Fedora 44, and Arch packages are published in
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0), with
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.3.0/SHA256SUMS).
+The release points to commit `33310a7`. Historical release verification does not
+prove that later checkout changes pass. Existing tags and downloads remain immutable.
+`make install` stays supported. These recipes and CI jobs do not publish packages
+to PyPI, a Homebrew tap, AUR, or an apt repository.
 
-## Current verification
+## Current verification paths
 
-Current Make and native recipes install Bash completion in the standard loader
-directory and a Zsh autoload entry in the distro's function path (Debian uses
-`vendor-completions`; Fedora/Arch use `site-functions`). Homebrew selects its
-completion helper paths and supports the existing tagged sourceable scripts.
-No shell startup files are edited. Native-file ownership/removal and first-Tab
-discovery are covered by source tests; distro smoke checks verify file placement
-and Zsh registration. These changes apply to new package builds, not existing
-release downloads. JSON Schema test dependencies are declared in native build
-recipes as well as Python CI.
+`make quality` checks pinned Ruff lint/format rules, gradual mypy types, and stable
+formula/template parity. Install the development-only `quality` extra first; see
+[development checks](../docs/development/README.md#quality-baseline). `make test`
+exercises runtime behavior, confirmations, authenticated task ownership, and safe
+installation/removal. Static checks do not replace behavioral tests.
 
-Native-completion verification on 2026-10-21 passed the full source suite
-(262 tests, two skipped), followed by the final 19 installer/completion checks
-after refining framework coverage. Arch's `makepkg --printsrcinfo` agrees with
-the prepared AUR metadata. Fedora/Arch package rebuilds were attempted in
-disposable containers but failed during repository DNS lookup, before building.
-Debian's build is unavailable locally without `debhelper-compat (= 13)`, and
-Homebrew is not installed here. Package-build and Homebrew verification therefore
-remain CI checks before publication; no package was published or installed on
-the host by this change.
+The [Package verification workflow](../.github/workflows/packaging.yml) builds
+wheels/sdists from its checkout, verifies installed behavior outside the source
+tree, and builds/lints/smoke-tests Debian packages. Homebrew has two source modes
+on Linux and Apple Silicon macOS, adding Intel on tags/manual runs:
 
-On 2026-10-20, the combined checkout passed 70 tests. Python 3.12 wheel/sdist
-builds passed strict twine checks; both artifacts installed in fresh venvs and
-passed help, host-only YAML dry-run, and friendly-error checks outside the source
-tree. Existing source/Make installation behavior remains covered by the tests.
+- **Stable:** pinned v0.3.0 archive, style, source installation, formula test, strict audit.
+- **Checkout:** checksummed `git archive HEAD` matching the expected full CI commit,
+  generated local formula, style, source installation, and formula test. No remote
+  HEAD substitution or checksum bypass is used. This temporary source is not published.
 
-Homebrew install/style/audit and Debian build/lint/install are pending CI. Local
-container downloads failed with network/DNS errors, and the maintainer chose
-CI instead of installing validation tools into the WSL host. The package workflow
-has been added but has not been run in GitHub yet. No external channel was
-published by these changes.
+The [shared Homebrew template](homebrew/dwork.rb.in) contains the same dependency,
+installation, completion, caveat, and test definitions for both modes. Its stable
+[source metadata](homebrew/stable.json) reproduces the checked-in `dwork.rb`; parity
+is enforced by tests and quality checks. Checkout metadata records the full commit,
+package version, archive name, and checksum. Local archive preparation has offline
+regression tests; actual Homebrew installation still requires Homebrew and its dependencies.
 
-On 2026-10-21, the current source snapshot passed all 165 tests in both Fedora 44
-and Arch base-devel containers. The native RPM and pacman packages built and
-installed successfully, passed `rpm -V` / `pacman -Qk`, and completed installed
-`--help` and host-only `--dry-run` checks as an ordinary user outside the source
-tree. Workflow syntax, release dependencies, and checksum/upload handling for
-all five package formats were checked locally, including rejection of missing
-or modified assets. A tagged GitHub Actions release run is still needed to
-validate the remote artifact-transfer and draft-creation steps.
+Make/native completion files use their platform discovery directories. Ownership
+hashes, interrupted-install recovery, linked destinations, and first-Tab behavior
+remain covered by source tests. No shell startup files are edited. Package builds
+verify completion placement and Zsh discovery separately from real GUI behavior.
+
+Build prerequisites and supported publication steps live in the channel guides.
+Report which revision, platform, source mode, and commands were verified, including
+any unavailable checks. A successful old release run or stable Homebrew run is not
+evidence that the checkout lane passed. Never present local archive preparation
+or workflow syntax checks as a successful Homebrew installation.

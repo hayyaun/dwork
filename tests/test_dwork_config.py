@@ -41,8 +41,7 @@ class ConfigTests(unittest.TestCase):
     def test_explicit_service_selection(self):
         self.fixture.model(self.root, "main", services={"db": {}, "app": {}})
         self.config("version: 1\ncompose:\n  services: [db]\n")
-        items = [legacy.container("a", "main", "db"),
-                 legacy.container("b", "main", "app")]
+        items = [legacy.container("a", "main", "db"), legacy.container("b", "main", "app")]
         for shell in self.shells:
             result, changes, _ = self.fixture.run_dwork(shell, containers=items)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -92,8 +91,10 @@ terminals:
                     self.assertEqual(changes, [])
                     self.assertEqual(calls, [])
 
-    def health_config(self, timeout=.02):
-        self.fixture.model(self.root, "main", services={"db": {"healthcheck": {"test": ["CMD", "true"]}}})
+    def health_config(self, timeout=0.02):
+        self.fixture.model(
+            self.root, "main", services={"db": {"healthcheck": {"test": ["CMD", "true"]}}}
+        )
         self.config(f"""version: 1
 compose:
   services: [db]
@@ -119,13 +120,14 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
         item["State"]["Health"] = {"Status": "healthy"}
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, answer="y\n", containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                shell, answer="y\n", containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash"
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [["start", "a"]])
             launch = next(i for i, call in enumerate(calls) if "-EncodedCommand" in call)
             start = calls.index(["start", "a"])
             self.assertGreater(launch, start)
-            self.assertTrue(any(call[0] == "inspect" for call in calls[start+1:launch]))
+            self.assertTrue(any(call[0] == "inspect" for call in calls[start + 1 : launch]))
 
     def test_failed_health_never_opens_terminal(self):
         self.health_config()
@@ -136,7 +138,12 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
             for shell in self.shells:
                 with self.subTest(status=status, shell=shell):
                     result, _, calls = self.fixture.run_dwork(
-                        shell, answer="y\n", containers=[item], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                        shell,
+                        answer="y\n",
+                        containers=[item],
+                        WSL_DISTRO_NAME="Ubuntu",
+                        SHELL="/bin/bash",
+                    )
                     self.assertEqual(result.returncode, 1, result.stdout)
                     self.assertFalse(any("-EncodedCommand" in call for call in calls))
 
@@ -144,7 +151,8 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
         self.health_config()
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, containers=[legacy.container("b", "other", state="running")])
+                shell, containers=[legacy.container("b", "other", state="running")]
+            )
             self.assertEqual(result.returncode, 1)
             self.assertIn("Create it manually", result.stderr)
             self.assertEqual(changes, [])
@@ -186,7 +194,8 @@ terminals:
         cache["State"]["Health"] = {"Status": "unhealthy"}
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, containers=[db, cache], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash")
+                shell, containers=[db, cache], WSL_DISTRO_NAME="Ubuntu", SHELL="/bin/bash"
+            )
             self.assertEqual(result.returncode, 1)
             self.assertFalse(any("-EncodedCommand" in call for call in calls))
 
@@ -196,16 +205,24 @@ terminals:
         db["State"]["Health"] = {"Status": "healthy"}
         for shell in self.shells:
             result, changes, calls = self.fixture.run_dwork(
-                shell, containers=[db, legacy.container("b", "other", state="running")],
-                WSL_DISTRO_NAME="", SHELL="/bin/bash", DWORK_TERMINAL="gnome-terminal",
-                DISPLAY="", WAYLAND_DISPLAY="")
+                shell,
+                containers=[db, legacy.container("b", "other", state="running")],
+                WSL_DISTRO_NAME="",
+                SHELL="/bin/bash",
+                DWORK_TERMINAL="gnome-terminal",
+                DISPLAY="",
+                WAYLAND_DISPLAY="",
+            )
             self.assertEqual(result.returncode, 1)
             self.assertEqual(changes, [])
             self.assertFalse(any("-EncodedCommand" in call for call in calls))
 
     def test_terminal_argument_quoting_and_encoded_transport(self):
-        task = dwork_common.TerminalTask("Title ' & space", ["echo", "hello world", 'a"$b&c'],
-                                    Path("/home/user/repo with spaces"))
+        task = dwork_common.TerminalTask(
+            "Title ' & space",
+            ["echo", "hello world", 'a"$b&c'],
+            Path("/home/user/repo with spaces"),
+        )
         with patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu", "SHELL": "/bin/bash"}):
             args = dwork_terminals.terminal_arguments(task)
             self.assertEqual(args[-1], "exec echo 'hello world' 'a\"$b&c'")
@@ -221,13 +238,18 @@ terminals:
     def test_all_health_gates_pass_before_any_launch(self):
         self.health_config()
         # Direct health tests use official inspect JSON fields and a bounded clock.
-        with patch.object(dwork_docker, "docker", return_value=json.dumps([
-            {"Id": "a", "State": {"Status": "running", "Health": {"Status": "healthy"}}}
-        ])):
+        with patch.object(
+            dwork_docker,
+            "docker",
+            return_value=json.dumps(
+                [{"Id": "a", "State": {"Status": "running", "Health": {"Status": "healthy"}}}]
+            ),
+        ):
             dwork_docker.wait_healthy(["a"], 1)
         with patch.object(dwork_docker, "docker", return_value="[]"):
             with self.assertRaises(dwork_common.DworkError):
                 dwork_docker.wait_healthy(["a"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

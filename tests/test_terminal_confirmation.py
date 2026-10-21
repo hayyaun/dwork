@@ -1,9 +1,11 @@
 """Session consent behavior for native and Windows adapters; fake launchers only."""
+
 import base64
 import json
 import sys
 import unittest
 import test_dwork as legacy
+
 
 class TerminalConfirmationTests(unittest.TestCase):
     def setUp(self):
@@ -12,42 +14,67 @@ class TerminalConfirmationTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
         self.native_launcher = "apple-terminal" if sys.platform == "darwin" else "gnome-terminal"
-        for name, label in (("gnome-terminal", "linux-terminal"), ("osascript", "apple-terminal"),
-                            ("powershell.exe", "powershell")):
+        for name, label in (
+            ("gnome-terminal", "linux-terminal"),
+            ("osascript", "apple-terminal"),
+            ("powershell.exe", "powershell"),
+        ):
             path = self.fixture.bin / name
-            path.write_text("""#!/usr/bin/env python3
+            path.write_text(
+                """#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ["DWORK_TEST_LOG"], "a") as f:
-    f.write(json.dumps([""" + repr(label) + """, *sys.argv[1:]]) + "\\n")
-""")
+    f.write(json.dumps(["""
+                + repr(label)
+                + """, *sys.argv[1:]]) + "\\n")
+"""
+            )
             path.chmod(0o755)
 
     def write_config(self, launcher, confirms, directory=None):
         tasks = []
         for index, confirm in enumerate(confirms):
-            task = {"title": "Session" + str(index + 1), "command": ["echo", "ready"],
-                    "launcher": launcher}
+            task = {
+                "title": "Session" + str(index + 1),
+                "command": ["echo", "ready"],
+                "launcher": launcher,
+            }
             if confirm != "default":
                 task["confirm"] = confirm
             tasks.append(task)
         folder = directory or self.root
         folder.mkdir(parents=True, exist_ok=True)
         # Isolate per-session consent from the separate activation prompt.
-        (folder / "dwork.yml").write_text(json.dumps({
-            "version": 1, "confirm": False, "compose": {"enabled": False}, "terminals": tasks}))
+        (folder / "dwork.yml").write_text(
+            json.dumps(
+                {"version": 1, "confirm": False, "compose": {"enabled": False}, "terminals": tasks}
+            )
+        )
 
     def run_case(self, shell, launcher, answer="", args=""):
         result, changes, calls = self.fixture.run_dwork(
-            shell, args=args, answer=answer, SHELL="/bin/bash",
+            shell,
+            args=args,
+            answer=answer,
+            SHELL="/bin/bash",
             WSL_DISTRO_NAME="Ubuntu" if launcher == "windows-terminal" else "",
-            DISPLAY=":test", WAYLAND_DISPLAY="")
-        launches = [call for call in calls if call[0] in ("linux-terminal", "apple-terminal")
-                    or (call[0] == "powershell" and "-EncodedCommand" in call)]
+            DISPLAY=":test",
+            WAYLAND_DISPLAY="",
+        )
+        launches = [
+            call
+            for call in calls
+            if call[0] in ("linux-terminal", "apple-terminal")
+            or (call[0] == "powershell" and "-EncodedCommand" in call)
+        ]
         return result, launches, calls
 
     def cases(self):
-        return [(shell, launcher) for shell in self.fixture.shells
-                for launcher in ("windows-terminal", self.native_launcher)]
+        return [
+            (shell, launcher)
+            for shell in self.fixture.shells
+            for launcher in ("windows-terminal", self.native_launcher)
+        ]
 
     def test_default_decline_empty_and_eof_skip(self):
         for shell, launcher in self.cases():
@@ -126,6 +153,7 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
             self.assertIn("Switch all listed projects together? (y/N)", result.stdout)
             self.assertIn("Skipped terminal: Session1", result.stdout)
             self.assertEqual(launches, [])
+
 
 if __name__ == "__main__":
     unittest.main()

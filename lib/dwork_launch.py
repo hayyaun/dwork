@@ -1,4 +1,5 @@
 """Immutable prepared launch data; preparing a launch never grants consent."""
+
 from dataclasses import dataclass
 from pathlib import Path
 

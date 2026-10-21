@@ -1,9 +1,9 @@
 # Python / PyPI
 
-The distribution name is `dwork-cli`; its command and single importable module
-are `dwork`. The unrelated PyPI name `dwork` is already taken. Availability of
+The distribution name is `dwork-cli`; its command and entry module are `dwork`,
+with sibling runtime modules declared explicitly in `pyproject.toml`. The unrelated PyPI name `dwork` is already taken. Availability of
 `dwork-cli` was checked on 2026-10-20; it is not reserved until published.
-The root `pyproject.toml` uses setuptools' supported single-module layout and
+The root `pyproject.toml` uses setuptools' supported flat-module layout and
 maps the existing `lib/` directory, keeping source and Make installations intact.
 
 ## Build and validate

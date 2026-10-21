@@ -20,7 +20,6 @@ class TTY(io.StringIO):
         return True
 
 
-
 class ColorTests(unittest.TestCase):
     def setUp(self):
         environment = patch.dict(os.environ, {"TERM": "xterm-256color", "NO_COLOR": ""})
@@ -29,8 +28,12 @@ class ColorTests(unittest.TestCase):
 
     def test_color_uses_semantic_styles_only_on_tty(self):
         with contextlib.redirect_stdout(TTY()):
-            self.assertEqual(dwork_common.color("Started: api", "start"), "\033[32mStarted: api\033[0m")
-            self.assertEqual(dwork_common.color("Stopped: api", "stop"), "\033[31mStopped: api\033[0m")
+            self.assertEqual(
+                dwork_common.color("Started: api", "start"), "\033[32mStarted: api\033[0m"
+            )
+            self.assertEqual(
+                dwork_common.color("Stopped: api", "stop"), "\033[31mStopped: api\033[0m"
+            )
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(dwork_common.colored_name("Backend"), "Backend")
 
@@ -64,8 +67,13 @@ class ColorTests(unittest.TestCase):
 
     def test_status_highlights_health_and_state(self):
         workspace = dwork_common.Workspace("api", Path("/tmp"), {"web": {}})
-        item = {"Id": "abc", "Config": {"Labels": {"com.docker.compose.project": "api",
-                "com.docker.compose.service": "web"}}, "State": {"Status": "running"}}
+        item = {
+            "Id": "abc",
+            "Config": {
+                "Labels": {"com.docker.compose.project": "api", "com.docker.compose.service": "web"}
+            },
+            "State": {"Status": "running"},
+        }
         for health, code in (("healthy", "32"), ("unhealthy", "31"), ("starting", "33")):
             item["State"]["Health"] = {"Status": health}
             with contextlib.redirect_stdout(TTY()) as output:

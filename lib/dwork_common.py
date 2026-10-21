@@ -1,9 +1,11 @@
 """Shared errors, workspace models, terminal choices, and console helpers."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 import os
 import sys
 import zlib
+from typing import TextIO
 
 
 LINUX_TERMINALS = ("gnome-terminal", "konsole", "xfce4-terminal", "xterm")
@@ -14,7 +16,7 @@ class DworkError(Exception):
     pass
 
 
-def color(value, style, stream=None):
+def color(value: object, style: str, stream: TextIO | None = None) -> str:
     """Keep pipes/logs plain; color is presentation only, never stored in plans."""
     stream = sys.stdout if stream is None else stream
     text = str(value)
@@ -24,14 +26,14 @@ def color(value, style, stream=None):
     return "\033[" + codes.get(style, style) + "m" + text + "\033[0m"
 
 
-def colored_name(value, display=None, stream=None):
+def colored_name(value: object, display: object | None = None, stream: TextIO | None = None) -> str:
     # Python's hash() is randomized between invocations; CRC32 keeps names stable.
     palette = ("36", "35", "34", "96", "95", "94")
     code = palette[zlib.crc32(str(value).encode("utf-8")) % len(palette)]
     return color(value if display is None else display, code, stream)
 
 
-def confirm_action(prompt):
+def confirm_action(prompt: str) -> bool:
     try:
         return input(prompt + " (y/N) ").strip().lower() == "y"
     except EOFError:
@@ -75,5 +77,5 @@ class Workspace:
     browsers: list[BrowserTask] = field(default_factory=list)
     confirm: bool = True
 
-    def manages(self, service):
+    def manages(self, service: str) -> bool:
         return self.selected is None or service in self.selected

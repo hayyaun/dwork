@@ -29,8 +29,11 @@ class ExampleTests(unittest.TestCase):
                 (root / "backend").mkdir()
                 (root / "frontend").mkdir()
                 shutil.copy2(REPO / "examples" / filename, root / "dwork.yml")
-                with patch.object(dwork_docker, "read_model", return_value=(
-                    "demo", {"postgres": {"healthcheck": {}}, "redis": {}})) as compose:
+                with patch.object(
+                    dwork_docker,
+                    "read_model",
+                    return_value=("demo", {"postgres": {"healthcheck": {}}, "redis": {}}),
+                ) as compose:
                     workspace = dwork_config.load_workspace(root)
                     self.assertEqual(workspace.enabled, enabled)
                     self.assertEqual(len(workspace.terminals), count)
@@ -39,6 +42,7 @@ class ExampleTests(unittest.TestCase):
                     for task in workspace.terminals:
                         self.assertTrue(task.cwd.is_dir())
                         self.assertTrue(set(task.healthy) <= {"postgres", "redis"})
+
 
 if __name__ == "__main__":
     unittest.main()

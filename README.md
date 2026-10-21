@@ -290,5 +290,7 @@ for the boundaries and regression coverage.
 Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
 GUI behavior has not been visually verified in the WSL development environment.
 Routine macOS CI runs source/package tests on Python 3.13 and Homebrew verification
-on Apple Silicon. Release tags and manual package verification also cover Python
-3.14 and Intel Macs. [CI coverage →](docs/development/README.md#ci-coverage)
+of both the stable release and exact checked-out commit on Apple Silicon. Release
+tags and manual package verification also cover Python 3.14 and Intel Macs.
+Pinned Ruff lint/format checks and gradual mypy checks run through `make quality`;
+see the [quality baseline](docs/development/README.md#quality-baseline). [CI coverage →](docs/development/README.md#ci-coverage)

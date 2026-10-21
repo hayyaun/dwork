@@ -134,7 +134,55 @@ fields, JSON CLI output, retry/resume interface, or new permissions. Python whee
 declare all parsing, storage, policy, planning, and preparation modules; Make/native installers copy
 the same runtime module set.
 
+## Quality baseline
+
+Install the development-only extras in your own virtual environment:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[test,quality]'
+make quality
+make test
+```
+
+`make quality` is read-only with respect to tracked files: Ruff checks `lib/`,
+`scripts/`, and `tests/` for E4/E7/E9/F errors, Ruff checks formatting with a
+100-column target and Python 3.10 syntax, mypy checks `lib/` and `scripts/`, and
+Homebrew stable-formula parity is checked. Tool caches are ignored. Ruff, mypy,
+and PyYAML stubs are pinned in the `quality` extra so local and CI rules agree.
+Runtime dependencies and the installed CLI remain unchanged.
+
+Mypy uses normal import following and POSIX types. The common models, prepared
+launches, typed plans/results, and checked process runner require complete function
+annotations and check typed bodies/calls/returns and explicit exports. Other
+modules retain gradual checking: annotated code is checked; unannotated bodies
+are not yet fully covered. Add annotations as boundaries are maintained rather
+than hiding modules behind blanket ignores or disabling import following.
+Two test modules allow imports after source-path setup. Compatibility re-exports
+are explicit aliases; lint fixes must preserve them.
+
+`make format` applies the pinned formatter and **writes Python files**. Review
+its diff and run checks/tests before publishing. The initial formatting pass was
+verified to preserve every Python AST. Tests still guard runtime behavior,
+confirmation boundaries, registry ownership, and installer-file protection;
+passing static checks alone does not establish those guarantees. No lint/format
+or type-check step starts containers, applications, or development servers.
+
+The baseline follows [Ruff configuration](https://docs.astral.sh/ruff/configuration/)
+and [mypy gradual adoption](https://mypy.readthedocs.io/en/stable/existing_code.html).
+To use mypy from Windows against a WSL UNC checkout, give its documented
+`--cache-dir` a local temporary directory if the shared filesystem cannot provide
+SQLite locking. CI and ordinary Linux development use the default cache location.
+
 ## Tests
+
+`test_packaging_checks.py` creates disposable local Git repositories and verifies
+exact committed archive contents even if a branch moves after validation, executable
+bits, SHA-256 manifests, repeatability,
+clean/full-revision guards, formula/template parity, literal version reading, and
+non-overwriting output handling. It does not need Homebrew or a network and never
+installs packages. Homebrew installation is a separate CI check.
 
 `test_boundaries.py` covers parsing without external access, immutable normalized inputs,
 resolution defaults and Compose/path precedence, service and separator restrictions,
@@ -263,17 +311,25 @@ recognizing a supervisor record removed during completed cleanup.
 ## CI coverage
 
 The Package verification workflow runs on pull requests and pushes to `main`.
-Routine macOS coverage is two jobs on Apple Silicon (`macos-15`): source tests
-and Python package verification on Python 3.13, plus Homebrew formula verification.
-Linux keeps Python 3.10/3.14, Debian, and Homebrew coverage.
+A Python 3.10 quality job runs `make quality`. Routine macOS coverage uses Apple
+Silicon (`macos-15`): source/Python package checks on Python 3.13 and separate
+Homebrew stable/checkout jobs. Linux keeps Python 3.10/3.14, Debian, and both
+Homebrew source modes. The draft-release workflow also runs `make quality` before
+building release artifacts.
 
 Pushing a release tag matching `vMAJOR.MINOR.PATCH`, or manually running
 **Package verification** through `workflow_dispatch`, expands the matrix with
 Apple Silicon Python 3.14, Intel Python 3.14, and Intel Homebrew checks. These
 checks run alongside the separate draft-release workflow on release tags.
 Intel-specific failures may therefore be detected at release/manual verification
-rather than on every pull request. No workflow launches real GUI applications
-or development servers.
+rather than on every pull request. Both Homebrew source modes use each selected
+runner. Checkout mode archives the clean checked-out `GITHUB_SHA`, records its
+checksum, and installs/tests a temporary formula generated from the shared recipe.
+It verifies pull-request merge commits without fetching remote `main`. Stable
+mode retains the pinned release and strict publishing audit. Checkout mode runs
+style/install/test; its temporary local URL is not a publishable formula. No
+Homebrew packages are published by this workflow. No workflow launches real GUI
+applications or development servers.
 
 ## Agent skill
 
@@ -292,6 +348,11 @@ npx skills add ./skills/dwork --list
 ```
 
 ## Distribution packaging
+
+[`scripts/prepare-homebrew-checkout.py`](../../scripts/prepare-homebrew-checkout.py)
+checks the stable formula against its shared template/metadata and prepares isolated
+exact-commit sources. See the [Homebrew guide](../../packaging/homebrew/README.md#verify-the-checked-out-revision)
+for the supported local procedure and its clean-checkout requirement.
 
 [`pyproject.toml`](../../pyproject.toml) packages the `lib/dwork*.py` modules
 using setuptools. `dwork:cli` is the console entry point and preserves source

@@ -1,5 +1,5 @@
 """Configuration commands use isolated files and fake Docker, never workloads."""
-from pathlib import Path
+
 import json
 import sys
 import unittest
@@ -24,7 +24,9 @@ class ConfigCommandTests(unittest.TestCase):
     def test_version_needs_no_valid_workspace_registry_or_docker(self):
         (self.root / "dwork.yml").write_text("invalid: [\n")
         for shell in self.fixture.shells:
-            result, changes, calls = self.fixture.run_dwork(shell, "--version", register_current=False)
+            result, changes, calls = self.fixture.run_dwork(
+                shell, "--version", register_current=False
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout, "dwork " + __version__ + "\n")
             self.assertEqual(calls, [])
@@ -40,13 +42,22 @@ class ConfigCommandTests(unittest.TestCase):
             self.assertEqual(changes, [])
             outputs.append(result.stdout)
         self.assertEqual(outputs[0], outputs[1])
-        self.assertIn("# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n", outputs[0])
+        self.assertIn(
+            "# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n",
+            outputs[0],
+        )
         self.assertIn("enabled: false", outputs[0])
         self.assertFalse((self.root / "dwork.yml").exists())
         self.assertFalse(self.state.exists())
 
     def test_init_enables_compose_only_for_standard_local_files(self):
-        for filename in (None, "compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"):
+        for filename in (
+            None,
+            "compose.yaml",
+            "compose.yml",
+            "docker-compose.yaml",
+            "docker-compose.yml",
+        ):
             with self.subTest(filename=filename):
                 directory = self.root / (filename or "host-only")
                 directory.mkdir()
@@ -54,9 +65,12 @@ class ConfigCommandTests(unittest.TestCase):
                     (directory / filename).write_text("not parsed during init")
                 result, changes, calls = self.cli("init", cwd=directory)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                expected = ("# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n"
-                            + "version: 1\ncompose:\n  enabled: " + ("true" if filename else "false")
-                            + "\nterminals: []\nbrowsers: []\n")
+                expected = (
+                    "# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n"
+                    + "version: 1\ncompose:\n  enabled: "
+                    + ("true" if filename else "false")
+                    + "\nterminals: []\nbrowsers: []\n"
+                )
                 self.assertEqual((directory / "dwork.yml").read_text(), expected)
                 self.assertEqual(calls, [])
                 self.assertEqual(changes, [])
@@ -127,8 +141,12 @@ class ConfigCommandTests(unittest.TestCase):
 
     def test_invalid_config_and_usage_fail_without_side_effects(self):
         config = self.root / "dwork.yml"
-        for text in ("version: 99\n", "version: 1\nversion: 1\n", "version: 1\nunknown: true\n",
-                     "version: 1\ncompose: {enabled: false}\nterminals: [{command: [echo], cwd: missing}]\n"):
+        for text in (
+            "version: 99\n",
+            "version: 1\nversion: 1\n",
+            "version: 1\nunknown: true\n",
+            "version: 1\ncompose: {enabled: false}\nterminals: [{command: [echo], cwd: missing}]\n",
+        ):
             config.write_text(text)
             result, changes, calls = self.cli("validate")
             self.assertEqual(result.returncode, 1, result.stdout)
@@ -136,7 +154,13 @@ class ConfigCommandTests(unittest.TestCase):
             self.assertEqual(calls, [])
             self.assertEqual(config.read_text(), text)
         config.unlink()
-        for args in ("--version extra", "init --version", "init extra", "init --force", "validate --dry-run"):
+        for args in (
+            "--version extra",
+            "init --version",
+            "init extra",
+            "init --force",
+            "validate --dry-run",
+        ):
             result, changes, calls = self.cli(args)
             self.assertEqual(result.returncode, 1, args)
             self.assertIn("Usage:", result.stderr)

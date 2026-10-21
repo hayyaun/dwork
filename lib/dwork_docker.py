@@ -1,4 +1,5 @@
 """Docker and Compose commands, container inventory, health gates, and status."""
+
 import json
 import os
 import re
@@ -10,12 +11,18 @@ from dwork_process import run_command
 
 def container_name(item):
     labels = item.get("Config", {}).get("Labels") or {}
-    return labels.get("com.docker.compose.project", "?") + "/" + labels.get("com.docker.compose.service", "?")
+    return (
+        labels.get("com.docker.compose.project", "?")
+        + "/"
+        + labels.get("com.docker.compose.service", "?")
+    )
 
 
 def docker_target():
-    target = {"context": docker("context", "show").strip(),
-              "daemon": docker("info", "--format", "{{.ID}}").strip()}
+    target = {
+        "context": docker("context", "show").strip(),
+        "daemon": docker("info", "--format", "{{.ID}}").strip(),
+    }
     if not all(target.values()):
         raise DworkError("Cannot identify the Docker target; nothing changed.")
     return target
@@ -26,8 +33,16 @@ def docker(*args, cwd=None, timeout=None):
 
 
 def read_model(directory, options):
-    raw = docker("compose", *options, "config", "--no-interpolate",
-                 "--no-env-resolution", "--format", "json", cwd=directory)
+    raw = docker(
+        "compose",
+        *options,
+        "config",
+        "--no-interpolate",
+        "--no-env-resolution",
+        "--format",
+        "json",
+        cwd=directory,
+    )
     model = json.loads(raw)
     name = model.get("name", "")
     if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
@@ -47,9 +62,12 @@ def inventory():
 
 
 def service_containers(containers, project, service):
-    return [c for c in containers
-            if (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") == project
-            and (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service") == service]
+    return [
+        c
+        for c in containers
+        if (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project") == project
+        and (c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.service") == service
+    ]
 
 
 def wait_healthy(ids, timeout):
@@ -65,10 +83,14 @@ def wait_healthy(ids, timeout):
         for item in items:
             state = item["State"]
             if state["Status"] in ("exited", "dead", "paused", "removing"):
-                raise DworkError("A required container is " + state["Status"] + "; terminals were not opened.")
+                raise DworkError(
+                    "A required container is " + state["Status"] + "; terminals were not opened."
+                )
             health = state.get("Health", {}).get("Status")
             if health is None:
-                raise DworkError("A required container has no Docker health check; terminals were not opened.")
+                raise DworkError(
+                    "A required container has no Docker health check; terminals were not opened."
+                )
             if health == "unhealthy":
                 raise DworkError("A required container is unhealthy; terminals were not opened.")
             ready = ready and state["Status"] == "running" and health == "healthy"
@@ -91,7 +113,14 @@ def show_target():
 def show_status(workspaces, containers):
     for workspace in workspaces:
         marker = " [locked]" if workspace.locked else ""
-        print("Workspace: " + colored_name(workspace.name) + " (" + str(workspace.directory) + ")" + color(marker, "warning"))
+        print(
+            "Workspace: "
+            + colored_name(workspace.name)
+            + " ("
+            + str(workspace.directory)
+            + ")"
+            + color(marker, "warning")
+        )
         if not workspace.enabled:
             print("  Compose disabled; preview tracked commands with dwork down --dry-run.")
             continue
@@ -103,12 +132,34 @@ def show_status(workspaces, containers):
             state = item["State"]
             health = state.get("Health", {}).get("Status", "no health check")
             managed = "managed" if workspace.manages(service) else "unmanaged"
-            style = ("stop" if health == "unhealthy" or state["Status"] in ("exited", "dead")
-                     else "start" if state["Status"] == "running" and health != "starting" else "warning")
-            print("  " + colored_name(service) + " / " + item["Id"][:12] + ": "
-                  + color(state["Status"] + ", " + health, style) + " (" + managed + ")")
+            style = (
+                "stop"
+                if health == "unhealthy" or state["Status"] in ("exited", "dead")
+                else "start"
+                if state["Status"] == "running" and health != "starting"
+                else "warning"
+            )
+            print(
+                "  "
+                + colored_name(service)
+                + " / "
+                + item["Id"][:12]
+                + ": "
+                + color(state["Status"] + ", " + health, style)
+                + " ("
+                + managed
+                + ")"
+            )
         for service in workspace.services:
-            if workspace.manages(service) and not service_containers(containers, workspace.name, service):
-                print("  " + colored_name(service) + color(": missing container; run the project's initial setup manually.", "warning"))
+            if workspace.manages(service) and not service_containers(
+                containers, workspace.name, service
+            ):
+                print(
+                    "  "
+                    + colored_name(service)
+                    + color(
+                        ": missing container; run the project's initial setup manually.", "warning"
+                    )
+                )
     if any(w.terminals for w in workspaces):
         print("Host commands are configured; preview tracked commands with dwork down --dry-run.")

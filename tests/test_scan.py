@@ -36,7 +36,9 @@ class ScanTests(unittest.TestCase):
 
     def configured(self, directory, enabled=False, name=None):
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": enabled}}))
+        (directory / "dwork.yml").write_text(
+            json.dumps({"version": 1, "compose": {"enabled": enabled}})
+        )
         if enabled:
             self.fixture.model(directory, name or directory.name)
 
@@ -52,11 +54,25 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
         self.assertEqual(calls, [])
-        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "first"), str(self.root / "deep/a/b")})
+        self.assertEqual(
+            {e["path"] for e in self.entries()},
+            {str(self.root / "first"), str(self.root / "deep/a/b")},
+        )
 
     def test_repo_markers_prune_descendants_but_continue_siblings(self):
-        markers = ("package.json", "pyproject.toml", "Cargo.toml", "go.mod", "composer.json",
-                   "Gemfile", "pom.xml", "build.gradle", "mix.exs", "pubspec.yaml", ".git")
+        markers = (
+            "package.json",
+            "pyproject.toml",
+            "Cargo.toml",
+            "go.mod",
+            "composer.json",
+            "Gemfile",
+            "pom.xml",
+            "build.gradle",
+            "mix.exs",
+            "pubspec.yaml",
+            ".git",
+        )
         for index, marker in enumerate(markers):
             repo = self.root / str(index)
             self.configured(repo / "nested")
@@ -67,7 +83,9 @@ class ScanTests(unittest.TestCase):
             configured, _, errors = dwork_scan.scan_directories(self.root)
         self.assertEqual(configured, [self.root / "sibling"])
         self.assertEqual(errors, [])
-        self.assertFalse(any(Path(call.args[0]).name == "nested" for call in scanned.call_args_list))
+        self.assertFalse(
+            any(Path(call.args[0]).name == "nested" for call in scanned.call_args_list)
+        )
 
     def test_root_boundary_is_checked_before_pruning(self):
         self.configured(self.root)
@@ -87,8 +105,18 @@ class ScanTests(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_dependency_cache_and_build_directories_are_not_traversed(self):
-        ignored = ("node_modules", "vendor", ".venv", "venv", "__pycache__",
-                   ".next", "dist", "build", "target", ".cache")
+        ignored = (
+            "node_modules",
+            "vendor",
+            ".venv",
+            "venv",
+            "__pycache__",
+            ".next",
+            "dist",
+            "build",
+            "target",
+            ".cache",
+        )
         for name in ignored:
             self.configured(self.root / "project" / name / "hidden")
         expected = [self.root / "project" / name for name in ("src", "packages", "apps", "infra")]
@@ -113,9 +141,11 @@ class ScanTests(unittest.TestCase):
     def test_progress_shows_last_directory_in_grey_and_leaves_a_clean_line(self):
         deepest = self.root / "one/two"
         deepest.mkdir(parents=True)
-        with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
-                patch.object(shutil, "get_terminal_size", return_value=os.terminal_size((200, 24))), \
-                contextlib.redirect_stdout(TTY()) as output:
+        with (
+            patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}),
+            patch.object(shutil, "get_terminal_size", return_value=os.terminal_size((200, 24))),
+            contextlib.redirect_stdout(TTY()) as output,
+        ):
             dwork_scan.scan_directories(self.root)
         text = output.getvalue()
         self.assertIn("\033[90mSearching: " + str(self.root), text)
@@ -124,10 +154,12 @@ class ScanTests(unittest.TestCase):
     def test_progress_clears_parent_rows_when_moving_to_a_sibling_branch(self):
         directories = [self.root, self.root / "bbb", self.root / "bbb/b2", self.root / "ccc"]
         walk = [(str(path), [], []) for path in directories]
-        with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
-                patch.object(os, "walk", return_value=iter(walk)), \
-                patch.object(time, "monotonic", side_effect=range(10)), \
-                contextlib.redirect_stdout(TTY()) as output:
+        with (
+            patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}),
+            patch.object(os, "walk", return_value=iter(walk)),
+            patch.object(time, "monotonic", side_effect=range(10)),
+            contextlib.redirect_stdout(TTY()) as output,
+        ):
             dwork_scan.scan_directories(self.root)
         text = output.getvalue()
         self.assertIn("\033[90mbbb\033[0m\n\033[90m  b2\033[0m", text)
@@ -143,9 +175,12 @@ class ScanTests(unittest.TestCase):
         def interrupted(*args, **kwargs):
             yield str(self.root), [], []
             raise KeyboardInterrupt
-        with patch.dict(os.environ, {"TERM": "xterm"}), \
-                patch.object(os, "walk", side_effect=interrupted), \
-                contextlib.redirect_stdout(TTY()) as output:
+
+        with (
+            patch.dict(os.environ, {"TERM": "xterm"}),
+            patch.object(os, "walk", side_effect=interrupted),
+            contextlib.redirect_stdout(TTY()) as output,
+        ):
             with self.assertRaises(KeyboardInterrupt):
                 dwork_scan.scan_directories(self.root)
         self.assertTrue(output.getvalue().endswith("\n"))
@@ -215,18 +250,28 @@ class ScanTests(unittest.TestCase):
         child, skipped = self.root / "child", self.root / "skip"
         self.fixture.model(child, "child")
         self.fixture.model(skipped, "skip")
-        with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}), \
-                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(dwork_docker, "read_model", return_value=("child", {"web": {}})), \
-                patch.object(dwork_scan, "choose_compose_directories", return_value=[child]) as picker, \
-                patch("builtins.input", return_value="y"), contextlib.redirect_stdout(io.StringIO()):
+        with (
+            patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}),
+            patch.object(
+                dwork_docker,
+                "docker_target",
+                return_value={"context": "default", "daemon": "test-daemon"},
+            ),
+            patch.object(dwork_docker, "read_model", return_value=("child", {"web": {}})),
+            patch.object(dwork_scan, "choose_compose_directories", return_value=[child]) as picker,
+            patch("builtins.input", return_value="y"),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             with dwork_registry.registry_lock():
                 self.assertEqual(dwork_scan.scan_workspaces(self.root, [], False), 0)
         self.assertEqual(picker.call_args.args[0], [child, skipped])
-        self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "configured"), str(child)})
+        self.assertEqual(
+            {e["path"] for e in self.entries()}, {str(self.root / "configured"), str(child)}
+        )
         for args in ("switch child", ""):
-            result, changes, _ = self.run_cli(args, cwd=child, answer="y\n",
-                                             containers=[legacy.container("a", "child")])
+            result, changes, _ = self.run_cli(
+                args, cwd=child, answer="y\n", containers=[legacy.container("a", "child")]
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(changes, [["start", "a"]])
 
@@ -244,18 +289,27 @@ class ScanTests(unittest.TestCase):
         import pty
         import struct
         import termios
+
         lib = legacy.SOURCE.parent / "lib"
-        script = ("import sys,json; from pathlib import Path; sys.path.insert(0," + repr(str(lib)) + "); "
-                  "import dwork_scan; result=dwork_scan.choose_compose_directories([Path('first'),Path('second')],Path('.')); "
-                  "print('PICKER_RESULT:'+json.dumps([str(p) for p in result]))")
+        script = (
+            "import sys,json; from pathlib import Path; sys.path.insert(0," + repr(str(lib)) + "); "
+            "import dwork_scan; result=dwork_scan.choose_compose_directories([Path('first'),Path('second')],Path('.')); "
+            "print('PICKER_RESULT:'+json.dumps([str(p) for p in result]))"
+        )
         for keys, expected in ((b" \x1bOB \x1bOA \n", '["second"]'), (b"q", "[]")):
             master, slave = pty.openpty()
             try:
                 fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 90, 0, 0))
                 original = termios.tcgetattr(slave)
                 env = dict(os.environ, TERM="xterm")
-                process = subprocess.Popen([sys.executable, "-B", "-c", script], cwd=self.root,
-                                           stdin=slave, stdout=slave, stderr=slave, env=env)
+                process = subprocess.Popen(
+                    [sys.executable, "-B", "-c", script],
+                    cwd=self.root,
+                    stdin=slave,
+                    stdout=slave,
+                    stderr=slave,
+                    env=env,
+                )
                 try:
                     output, sent = b"", False
                     deadline = time.monotonic() + 10

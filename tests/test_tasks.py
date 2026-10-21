@@ -29,9 +29,12 @@ import dwork_workspaces
 
 class TaskRuntimeTests(unittest.TestCase):
     def test_old_macos_python_fails_before_supervisor_changes_directory_or_spawns(self):
-        with patch.object(sys, "platform", "darwin"), \
-                patch.object(sys, "version_info", (3, 12)), \
-                patch.object(os, "chdir") as chdir, patch.object(os, "posix_spawn") as spawn:
+        with (
+            patch.object(sys, "platform", "darwin"),
+            patch.object(sys, "version_info", (3, 12)),
+            patch.object(os, "chdir") as chdir,
+            patch.object(os, "posix_spawn") as spawn,
+        ):
             with self.assertRaisesRegex(dwork_common.DworkError, "macOS require Python 3.13"):
                 dwork_tasks.supervise({})
         chdir.assert_not_called()
@@ -39,8 +42,11 @@ class TaskRuntimeTests(unittest.TestCase):
 
     def test_linux_minimum_and_supported_macos_python_are_accepted(self):
         for platform, version in (("linux", (3, 10)), ("darwin", (3, 13)), ("darwin", (3, 14))):
-            with self.subTest(platform=platform, version=version), \
-                    patch.object(sys, "platform", platform), patch.object(sys, "version_info", version):
+            with (
+                self.subTest(platform=platform, version=version),
+                patch.object(sys, "platform", platform),
+                patch.object(sys, "version_info", version),
+            ):
                 dwork_tasks.require_support()
 
     def test_old_macos_python_fails_before_building_task_arguments(self):
@@ -56,10 +62,12 @@ class TaskTests(unittest.TestCase):
         previous_alarm = signal.signal(signal.SIGALRM, signal.SIG_DFL)
         faulthandler.register(signal.SIGALRM, chain=True)
         signal.alarm(30)
+
         def cancel_alarm():
             signal.alarm(0)
             faulthandler.unregister(signal.SIGALRM)
             signal.signal(signal.SIGALRM, previous_alarm)
+
         # Add first so it stays armed through process and PTY cleanup.
         self.addCleanup(cancel_alarm)
         self.fixture = legacy.DworkTests()
@@ -68,11 +76,15 @@ class TaskTests(unittest.TestCase):
         self.root = self.fixture.root
         self.state = self.fixture.base / "state/dwork"
         self.shell = self.fixture.bin / "bash"
-        self.shell.write_text("#!" + sys.executable + "\nimport os,sys\n"
+        self.shell.write_text(
+            "#!" + sys.executable + "\nimport os,sys\n"
             "if sys.argv[1] == '-il': os.execv('/bin/bash', ['bash','--noprofile','--norc','-i'])\n"
-            "os.execv('/bin/bash', ['bash','--noprofile','--norc', '-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n")
+            "os.execv('/bin/bash', ['bash','--noprofile','--norc', '-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n"
+        )
         self.shell.chmod(0o755)
-        self.env = dict(os.environ, XDG_STATE_HOME=str(self.fixture.base / "state"), SHELL=str(self.shell))
+        self.env = dict(
+            os.environ, XDG_STATE_HOME=str(self.fixture.base / "state"), SHELL=str(self.shell)
+        )
         self.patch_env = patch.dict(os.environ, self.env)
         self.patch_env.start()
         self.addCleanup(self.patch_env.stop)
@@ -81,11 +93,14 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def configure(self, locked):
-        (self.root / "dwork.yml").write_text(json.dumps({"version": 1, "locked": locked,
-                                                       "compose": {"enabled": False}}))
+        (self.root / "dwork.yml").write_text(
+            json.dumps({"version": 1, "locked": locked, "compose": {"enabled": False}})
+        )
 
     def cli(self, args, **kwargs):
-        return self.fixture.run_dwork("bash", args, register_current=False, SHELL=str(self.shell), **kwargs)
+        return self.fixture.run_dwork(
+            "bash", args, register_current=False, SHELL=str(self.shell), **kwargs
+        )
 
     def wait_for(self, predicate):
         deadline = time.monotonic() + 6
@@ -93,37 +108,52 @@ class TaskTests(unittest.TestCase):
             value = predicate()
             if value:
                 return value
-            time.sleep(.03)
+            time.sleep(0.03)
         self.fail("Task did not reach expected state")
 
     def task(self, command=None, visible=False):
-        return dwork_common.TerminalTask("Worker", command or [sys.executable, "-c", "import time; time.sleep(60)"],
-            self.root, window="new" if visible else "none", workspace=str(self.root),
-            directory=str(self.root), project=self.root.name)
+        return dwork_common.TerminalTask(
+            "Worker",
+            command or [sys.executable, "-c", "import time; time.sleep(60)"],
+            self.root,
+            window="new" if visible else "none",
+            workspace=str(self.root),
+            directory=str(self.root),
+            project=self.root.name,
+        )
 
     def launch(self, task=None):
         task = task or self.task()
         previous = {r["token"] for r in dwork_tasks.running(self.state)}
-        process = subprocess.Popen(dwork_terminals.task_command(task), env=self.env, cwd=self.root,
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True)
+        process = subprocess.Popen(
+            dwork_terminals.task_command(task),
+            env=self.env,
+            cwd=self.root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
         def cleanup():
             if process.poll() is None:
                 process.terminate()
             process.wait(timeout=8)
+
         self.addCleanup(cleanup)
-        record = self.wait_for(lambda: [r for r in dwork_tasks.running(self.state)
-                                       if r["token"] not in previous])[0]
+        record = self.wait_for(
+            lambda: [r for r in dwork_tasks.running(self.state) if r["token"] not in previous]
+        )[0]
         return process, record
 
     def test_group_keeper_joins_exited_command_and_survives_until_final_group_kill(self):
-        child = os.posix_spawn(sys.executable,
-            [sys.executable, "-c", "raise SystemExit(7)"], os.environ, setpgroup=0)
+        child = os.posix_spawn(
+            sys.executable, [sys.executable, "-c", "raise SystemExit(7)"], os.environ, setpgroup=0
+        )
         owned = {child}
         control = None
         try:
-            self.wait_for(lambda: os.waitid(os.P_PID, child,
-                          os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            self.wait_for(lambda: os.waitid(os.P_PID, child, os.WEXITED | os.WNOHANG | os.WNOWAIT))
             keeper, control = dwork_tasks.start_group_keeper(child)
             owned.add(keeper)
             # Reaping the real command must not release the owned group identity.
@@ -133,11 +163,9 @@ class TaskTests(unittest.TestCase):
             self.assertEqual(os.getpgid(keeper), child)
             os.killpg(child, signal.SIGTERM)
             os.killpg(child, signal.SIGCONT)
-            self.assertIsNone(os.waitid(os.P_PID, keeper,
-                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            self.assertIsNone(os.waitid(os.P_PID, keeper, os.WEXITED | os.WNOHANG | os.WNOWAIT))
             os.killpg(child, signal.SIGKILL)
-            self.wait_for(lambda: os.waitid(os.P_PID, keeper,
-                          os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            self.wait_for(lambda: os.waitid(os.P_PID, keeper, os.WEXITED | os.WNOHANG | os.WNOWAIT))
             _, status = os.waitpid(keeper, 0)
             owned.remove(keeper)
             self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
@@ -153,9 +181,12 @@ class TaskTests(unittest.TestCase):
 
     def test_group_keeper_kills_task_when_supervisor_ownership_pipe_closes(self):
         marker = self.root / "group-child-ready"
-        code = "import pathlib,time; pathlib.Path(" + repr(str(marker)) + ").touch(); time.sleep(60)"
-        child = os.posix_spawn(sys.executable, [sys.executable, "-c", code],
-                               os.environ, setpgroup=0)
+        code = (
+            "import pathlib,time; pathlib.Path(" + repr(str(marker)) + ").touch(); time.sleep(60)"
+        )
+        child = os.posix_spawn(
+            sys.executable, [sys.executable, "-c", code], os.environ, setpgroup=0
+        )
         owned = {child}
         control = None
         try:
@@ -166,8 +197,9 @@ class TaskTests(unittest.TestCase):
             control = None
             # The command cannot keep the supervisor's ownership writer open.
             for pid in (child, keeper):
-                self.wait_for(lambda: os.waitid(os.P_PID, pid,
-                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+                self.wait_for(
+                    lambda: os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                )
                 _, status = os.waitpid(pid, 0)
                 owned.remove(pid)
                 self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
@@ -182,24 +214,34 @@ class TaskTests(unittest.TestCase):
                 os.waitpid(pid, 0)
 
     def test_group_keeper_kills_task_if_supervisor_exits_before_readiness_ack(self):
-        child = os.posix_spawn(sys.executable,
-            [sys.executable, "-c", "import time; time.sleep(60)"], os.environ, setpgroup=0)
+        child = os.posix_spawn(
+            sys.executable,
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            os.environ,
+            setpgroup=0,
+        )
         owned = {child}
         read_ack, write_ack = os.pipe()
         os.close(read_ack)
         try:
             # No ACK reader remains: the keeper must clean up even if its first
             # write fails before it can observe EOF on the ownership pipe.
-            keeper = os.posix_spawn(sys.executable,
+            keeper = os.posix_spawn(
+                sys.executable,
                 [sys.executable, str(Path(dwork_tasks.__file__).resolve()), "--group-keeper"],
-                os.environ, setpgroup=child, file_actions=[
+                os.environ,
+                setpgroup=child,
+                file_actions=[
                     (os.POSIX_SPAWN_OPEN, 0, os.devnull, os.O_RDONLY, 0),
                     (os.POSIX_SPAWN_DUP2, write_ack, 1),
-                    (os.POSIX_SPAWN_CLOSE, write_ack)])
+                    (os.POSIX_SPAWN_CLOSE, write_ack),
+                ],
+            )
             owned.add(keeper)
             for pid in (child, keeper):
-                self.wait_for(lambda: os.waitid(os.P_PID, pid,
-                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+                self.wait_for(
+                    lambda: os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                )
                 _, status = os.waitpid(pid, 0)
                 owned.remove(pid)
                 self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
@@ -214,18 +256,29 @@ class TaskTests(unittest.TestCase):
 
     def test_cli_tracks_background_and_down_preview_decline_lock_rename_and_stop(self):
         # Exercise the actual launch path, including owner information assigned by dwork.
-        config = {"version": 1, "compose": {"enabled": False}, "terminals": [{
-            "title": "Worker", "command": [sys.executable, "-c", "__import__('time').sleep(60)"],
-            "window": "none", "confirm": False}]}
+        config = {
+            "version": 1,
+            "compose": {"enabled": False},
+            "terminals": [
+                {
+                    "title": "Worker",
+                    "command": [sys.executable, "-c", "__import__('time').sleep(60)"],
+                    "window": "none",
+                    "confirm": False,
+                }
+            ],
+        }
         (self.root / "dwork.yml").write_text(json.dumps(config))
         result, _, _ = self.cli("", answer="y\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         record = self.wait_for(lambda: dwork_tasks.running(self.state))[0]
+
         def cleanup():
             try:
                 dwork_tasks.request(record, "stop")
             except (OSError, ValueError):
                 pass
+
         self.addCleanup(cleanup)
         before = {p: p.read_bytes() for p in self.state.rglob("*.json")}
         for args, answer in (("down --dry-run", ""), ("down", "n\n"), ("down", "")):
@@ -251,17 +304,22 @@ class TaskTests(unittest.TestCase):
 
     def test_process_group_stops_descendants_and_preserves_unrelated_process(self):
         marker = self.root / "child-stopped"
-        child = ("import signal,time,pathlib; "
-                 "signal.signal(signal.SIGTERM, lambda *_: (pathlib.Path(" + repr(str(marker))
-                 + ").write_text('stopped'), exit(0))); print('ready',flush=True); time.sleep(60)")
-        parent = ("import subprocess,signal,time,sys; "
-                  "p=subprocess.Popen([sys.executable,'-c'," + repr(child) + "],stdout=subprocess.PIPE); "
-                  "p.stdout.readline(); signal.signal(signal.SIGTERM,lambda *_: (p.wait(),exit(0))); time.sleep(60)")
+        child = (
+            "import signal,time,pathlib; "
+            "signal.signal(signal.SIGTERM, lambda *_: (pathlib.Path("
+            + repr(str(marker))
+            + ").write_text('stopped'), exit(0))); print('ready',flush=True); time.sleep(60)"
+        )
+        parent = (
+            "import subprocess,signal,time,sys; "
+            "p=subprocess.Popen([sys.executable,'-c'," + repr(child) + "],stdout=subprocess.PIPE); "
+            "p.stdout.readline(); signal.signal(signal.SIGTERM,lambda *_: (p.wait(),exit(0))); time.sleep(60)"
+        )
         process, record = self.launch(self.task([sys.executable, "-c", parent]))
         unrelated = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
         self.addCleanup(lambda: (unrelated.terminate(), unrelated.wait(timeout=5)))
         # Parent installs its handler after its child is ready.
-        time.sleep(.2)
+        time.sleep(0.2)
         result, _, _ = self.cli("down", answer="y\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(process.wait(timeout=6), 0)
@@ -289,7 +347,9 @@ class TaskTests(unittest.TestCase):
         self.assertIsNone(process.poll())
         selected = self.root / "selected"
         selected.mkdir()
-        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False}}))
+        (selected / "dwork.yml").write_text(
+            json.dumps({"version": 1, "compose": {"enabled": False}})
+        )
         result, _, _ = self.cli("register selected", cwd=selected)
         self.assertEqual(result.returncode, 0, result.stderr)
         result, changes, calls = self.cli("switch selected", answer="y\n")
@@ -361,8 +421,9 @@ class TaskTests(unittest.TestCase):
         for name, locked in (("locked", True), ("kept", False), ("worker", False)):
             child = group / name
             child.mkdir(parents=True)
-            (child / "dwork.yml").write_text(json.dumps({"version": 1, "locked": locked,
-                                                        "compose": {"enabled": False}}))
+            (child / "dwork.yml").write_text(
+                json.dumps({"version": 1, "locked": locked, "compose": {"enabled": False}})
+            )
         result, _, _ = self.cli("register outgoing", cwd=group)
         self.assertEqual(result.returncode, 0, result.stderr)
         tasks = {}
@@ -381,19 +442,36 @@ class TaskTests(unittest.TestCase):
     def test_switch_controller_failure_prevents_destination_launch(self):
         selected = self.fixture.base / "selected"
         selected.mkdir()
-        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
-            "terminals": [{"command": [sys.executable, "-c", "pass"], "window": "none", "confirm": False}]}))
+        (selected / "dwork.yml").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "compose": {"enabled": False},
+                    "terminals": [
+                        {
+                            "command": [sys.executable, "-c", "pass"],
+                            "window": "none",
+                            "confirm": False,
+                        }
+                    ],
+                }
+            )
+        )
         result, _, _ = self.cli("register selected", cwd=selected)
         self.assertEqual(result.returncode, 0, result.stderr)
         process, record = self.launch()
-        with dwork_registry.registry_lock(), \
-                patch.object(dwork_tasks, "running", return_value=[record]), \
-                patch.object(dwork_tasks, "request", side_effect=TimeoutError("controller timed out")), \
-                patch.object(dwork_terminals, "open_terminal") as launch, \
-                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+        with (
+            dwork_registry.registry_lock(),
+            patch.object(dwork_tasks, "running", return_value=[record]),
+            patch.object(dwork_tasks, "request", side_effect=TimeoutError("controller timed out")),
+            patch.object(dwork_terminals, "open_terminal") as launch,
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()) as errors,
+        ):
             with self.assertRaisesRegex(dwork_common.DworkError, "incomplete"):
-                dwork_workspaces.registry_command(self.root, [], "switch", False, "selected",
-                                                  dwork_registry.read_registry())
+                dwork_workspaces.registry_command(
+                    self.root, [], "switch", False, "selected", dwork_registry.read_registry()
+                )
         launch.assert_not_called()
         self.assertIn("Switch incomplete", errors.getvalue())
         self.assertIsNone(process.poll())
@@ -401,48 +479,85 @@ class TaskTests(unittest.TestCase):
     def test_task_finishing_during_confirmation_does_not_abort_shutdown_or_activation(self):
         selected = self.fixture.base / "selected"
         selected.mkdir()
-        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
-            "terminals": [{"command": ["echo", "ready"], "window": "none", "confirm": False}]}))
+        (selected / "dwork.yml").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "compose": {"enabled": False},
+                    "terminals": [
+                        {"command": ["echo", "ready"], "window": "none", "confirm": False}
+                    ],
+                }
+            )
+        )
         result, _, _ = self.cli("register selected", cwd=selected)
         self.assertEqual(result.returncode, 0, result.stderr)
         for mode in ("down", "activate"):
             with self.subTest(mode=mode):
                 finished = self.root / ("finish-" + mode)
-                code = ("from pathlib import Path\nimport time\nwhile not Path("
-                        + repr(str(finished)) + ").exists(): time.sleep(.01)")
+                code = (
+                    "from pathlib import Path\nimport time\nwhile not Path("
+                    + repr(str(finished))
+                    + ").exists(): time.sleep(.01)"
+                )
                 process, record = self.launch(self.task([sys.executable, "-c", code]))
+
                 def finish_and_accept(prompt):
                     finished.touch()
                     self.assertEqual(process.wait(timeout=6), 0)
                     self.assertFalse((self.state / "tasks" / (record["token"] + ".json")).exists())
                     return True
-                with dwork_registry.registry_lock(), \
-                        patch.object(dwork_common, "confirm_action", side_effect=finish_and_accept), \
-                        patch.object(dwork_terminals, "open_terminal", return_value=123) as opener, \
-                        contextlib.redirect_stdout(io.StringIO()):
+
+                with (
+                    dwork_registry.registry_lock(),
+                    patch.object(dwork_common, "confirm_action", side_effect=finish_and_accept),
+                    patch.object(dwork_terminals, "open_terminal", return_value=123) as opener,
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
                     entries = dwork_registry.read_registry()
                     if mode == "down":
                         self.assertEqual(dwork_workspaces.down_workspaces(entries, False), 0)
                         opener.assert_not_called()
                     else:
-                        self.assertEqual(dwork_workspaces.registry_command(
-                            selected, [], mode, False, None, entries), 0)
+                        self.assertEqual(
+                            dwork_workspaces.registry_command(
+                                selected, [], mode, False, None, entries
+                            ),
+                            0,
+                        )
                         opener.assert_called_once()
 
     def test_completed_task_is_never_reported_as_container_recovery_after_switch_failure(self):
         selected = self.fixture.base / "selected"
         selected.mkdir()
-        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False},
-            "terminals": [{"command": ["echo", "ready"], "window": "none", "confirm": False}]}))
+        (selected / "dwork.yml").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "compose": {"enabled": False},
+                    "terminals": [
+                        {"command": ["echo", "ready"], "window": "none", "confirm": False}
+                    ],
+                }
+            )
+        )
         result, _, _ = self.cli("register selected", cwd=selected)
         self.assertEqual(result.returncode, 0, result.stderr)
         process, _ = self.launch()
-        with dwork_registry.registry_lock(), \
-                patch.object(dwork_terminals, "open_terminal", side_effect=dwork_common.DworkError("failed launch")), \
-                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+        with (
+            dwork_registry.registry_lock(),
+            patch.object(
+                dwork_terminals,
+                "open_terminal",
+                side_effect=dwork_common.DworkError("failed launch"),
+            ),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()) as errors,
+        ):
             with self.assertRaisesRegex(dwork_common.DworkError, "failed launch"):
-                dwork_workspaces.registry_command(self.root, [], "switch", False, "selected",
-                                                  dwork_registry.read_registry())
+                dwork_workspaces.registry_command(
+                    self.root, [], "switch", False, "selected", dwork_registry.read_registry()
+                )
         self.assertEqual(process.wait(timeout=6), 0)
         self.assertIn("Completed: stopped task", errors.getvalue())
         self.assertNotIn("docker start task", errors.getvalue())
@@ -451,9 +566,13 @@ class TaskTests(unittest.TestCase):
         record = {"token": "a" * 48}
         state = self.fixture.base / "completed-state"
         path = state / "tasks" / (record["token"] + ".json")
-        for error in (FileNotFoundError("gone"), ConnectionRefusedError("gone"),
-                      ConnectionResetError("gone"), BrokenPipeError("gone"),
-                      json.JSONDecodeError("empty response", "", 0)):
+        for error in (
+            FileNotFoundError("gone"),
+            ConnectionRefusedError("gone"),
+            ConnectionResetError("gone"),
+            BrokenPipeError("gone"),
+            json.JSONDecodeError("empty response", "", 0),
+        ):
             with self.subTest(error=type(error).__name__):
                 with patch.object(dwork_tasks, "request", side_effect=error):
                     self.assertFalse(dwork_tasks.stop(record, state))
@@ -464,9 +583,16 @@ class TaskTests(unittest.TestCase):
                             dwork_tasks.stop(record, state)
                     finally:
                         path.unlink()
-        for error in (TimeoutError("slow"), PermissionError("denied"), ValueError("wrong token"),
-                      json.JSONDecodeError("bad response", "not JSON", 0)):
-            with self.subTest(error=type(error).__name__), patch.object(dwork_tasks, "request", side_effect=error):
+        for error in (
+            TimeoutError("slow"),
+            PermissionError("denied"),
+            ValueError("wrong token"),
+            json.JSONDecodeError("bad response", "not JSON", 0),
+        ):
+            with (
+                self.subTest(error=type(error).__name__),
+                patch.object(dwork_tasks, "request", side_effect=error),
+            ):
                 with self.assertRaises(type(error)):
                     dwork_tasks.stop(record, state)
         with patch.object(dwork_tasks, "request") as request:
@@ -480,11 +606,16 @@ class TaskTests(unittest.TestCase):
         result, _, _ = self.cli("register host")
         self.assertEqual(result.returncode, 0, result.stderr)
         process, record = self.launch()
-        result, changes, _ = self.cli("down", answer="y\n", containers=[
-            legacy.container("a", self.root.name, state="running")])
+        result, changes, _ = self.cli(
+            "down",
+            answer="y\n",
+            containers=[legacy.container("a", self.root.name, state="running")],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
-        self.assertLess(result.stdout.index("Stopped task:"), result.stdout.index("Stopped: repo/web"))
+        self.assertLess(
+            result.stdout.index("Stopped task:"), result.stdout.index("Stopped: repo/web")
+        )
         self.assertEqual(process.wait(timeout=2), 0)
 
     def test_mixed_group_preserves_locked_child_task(self):
@@ -492,8 +623,9 @@ class TaskTests(unittest.TestCase):
         for name, locked in (("infra", True), ("app", False)):
             child = group / name
             child.mkdir(parents=True)
-            (child / "dwork.yml").write_text(json.dumps({"version": 1, "locked": locked,
-                                                        "compose": {"enabled": False}}))
+            (child / "dwork.yml").write_text(
+                json.dumps({"version": 1, "locked": locked, "compose": {"enabled": False}})
+            )
         result, _, _ = self.cli("register stack", cwd=group)
         self.assertEqual(result.returncode, 0, result.stderr)
         processes = []
@@ -510,12 +642,19 @@ class TaskTests(unittest.TestCase):
 
     def test_lock_changed_during_confirmation_is_rechecked(self):
         process, record = self.launch()
+
         def lock_and_accept(prompt):
             self.configure(True)
             return True
-        with dwork_registry.registry_lock(), patch.object(dwork_common, "confirm_action", side_effect=lock_and_accept), \
-                contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False), 0)
+
+        with (
+            dwork_registry.registry_lock(),
+            patch.object(dwork_common, "confirm_action", side_effect=lock_and_accept),
+            contextlib.redirect_stdout(io.StringIO()) as output,
+        ):
+            self.assertEqual(
+                dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False), 0
+            )
         self.assertIn("Skipped task (locked)", output.getvalue())
         self.assertIsNone(process.poll())
 
@@ -541,8 +680,13 @@ class TaskTests(unittest.TestCase):
 
     def test_background_failure_keeps_nonzero_exit_and_cleans_record(self):
         task = self.task([sys.executable, "-c", "raise SystemExit(7)"])
-        process = subprocess.run(dwork_terminals.task_command(task), env=self.env,
-                                 stdin=subprocess.DEVNULL, capture_output=True, timeout=5)
+        process = subprocess.run(
+            dwork_terminals.task_command(task),
+            env=self.env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=5,
+        )
         self.assertEqual(process.returncode, 7, process.stderr)
         self.assertEqual(list((self.state / "tasks").glob("*.json")), [])
 
@@ -551,19 +695,27 @@ class TaskTests(unittest.TestCase):
         command = dwork_terminals.task_command(task)
         with patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu"}):
             args = dwork_terminals.terminal_arguments(task)
-            self.assertEqual(args[args.index("--exec") + 1:], command)
-        with patch.dict(os.environ, {"DISPLAY": ":test"}), \
-                patch.object(sys, "platform", "linux"), \
-                patch.object(shutil, "which", side_effect=lambda program: str(self.shell)):
-            for launcher, delimiter in (("gnome-terminal", "--"), ("konsole", "-e"),
-                                        ("xfce4-terminal", "--execute"), ("xterm", "-e")):
+            self.assertEqual(args[args.index("--exec") + 1 :], command)
+        with (
+            patch.dict(os.environ, {"DISPLAY": ":test"}),
+            patch.object(sys, "platform", "linux"),
+            patch.object(shutil, "which", side_effect=lambda program: str(self.shell)),
+        ):
+            for launcher, delimiter in (
+                ("gnome-terminal", "--"),
+                ("konsole", "-e"),
+                ("xfce4-terminal", "--execute"),
+                ("xterm", "-e"),
+            ):
                 args = dwork_terminals.linux_terminal_arguments(task, launcher)
-                self.assertEqual(args[args.index(delimiter) + 1:], command)
+                self.assertEqual(args[args.index(delimiter) + 1 :], command)
 
     def test_termination_timeout_kills_uncooperative_command(self):
         marker = self.root / "ready"
-        code = ("import signal,time,pathlib; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
-                "pathlib.Path(" + repr(str(marker)) + ").write_text('ready'); time.sleep(60)")
+        code = (
+            "import signal,time,pathlib; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
+            "pathlib.Path(" + repr(str(marker)) + ").write_text('ready'); time.sleep(60)"
+        )
         process, record = self.launch(self.task([sys.executable, "-c", code]))
         self.wait_for(marker.exists)
         started = time.monotonic()
@@ -589,10 +741,16 @@ class TaskTests(unittest.TestCase):
         if not shell:
             self.skipTest("Zsh unavailable")
         self.shell = self.fixture.bin / "zsh"
-        self.shell.write_text("#!" + sys.executable + "\nimport os,sys\n"
-            + "shell=" + repr(shell) + "\n"
+        self.shell.write_text(
+            "#!"
+            + sys.executable
+            + "\nimport os,sys\n"
+            + "shell="
+            + repr(shell)
+            + "\n"
             + "if sys.argv[1] == '-il': os.execv(shell, ['zsh','-f','-i'])\n"
-            + "os.execv(shell, ['zsh','-f','-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n")
+            + "os.execv(shell, ['zsh','-f','-ic' if sys.argv[1] == '-lic' else '-c',sys.argv[2]])\n"
+        )
         self.shell.chmod(0o755)
         self.env.update(SHELL=str(self.shell), ZDOTDIR=str(self.fixture.base))
         with patch.dict(os.environ, self.env):
@@ -604,23 +762,41 @@ class TaskTests(unittest.TestCase):
         result, _, _ = self.cli("register host")
         self.assertEqual(result.returncode, 0, result.stderr)
         process, record = self.launch()
-        with dwork_registry.registry_lock(), \
-                patch.object(dwork_common, "confirm_action", return_value=True), \
-                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(dwork_docker, "show_target"), \
-                patch.object(dwork_docker, "inventory", return_value=[legacy.container("a", self.root.name, state="running")]), \
-                patch.object(dwork_tasks, "running", return_value=[record]), \
-                patch.object(dwork_tasks, "request", side_effect=TimeoutError("controller timed out")), \
-                patch.object(dwork_docker, "docker") as docker, contextlib.redirect_stdout(io.StringIO()):
+        with (
+            dwork_registry.registry_lock(),
+            patch.object(dwork_common, "confirm_action", return_value=True),
+            patch.object(
+                dwork_docker,
+                "docker_target",
+                return_value={"context": "default", "daemon": "test-daemon"},
+            ),
+            patch.object(dwork_docker, "show_target"),
+            patch.object(
+                dwork_docker,
+                "inventory",
+                return_value=[legacy.container("a", self.root.name, state="running")],
+            ),
+            patch.object(dwork_tasks, "running", return_value=[record]),
+            patch.object(dwork_tasks, "request", side_effect=TimeoutError("controller timed out")),
+            patch.object(dwork_docker, "docker") as docker,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             with self.assertRaisesRegex(dwork_common.DworkError, "Down incomplete"):
                 dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False)
             docker.assert_not_called()
         self.assertIsNone(process.poll())
 
     def write_unreachable_record(self):
-        record = {"token": "a" * 48, "socket": str(self.fixture.base / "missing.sock"),
-                  "pid": 999999, "workspace": str(self.root), "directory": str(self.root),
-                  "project": self.root.name, "title": "Worker", "command": ["echo", "worker"]}
+        record = {
+            "token": "a" * 48,
+            "socket": str(self.fixture.base / "missing.sock"),
+            "pid": 999999,
+            "workspace": str(self.root),
+            "directory": str(self.root),
+            "project": self.root.name,
+            "title": "Worker",
+            "command": ["echo", "worker"],
+        }
         path = self.state / "tasks" / (record["token"] + ".json")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(record))
@@ -636,25 +812,44 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(self.cli("register selected", cwd=selected)[0].returncode, 0)
         _, path = self.write_unreachable_record()
         before = dwork_registry.registry_path().read_bytes()
-        for error in (TimeoutError("slow controller"), PermissionError("denied"),
-                      FileNotFoundError("missing socket"), ValueError("identity changed"),
-                      json.JSONDecodeError("malformed response", "invalid", 0)):
+        for error in (
+            TimeoutError("slow controller"),
+            PermissionError("denied"),
+            FileNotFoundError("missing socket"),
+            ValueError("identity changed"),
+            json.JSONDecodeError("malformed response", "invalid", 0),
+        ):
             for mode in ("down", "switch"):
                 for preview in (False, True):
-                    with self.subTest(error=type(error).__name__, mode=mode, preview=preview), \
-                            patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                            patch.object(dwork_docker, "show_target"), \
-                            patch.object(dwork_docker, "inventory", return_value=[legacy.container("a", self.root.name, state="running")]), \
-                            patch.object(dwork_tasks, "request", side_effect=error), \
-                            patch.object(dwork_docker, "docker") as docker, \
-                            patch.object(dwork_terminals, "open_terminal") as launch, \
-                            patch("builtins.input") as prompt, contextlib.redirect_stdout(io.StringIO()):
+                    with (
+                        self.subTest(error=type(error).__name__, mode=mode, preview=preview),
+                        patch.object(
+                            dwork_docker,
+                            "docker_target",
+                            return_value={"context": "default", "daemon": "test-daemon"},
+                        ),
+                        patch.object(dwork_docker, "show_target"),
+                        patch.object(
+                            dwork_docker,
+                            "inventory",
+                            return_value=[legacy.container("a", self.root.name, state="running")],
+                        ),
+                        patch.object(dwork_tasks, "request", side_effect=error),
+                        patch.object(dwork_docker, "docker") as docker,
+                        patch.object(dwork_terminals, "open_terminal") as launch,
+                        patch("builtins.input") as prompt,
+                        contextlib.redirect_stdout(io.StringIO()),
+                    ):
                         entries = dwork_registry.read_registry()
-                        with self.assertRaisesRegex(dwork_common.DworkError, "Shutdown blocked; no workloads changed"):
+                        with self.assertRaisesRegex(
+                            dwork_common.DworkError, "Shutdown blocked; no workloads changed"
+                        ):
                             if mode == "down":
                                 dwork_workspaces.down_workspaces(entries, preview)
                             else:
-                                dwork_workspaces.registry_command(selected, [], "switch", preview, "selected", entries)
+                                dwork_workspaces.registry_command(
+                                    selected, [], "switch", preview, "selected", entries
+                                )
                         docker.assert_not_called()
                         launch.assert_not_called()
                         prompt.assert_not_called()
@@ -678,36 +873,55 @@ class TaskTests(unittest.TestCase):
                 entries[0]["members"][0]["project"] = "new-owner"
             else:
                 exclude = record["workspace"]
-            with self.subTest(policy=policy), patch.object(dwork_tasks, "request", side_effect=TimeoutError("slow")):
+            with (
+                self.subTest(policy=policy),
+                patch.object(dwork_tasks, "request", side_effect=TimeoutError("slow")),
+            ):
                 plan = dwork_workspaces.plan_shutdown(entries, None, [], keep, exclude)
                 self.assertEqual(plan.tasks, [])
 
     def test_discovery_accepts_supervisor_cleanup_during_status_request(self):
         _, path = self.write_unreachable_record()
+
         def finish(record, action):
             path.unlink()
             raise ConnectionRefusedError("finished")
-        with patch.object(dwork_tasks, "request", side_effect=finish), \
-                patch.object(dwork_tasks.os, "kill") as signal_process:
+
+        with (
+            patch.object(dwork_tasks, "request", side_effect=finish),
+            patch.object(dwork_tasks.os, "kill") as signal_process,
+        ):
             plan = dwork_workspaces.plan_shutdown(dwork_registry.read_registry(), None, [], set())
         self.assertEqual(plan.tasks, [])
         signal_process.assert_not_called()
 
     def check_visible_terminal(self, force_macos=False):
         import pty
-        task = self.task([sys.executable, "-c", "import time; print(input('TASK_INPUT>'),flush=True); time.sleep(60)"], True)
+
+        task = self.task(
+            [
+                sys.executable,
+                "-c",
+                "import time; print(input('TASK_INPUT>'),flush=True); time.sleep(60)",
+            ],
+            True,
+        )
         args = dwork_terminals.task_command(task)
         if force_macos:
             # Exercise the complete keeper branch on Linux as well as Darwin.
             # The public POSIX APIs used by that branch are available on both.
-            code = ("import base64,json,sys; sys.path.insert(0," + repr(str(
-                    Path(dwork_tasks.__file__).parent)) + "); import dwork_tasks; "
-                    "dwork_tasks.sys.platform='darwin'; dwork_tasks.require_support=lambda:None; "
-                    "sys.exit(dwork_tasks.supervise(json.loads(base64.urlsafe_b64decode(sys.argv[1]))))")
+            code = (
+                "import base64,json,sys; sys.path.insert(0,"
+                + repr(str(Path(dwork_tasks.__file__).parent))
+                + "); import dwork_tasks; "
+                "dwork_tasks.sys.platform='darwin'; dwork_tasks.require_support=lambda:None; "
+                "sys.exit(dwork_tasks.supervise(json.loads(base64.urlsafe_b64decode(sys.argv[1]))))"
+            )
             args = [args[0], "-c", code, args[2]]
         pid, master = pty.fork()
         if pid == 0:
             os.execve(args[0], args, self.env)
+
         def cleanup():
             # Like pty.spawn(), close the master before waiting: a Darwin slave
             # can otherwise wait for terminal output to drain while exiting.
@@ -721,17 +935,20 @@ class TaskTests(unittest.TestCase):
                 while time.monotonic() < deadline:
                     if os.waitpid(pid, os.WNOHANG)[0]:
                         return
-                    time.sleep(.05)
+                    time.sleep(0.05)
             self.fail("PTY child did not exit after its master was closed and SIGKILL was sent")
+
         self.addCleanup(cleanup)
+
         def until(marker):
             output = b""
             deadline = time.monotonic() + 7
             while marker not in output and time.monotonic() < deadline:
-                if select.select([master], [], [], .1)[0]:
+                if select.select([master], [], [], 0.1)[0]:
                     output += os.read(master, 65536)
             self.assertIn(marker, output)
-        record = self.wait_for(lambda: dwork_tasks.running(self.state))[0]
+
+        self.wait_for(lambda: dwork_tasks.running(self.state))
         until(b"TASK_INPUT>")
         os.write(master, b"input-works\n")
         until(b"input-works")

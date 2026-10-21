@@ -1,4 +1,5 @@
 """Decode and normalize configuration data without filesystem or Compose access."""
+
 from dataclasses import dataclass
 import math
 
@@ -6,9 +7,14 @@ from dwork_common import DworkError, LAUNCHERS
 import dwork_browser_launch
 
 
-COMPOSE_ENV = ("COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES",
-               "COMPOSE_ENV_FILES", "COMPOSE_PATH_SEPARATOR", "COMPOSE_DISABLE_ENV_FILE")
-
+COMPOSE_ENV = (
+    "COMPOSE_FILE",
+    "COMPOSE_PROJECT_NAME",
+    "COMPOSE_PROFILES",
+    "COMPOSE_ENV_FILES",
+    "COMPOSE_PATH_SEPARATOR",
+    "COMPOSE_DISABLE_ENV_FILE",
+)
 
 
 @dataclass(frozen=True)
@@ -60,8 +66,11 @@ def mapping(value, allowed, where):
 
 
 def strings(value, where, nonempty=True):
-    if (not isinstance(value, list) or (nonempty and not value)
-            or any(not isinstance(s, str) or not s or "\0" in s for s in value)):
+    if (
+        not isinstance(value, list)
+        or (nonempty and not value)
+        or any(not isinstance(s, str) or not s or "\0" in s for s in value)
+    ):
         raise DworkError(where + " must be a list of nonempty strings.")
     return value
 
@@ -71,9 +80,11 @@ def decode_config(text):
         import yaml
     except ImportError:
         raise DworkError("dwork.yml requires PyYAML (Ubuntu: sudo apt install python3-yaml).")
+
     # SafeLoader reads data only. Reject duplicate keys rather than hide typos.
     class UniqueLoader(yaml.SafeLoader):
         pass
+
     def unique_mapping(loader, node):
         loader.flatten_mapping(node)
         result = {}
@@ -83,6 +94,7 @@ def decode_config(text):
                 raise DworkError("dwork.yml contains a duplicate or non-string key.")
             result[key] = loader.construct_object(value_node)
         return result
+
     UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
     try:
         config = yaml.load(text, Loader=UniqueLoader)
@@ -90,7 +102,9 @@ def decode_config(text):
         mark = getattr(error, "problem_mark", None)
         location = " at line " + str(mark.line + 1) if mark else ""
         raise DworkError("Invalid dwork.yml" + location + "; nothing changed.")
-    return mapping(config, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml")
+    return mapping(
+        config, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml"
+    )
 
 
 def timeout_value(value, where):
@@ -102,7 +116,9 @@ def timeout_value(value, where):
 
 def parse_config(cfg) -> WorkspaceConfig:
     """Validate YAML values; paths and Compose references are resolved separately."""
-    cfg = mapping(cfg, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml")
+    cfg = mapping(
+        cfg, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml"
+    )
     if type(cfg.get("version")) is not int or cfg["version"] != 1:
         raise DworkError("dwork.yml: version must be 1.")
     locked = lock_value(cfg)
@@ -116,14 +132,19 @@ def parse_config(cfg) -> WorkspaceConfig:
     files = strings(compose["files"], "compose.files") if "files" in compose else []
     selected = strings(compose["services"], "compose.services") if "services" in compose else None
     if not enabled and (files or selected):
-        raise DworkError("compose.enabled is false; Compose files, services, and CLI options are not allowed.")
+        raise DworkError(
+            "compose.enabled is false; Compose files, services, and CLI options are not allowed."
+        )
     tasks = cfg.get("terminals", [])
     if not isinstance(tasks, list):
         raise DworkError("terminals must be a list.")
     terminals = []
     for index, raw in enumerate(tasks):
-        task = mapping(raw, ("title", "command", "cwd", "wait_for", "window", "launcher", "confirm"),
-                       "terminals[" + str(index) + "]")
+        task = mapping(
+            raw,
+            ("title", "command", "cwd", "wait_for", "window", "launcher", "confirm"),
+            "terminals[" + str(index) + "]",
+        )
         command = strings(task.get("command"), "terminal.command")
         title = task.get("title")
         if "title" in task and title is None:
@@ -136,14 +157,22 @@ def parse_config(cfg) -> WorkspaceConfig:
         launcher = task.get("launcher", "auto")
         if not isinstance(launcher, str) or launcher not in LAUNCHERS:
             raise DworkError("terminal.launcher must be one of: " + ", ".join(LAUNCHERS))
-        if (title is not None and (not isinstance(title, str) or not title)) or not isinstance(cwd, str) or not cwd:
+        if (
+            (title is not None and (not isinstance(title, str) or not title))
+            or not isinstance(cwd, str)
+            or not cwd
+        ):
             raise DworkError("terminal.title and terminal.cwd must be nonempty strings.")
         if window not in ("new", "current", "none"):
             raise DworkError("terminal.window must be new, current, or none.")
         wait = mapping(task.get("wait_for", {}), ("healthy", "timeout"), "terminal.wait_for")
         healthy = strings(wait["healthy"], "wait_for.healthy") if "healthy" in wait else []
         timeout = timeout_value(wait.get("timeout", 180), "wait_for.timeout")
-        terminals.append(TerminalConfig(title, tuple(command), cwd, tuple(healthy), timeout, window, launcher, confirm))
+        terminals.append(
+            TerminalConfig(
+                title, tuple(command), cwd, tuple(healthy), timeout, window, launcher, confirm
+            )
+        )
     browsers = []
     raw_browsers = cfg.get("browsers", [])
     if not isinstance(raw_browsers, list):
@@ -160,8 +189,17 @@ def parse_config(cfg) -> WorkspaceConfig:
         wait_url, timeout = None, 60
         if wait is not False:
             wait = mapping(wait, ("url", "timeout"), "browser.wait_for")
-            wait_url = dwork_browser_launch.validate_url(wait.get("url", url), "browser.wait_for.url")
+            wait_url = dwork_browser_launch.validate_url(
+                wait.get("url", url), "browser.wait_for.url"
+            )
             timeout = timeout_value(wait.get("timeout", 60), "browser.wait_for.timeout")
         browsers.append(BrowserConfig(url, wait_url, timeout, confirm, selected_browser))
-    return WorkspaceConfig(enabled, tuple(files), None if selected is None else tuple(selected),
-                           locked, workspace_confirm, tuple(terminals), tuple(browsers))
+    return WorkspaceConfig(
+        enabled,
+        tuple(files),
+        None if selected is None else tuple(selected),
+        locked,
+        workspace_confirm,
+        tuple(terminals),
+        tuple(browsers),
+    )

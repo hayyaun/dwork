@@ -1,6 +1,6 @@
 # Homebrew (macOS / Linux / WSL2)
 
-`dwork.rb` is a complete tap formula for the v0.3.0 tag, with fixed
+`dwork.rb` is generated from `dwork.rb.in` and `stable.json` and is a complete tap formula for the v0.3.0 tag, with fixed
 source and PyYAML checksums. It uses Homebrew's documented Python virtualenv
 helpers and the shared Make installer. Stable v0.3.0 supports Apple Terminal on
 macOS, native Linux terminals, and Windows Terminal from WSL2. The formula also
@@ -46,11 +46,55 @@ Formula tests check that both installed completion entries exist.
 
 The formula test parses a host-only YAML config and previews a workspace. It
 never starts Docker, development servers, or GUI terminals.
-Routine package CI tests the stable formula on Linux and Apple Silicon macOS.
+Routine package CI tests stable and exact-checkout formulas on Linux and Apple Silicon macOS.
 Intel Homebrew verification runs for release tags and manual Package verification
 runs. Source/package tests use macOS Python 3.13 routinely, adding Apple Silicon
 and Intel Python 3.14 on tags/manual runs. Fetching remote HEAD would not verify
-unpublished pull-request changes; the source tests use the actual checkout.
+unpublished pull-request changes; the dedicated checkout formula lane verifies them.
+
+## Verify the checked-out revision
+
+The package workflow retains stable style/install/test/strict-audit checks and adds
+an independent checkout style/install/test lane. Each source mode runs on Linux and
+Apple Silicon routinely, and on Intel for tags/manual runs. The checkout lane uses
+an archive of the exact clean checked-out commit, including a pull request's merge
+commit, rather than downloading the current remote main branch.
+
+With a **clean committed checkout**, generate the temporary source outside it:
+
+```sh
+python3 scripts/prepare-homebrew-checkout.py \
+  --output /tmp/dwork-homebrew-checkout \
+  --expected-revision "$(git rev-parse HEAD)"
+cat /tmp/dwork-homebrew-checkout/source.json
+```
+
+The output must be new or empty. The helper refuses staged, unstaged, and untracked
+changes, a short/wrong revision, in-checkout output, or stable-formula drift before
+writing source files. It uses `git archive`, SHA-256, and Homebrew's normal archive
+`url`/`version`/`sha256` fields; it starts no server and changes no Git state. The
+manifest records the full revision and checksum; archive URLs encode spaces safely.
+Copy its `dwork.rb` into a separate temporary tap and run the same `brew style`,
+`brew install --build-from-source`, and `brew test` commands as above. Do this in a
+disposable CI/test environment; an installed stable package can conflict with it.
+Archive preparation alone does not install or validate Homebrew. The local archive
+URL is for verification, so publishing audit remains on the stable-release lane.
+Do not publish the generated checkout formula or treat it as a release.
+
+When maintaining the recipe, edit `dwork.rb.in`; edit `stable.json` for a new stable
+source URL/version/checksum. Regenerate the standalone tap formula and check parity:
+
+```sh
+python3 scripts/prepare-homebrew-checkout.py --render-stable > packaging/homebrew/dwork.rb
+python3 scripts/prepare-homebrew-checkout.py --check-stable
+```
+
+Both source modes use that template so installation and test logic stay aligned.
+Stable keeps its original URL-inferred version; checkout archives set the package
+version explicitly because their filenames identify commits.
+The standalone stable formula continues to work when copied into a public tap.
+Source changes do not update the published 0.3.0 archive or authorize installation,
+activation, or any ownership/confirmation changes.
 
 ## Publish your tap
 

@@ -1,4 +1,5 @@
 """Shell completion is read-only, dynamic, and works with real Tab input."""
+
 import json
 import os
 from pathlib import Path
@@ -60,25 +61,37 @@ class CompletionTests(unittest.TestCase):
     def test_bash_prefix_flags_and_file_paths_with_spaces(self):
         script = self.script("bash")
         (self.root / "compose dev.yaml").write_text("")
-        setup = ("source " + shlex.quote(str(script))
-                 + "\ndwork() { printf 'alpha\\nbeta\\n'; }\n")
-        for words, index, expected in (("dwork sw al", 2, ["alpha"]),
-                                       ("dwork lock al", 2, ["alpha"]),
-                                       ("dwork unlock alpha be", 3, ["beta"]),
-                                       ("dwork lock --dry-run be", 3, ["beta"]),
-                                       ("dwork unlock alpha --d", 3, ["--dry-run"]),
-                                       ("dwork rename al", 2, ["alpha"]),
-                                       ("dwork sc", 1, ["scan"]),
-                                       ("dwork scan --d", 2, ["--dry-run"]),
-                                       ("dwork --v", 1, ["--version"]),
-                                       ("dwork in", 1, ["init"]),
-                                       ("dwork val", 1, ["validate"]),
-                                       ("dwork init --d", 2, ["--dry-run"]),
-                                       ("dwork validate --p", 2, ["--project-name", "--project-directory", "--profile"]),
-                                       ("dwork -f comp", 2, ["compose dev.yaml"])):
-            command = setup + "COMP_WORDS=(" + words + "); COMP_CWORD=" + str(index) + "; _dwork_complete; printf '%s\\n' \"${COMPREPLY[@]}\""
-            result = subprocess.run(["bash", "--noprofile", "--norc", "-c", command],
-                                    cwd=self.root, text=True, capture_output=True)
+        setup = "source " + shlex.quote(str(script)) + "\ndwork() { printf 'alpha\\nbeta\\n'; }\n"
+        for words, index, expected in (
+            ("dwork sw al", 2, ["alpha"]),
+            ("dwork lock al", 2, ["alpha"]),
+            ("dwork unlock alpha be", 3, ["beta"]),
+            ("dwork lock --dry-run be", 3, ["beta"]),
+            ("dwork unlock alpha --d", 3, ["--dry-run"]),
+            ("dwork rename al", 2, ["alpha"]),
+            ("dwork sc", 1, ["scan"]),
+            ("dwork scan --d", 2, ["--dry-run"]),
+            ("dwork --v", 1, ["--version"]),
+            ("dwork in", 1, ["init"]),
+            ("dwork val", 1, ["validate"]),
+            ("dwork init --d", 2, ["--dry-run"]),
+            ("dwork validate --p", 2, ["--project-name", "--project-directory", "--profile"]),
+            ("dwork -f comp", 2, ["compose dev.yaml"]),
+        ):
+            command = (
+                setup
+                + "COMP_WORDS=("
+                + words
+                + "); COMP_CWORD="
+                + str(index)
+                + "; _dwork_complete; printf '%s\\n' \"${COMPREPLY[@]}\""
+            )
+            result = subprocess.run(
+                ["bash", "--noprofile", "--norc", "-c", command],
+                cwd=self.root,
+                text=True,
+                capture_output=True,
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), expected)
 
@@ -87,37 +100,72 @@ class CompletionTests(unittest.TestCase):
         import pty
         import struct
         import termios
-        for shell, mode in (("bash", "manual"), ("zsh", "manual"),
-                            ("zsh", "installed"), ("bash", "installed"),
-                            ("bash", "source"), ("zsh", "source")):
+
+        for shell, mode in (
+            ("bash", "manual"),
+            ("zsh", "manual"),
+            ("zsh", "installed"),
+            ("bash", "installed"),
+            ("bash", "source"),
+            ("zsh", "source"),
+        ):
             autoload = mode == "installed"
             if not shutil.which(shell):
                 continue
-            if shell == "bash" and autoload and not Path("/usr/share/bash-completion/bash_completion").is_file():
+            if (
+                shell == "bash"
+                and autoload
+                and not Path("/usr/share/bash-completion/bash_completion").is_file()
+            ):
                 continue
             with self.subTest(shell=shell, mode=mode):
                 script = self.script(shell)
                 if mode == "source":
                     script = legacy.SOURCE
                 if autoload:
-                    prefix = self.fixture.base / ("installed prefix" if shell == "zsh" else "installed-prefix")
-                    installed = subprocess.run([
-                        sys.executable, str(legacy.SOURCE.parent / "scripts/install.py"),
-                        "install", "--prefix", str(prefix), "--venv", "0",
-                    ], text=True, capture_output=True)
+                    prefix = self.fixture.base / (
+                        "installed prefix" if shell == "zsh" else "installed-prefix"
+                    )
+                    installed = subprocess.run(
+                        [
+                            sys.executable,
+                            str(legacy.SOURCE.parent / "scripts/install.py"),
+                            "install",
+                            "--prefix",
+                            str(prefix),
+                            "--venv",
+                            "0",
+                        ],
+                        text=True,
+                        capture_output=True,
+                    )
                     self.assertEqual(installed.returncode, 0, installed.stderr)
                     script = prefix / "share/zsh/site-functions/_dwork"
                 master, slave = pty.openpty()
                 process = None
                 try:
                     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 160, 0, 0))
-                    env = dict(os.environ, TERM="xterm", INPUTRC="/dev/null", ZDOTDIR=str(self.fixture.base))
+                    env = dict(
+                        os.environ,
+                        TERM="xterm",
+                        INPUTRC="/dev/null",
+                        ZDOTDIR=str(self.fixture.base),
+                    )
                     if autoload and shell == "bash":
-                        env.update(XDG_DATA_HOME=str(prefix / "share"),
-                                   BASH_COMPLETION_USER_DIR=str(prefix / "share/bash-completion"),
-                                   BASH_COMPLETION_USER_FILE="/dev/null")
-                    args = ["bash", "--noprofile", "--norc", "-i"] if shell == "bash" else ["zsh", "-f"]
-                    process = subprocess.Popen(args, cwd=self.root, stdin=slave, stdout=slave, stderr=slave, env=env)
+                        env.update(
+                            XDG_DATA_HOME=str(prefix / "share"),
+                            BASH_COMPLETION_USER_DIR=str(prefix / "share/bash-completion"),
+                            BASH_COMPLETION_USER_FILE="/dev/null",
+                        )
+                    args = (
+                        ["bash", "--noprofile", "--norc", "-i"]
+                        if shell == "bash"
+                        else ["zsh", "-f"]
+                    )
+                    process = subprocess.Popen(
+                        args, cwd=self.root, stdin=slave, stdout=slave, stderr=slave, env=env
+                    )
+
                     def until(marker):
                         output = b""
                         deadline = time.monotonic() + 10
@@ -125,6 +173,7 @@ class CompletionTests(unittest.TestCase):
                             if select.select([master], [], [], 0.1)[0]:
                                 output += os.read(master, 65536)
                         self.assertIn(marker, output, output.decode(errors="replace"))
+
                     init = "autoload -Uz compinit; compinit -D -i; " if shell == "zsh" else ""
                     load = "source " + shlex.quote(str(script)) + "; "
                     if mode == "source":
@@ -135,15 +184,21 @@ class CompletionTests(unittest.TestCase):
                             load = ""
                         else:
                             load = "source /usr/share/bash-completion/bash_completion; "
-                    setup = init + load + "dwork() { if [ \"$1\" = list ]; then printf 'alpha\\nbeta\\n'; else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
+                    setup = (
+                        init
+                        + load
+                        + "dwork() { if [ \"$1\" = list ]; then printf 'alpha\\nbeta\\n'; else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
+                    )
                     os.write(master, setup.encode())
                     until(b"\r\nREADY\r\n")
-                    for typed, result in ((b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
-                                          (b"dwork lock al\tbe\t\n", b"EXECUTED:lock alpha beta"),
-                                          (b"dwork unlock --d\tal\tbe\t\n", b"EXECUTED:unlock --dry-run alpha beta"),
-                                          (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
-                                          (b"dwork rm be\t\n", b"EXECUTED:rm beta"),
-                                          (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name")):
+                    for typed, result in (
+                        (b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
+                        (b"dwork lock al\tbe\t\n", b"EXECUTED:lock alpha beta"),
+                        (b"dwork unlock --d\tal\tbe\t\n", b"EXECUTED:unlock --dry-run alpha beta"),
+                        (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
+                        (b"dwork rm be\t\n", b"EXECUTED:rm beta"),
+                        (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name"),
+                    ):
                         os.write(master, typed)
                         until(result)
                 finally:
@@ -156,7 +211,12 @@ class CompletionTests(unittest.TestCase):
                     os.close(slave)
 
     def test_unsupported_shell_and_names_options_are_errors_without_side_effects(self):
-        for args in ("completion", "completion fish", "completion bash extra", "list --names extra"):
+        for args in (
+            "completion",
+            "completion fish",
+            "completion bash extra",
+            "list --names extra",
+        ):
             result, changes, calls = self.run_cli(args)
             self.assertEqual(result.returncode, 1)
             self.assertEqual(calls, [])

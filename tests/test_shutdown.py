@@ -30,14 +30,18 @@ class ShutdownPolicyTests(unittest.TestCase):
         self.register("outgoing", compose={"services": ["db"]})
         self.register("locked", locked=True)
         self.register("kept")
-        inventory = [legacy.container("selected-running", "selected", state="running"),
-                     legacy.container("selected-start", "selected", "db"),
-                     legacy.container("outgoing-paused", "outgoing", "db", "paused"),
-                     legacy.container("outgoing-unmanaged", "outgoing", "web", "running"),
-                     legacy.container("locked", "locked", state="running"),
-                     legacy.container("kept", "kept", state="running"),
-                     legacy.container("unknown", "unknown", state="running")]
-        result, changes, _ = self.cli("switch selected", containers=inventory, DWORK_KEEP_PROJECTS="kept")
+        inventory = [
+            legacy.container("selected-running", "selected", state="running"),
+            legacy.container("selected-start", "selected", "db"),
+            legacy.container("outgoing-paused", "outgoing", "db", "paused"),
+            legacy.container("outgoing-unmanaged", "outgoing", "web", "running"),
+            legacy.container("locked", "locked", state="running"),
+            legacy.container("kept", "kept", state="running"),
+            legacy.container("unknown", "unknown", state="running"),
+        ]
+        result, changes, _ = self.cli(
+            "switch selected", containers=inventory, DWORK_KEEP_PROJECTS="kept"
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "outgoing-paused"], ["start", "selected-start"]])
         result, changes, _ = self.cli("down", containers=inventory, DWORK_KEEP_PROJECTS="kept")
@@ -48,10 +52,14 @@ class ShutdownPolicyTests(unittest.TestCase):
         self.register("selected")
         self.register("first")
         self.register("second")
-        result, changes, _ = self.cli("switch selected", containers=[
-            legacy.container("a", "first", state="running"),
-            legacy.container("b", "second", state="restarting"),
-            legacy.container("c", "selected", state="created")])
+        result, changes, _ = self.cli(
+            "switch selected",
+            containers=[
+                legacy.container("a", "first", state="running"),
+                legacy.container("b", "second", state="restarting"),
+                legacy.container("c", "selected", state="created"),
+            ],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a", "b"], ["start", "c"]])
 
@@ -62,8 +70,9 @@ class ShutdownPolicyTests(unittest.TestCase):
         result, _, _ = self.cli("register selected", cwd=selected)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.register("outgoing")
-        result, changes, _ = self.cli("switch selected", containers=[
-            legacy.container("a", "outgoing", state="running")])
+        result, changes, _ = self.cli(
+            "switch selected", containers=[legacy.container("a", "outgoing", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
@@ -71,8 +80,9 @@ class ShutdownPolicyTests(unittest.TestCase):
         self.register("selected")
         outgoing = self.register("outgoing")
         outgoing.rename(self.fixture.base / "moved")
-        result, changes, _ = self.cli("switch selected", containers=[
-            legacy.container("a", "outgoing", state="running")])
+        result, changes, _ = self.cli(
+            "switch selected", containers=[legacy.container("a", "outgoing", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
@@ -82,8 +92,9 @@ class ShutdownPolicyTests(unittest.TestCase):
         self.fixture.model(remote, "remote")
         result, _, _ = self.cli("register remote", cwd=remote, DWORK_TEST_CONTEXT="remote")
         self.assertEqual(result.returncode, 0, result.stderr)
-        result, changes, _ = self.cli("switch selected", containers=[
-            legacy.container("a", "remote", state="running")])
+        result, changes, _ = self.cli(
+            "switch selected", containers=[legacy.container("a", "remote", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
 

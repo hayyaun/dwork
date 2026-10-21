@@ -31,16 +31,18 @@ class DownTests(unittest.TestCase):
     def test_confirmation_decline_eof_and_preview_preserve_registry(self):
         self.register("api")
         before = self.state.read_bytes()
-        for args, answer in (("down", "n\n"), ("down", "\n"), ("down", ""),
-                              ("down --dry-run", "")):
+        for args, answer in (("down", "n\n"), ("down", "\n"), ("down", ""), ("down --dry-run", "")):
             with self.subTest(args=args, answer=answer):
-                result, changes, _ = self.run_cli(args, answer=answer,
-                    containers=[legacy.container("a", "api", state="running")])
+                result, changes, _ = self.run_cli(
+                    args, answer=answer, containers=[legacy.container("a", "api", state="running")]
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(changes, [])
                 self.assertEqual(self.state.read_bytes(), before)
                 if args == "down":
-                    self.assertLess(result.stdout.index("Would stop:"), result.stdout.index("Stop all listed"))
+                    self.assertLess(
+                        result.stdout.index("Would stop:"), result.stdout.index("Stop all listed")
+                    )
                     self.assertIn("Cancelled", result.stdout)
                 else:
                     self.assertNotIn("(y/N)", result.stdout)
@@ -49,7 +51,9 @@ class DownTests(unittest.TestCase):
         directory = self.root / name
         self.fixture.model(directory, name, services={"web": {}, "db": {}})
         if services is not None:
-            (directory / "dwork.yml").write_text("version: 1\ncompose: {services: " + str(services) + "}\n")
+            (directory / "dwork.yml").write_text(
+                "version: 1\ncompose: {services: " + str(services) + "}\n"
+            )
         result, changes, _ = self.run_cli("register", cwd=directory, **kwargs)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
@@ -62,13 +66,19 @@ class DownTests(unittest.TestCase):
         before = self.state.read_bytes()
         unlabelled = legacy.container("unlabelled", "")
         unlabelled["Config"]["Labels"] = {}
-        result, changes, calls = self.run_cli("down", cwd=self.fixture.base,
-            containers=[legacy.container("a", "api", state="running"),
-                        legacy.container("b", "ui", state="restarting"),
-                        legacy.container("c", "infra", state="running"),
-                        legacy.container("d", "unknown", state="running"), unlabelled,
-                        legacy.container("e", "api", state="exited")],
-            DWORK_KEEP_PROJECTS="infra")
+        result, changes, calls = self.run_cli(
+            "down",
+            cwd=self.fixture.base,
+            containers=[
+                legacy.container("a", "api", state="running"),
+                legacy.container("b", "ui", state="restarting"),
+                legacy.container("c", "infra", state="running"),
+                legacy.container("d", "unknown", state="running"),
+                unlabelled,
+                legacy.container("e", "api", state="exited"),
+            ],
+            DWORK_KEEP_PROJECTS="infra",
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a", "b"]])
         self.assertIn("Stopped: api/web / a", result.stdout)
@@ -78,16 +88,22 @@ class DownTests(unittest.TestCase):
 
     def test_respects_service_selection_and_stops_paused_workloads(self):
         self.register("api", services=["db"])
-        result, changes, _ = self.run_cli("down", containers=[
-            legacy.container("a", "api", "db", "paused"),
-            legacy.container("b", "api", "web", "running")])
+        result, changes, _ = self.run_cli(
+            "down",
+            containers=[
+                legacy.container("a", "api", "db", "paused"),
+                legacy.container("b", "api", "web", "running"),
+            ],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
     def test_preview_is_read_only_and_preserves_registry(self):
         self.register("api")
         before = self.state.read_bytes()
-        result, changes, _ = self.run_cli("down --dry-run", containers=[legacy.container("a", "api", state="running")])
+        result, changes, _ = self.run_cli(
+            "down --dry-run", containers=[legacy.container("a", "api", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Would stop: a", result.stdout)
         self.assertNotIn("Stopped:", result.stdout)
@@ -113,24 +129,36 @@ class DownTests(unittest.TestCase):
     def test_other_targets_are_left_alone(self):
         self.register("remote", DWORK_TEST_CONTEXT="remote")
         self.register("daemon", DWORK_TEST_DAEMON="other-daemon")
-        result, changes, _ = self.run_cli("down", containers=[
-            legacy.container("a", "remote", state="running"),
-            legacy.container("b", "daemon", state="running")])
+        result, changes, _ = self.run_cli(
+            "down",
+            containers=[
+                legacy.container("a", "remote", state="running"),
+                legacy.container("b", "daemon", state="running"),
+            ],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
 
     def test_missing_directory_does_not_prevent_explicit_shutdown(self):
         directory = self.register("api")
         directory.rename(self.root / "moved")
-        result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "api", state="running")])
+        result, changes, _ = self.run_cli(
+            "down", containers=[legacy.container("a", "api", state="running")]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "a"]])
 
     def test_batch_failure_reports_actual_partial_state(self):
         self.register("api")
-        result, changes, _ = self.run_cli("down", containers=[
-            legacy.container("a", "api", state="running"), legacy.container("b", "api", "db", "running")],
-            DWORK_TEST_FAIL="stop", DWORK_TEST_STOPPED='["a"]')
+        result, changes, _ = self.run_cli(
+            "down",
+            containers=[
+                legacy.container("a", "api", state="running"),
+                legacy.container("b", "api", "db", "running"),
+            ],
+            DWORK_TEST_FAIL="stop",
+            DWORK_TEST_STOPPED='["a"]',
+        )
         self.assertEqual(result.returncode, 1)
         self.assertEqual(changes, [["stop", "a", "b"]])
         self.assertIn("Down incomplete", result.stderr)
@@ -151,17 +179,36 @@ class DownTests(unittest.TestCase):
 
     def test_interrupt_keeps_exit_code_and_reports_incomplete_batch(self):
         target = {"context": "default", "daemon": "test"}
-        entries = [{"target": target, "path": str(self.root), "members": [
-            {"enabled": True, "project": "api", "directory": str(self.root), "services": None}]}]
-        with patch.object(dwork_registry, "read_registry", return_value=entries), \
-                patch.object(dwork_registry, "registry_lock", return_value=contextlib.nullcontext()), \
-                patch.object(dwork_docker, "docker_target", return_value=target), \
-                patch.object(dwork_docker, "show_target"), \
-                patch.object(dwork_docker, "inventory", return_value=[legacy.container("a", "api", state="running")]), \
-                patch.object(dwork_docker, "docker", side_effect=KeyboardInterrupt), \
-                patch("builtins.input", return_value="y"), \
-                patch.object(sys, "argv", ["dwork", "down"]), \
-                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+        entries = [
+            {
+                "target": target,
+                "path": str(self.root),
+                "members": [
+                    {
+                        "enabled": True,
+                        "project": "api",
+                        "directory": str(self.root),
+                        "services": None,
+                    }
+                ],
+            }
+        ]
+        with (
+            patch.object(dwork_registry, "read_registry", return_value=entries),
+            patch.object(dwork_registry, "registry_lock", return_value=contextlib.nullcontext()),
+            patch.object(dwork_docker, "docker_target", return_value=target),
+            patch.object(dwork_docker, "show_target"),
+            patch.object(
+                dwork_docker,
+                "inventory",
+                return_value=[legacy.container("a", "api", state="running")],
+            ),
+            patch.object(dwork_docker, "docker", side_effect=KeyboardInterrupt),
+            patch("builtins.input", return_value="y"),
+            patch.object(sys, "argv", ["dwork", "down"]),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()) as errors,
+        ):
             self.assertEqual(dwork_cli.cli(), 130)
         self.assertIn("Down incomplete", errors.getvalue())
 

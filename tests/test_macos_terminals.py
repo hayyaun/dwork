@@ -1,4 +1,5 @@
 """Apple Terminal adapter tests; never execute AppleScript or open a GUI."""
+
 from pathlib import Path
 from unittest.mock import Mock, patch
 import os
@@ -19,16 +20,22 @@ import test_dwork as legacy
 
 class MacOSTerminalTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"WSL_DISTRO_NAME": "", "SHELL": "/bin/zsh",
-                                           "DWORK_TERMINAL": "auto"})
+        self.env = patch.dict(
+            os.environ, {"WSL_DISTRO_NAME": "", "SHELL": "/bin/zsh", "DWORK_TERMINAL": "auto"}
+        )
         self.env.start()
         self.addCleanup(self.env.stop)
         self.platform = patch.object(sys, "platform", "darwin")
         self.platform.start()
         self.addCleanup(self.platform.stop)
-        self.task = dwork_common.TerminalTask('Title " & \\ test',
-            ["echo", "hello world", "$(touch injected)", "a'b"], Path("/tmp/repo 'with spaces"))
-        self.which = patch.object(shutil, "which", side_effect=lambda name: "/usr/bin/" + Path(name).name)
+        self.task = dwork_common.TerminalTask(
+            'Title " & \\ test',
+            ["echo", "hello world", "$(touch injected)", "a'b"],
+            Path("/tmp/repo 'with spaces"),
+        )
+        self.which = patch.object(
+            shutil, "which", side_effect=lambda name: "/usr/bin/" + Path(name).name
+        )
         self.which.start()
         self.addCleanup(self.which.stop)
 
@@ -46,10 +53,12 @@ class MacOSTerminalTests(unittest.TestCase):
         args = dwork_terminals.macos_terminal_arguments(self.task)
         self.assertEqual(args[:2], ["osascript", "-"])
         self.assertEqual(args[3], self.task.title)
-        self.assertEqual(shlex.split(args[2]),
-                         ["cd", "--", str(self.task.cwd), "&&", *dwork_terminals.task_command(self.task)])
+        self.assertEqual(
+            shlex.split(args[2]),
+            ["cd", "--", str(self.task.cwd), "&&", *dwork_terminals.task_command(self.task)],
+        )
         self.assertNotIn(self.task.title, dwork_terminals.APPLE_TERMINAL_SCRIPT)
-        self.assertIn('do script (item 1 of argv)', dwork_terminals.APPLE_TERMINAL_SCRIPT)
+        self.assertIn("do script (item 1 of argv)", dwork_terminals.APPLE_TERMINAL_SCRIPT)
         self.assertNotIn("System Events", dwork_terminals.APPLE_TERMINAL_SCRIPT)
 
     def test_registered_task_keeps_supervisor_and_identity(self):
@@ -77,11 +86,15 @@ class MacOSTerminalTests(unittest.TestCase):
     def test_launcher_uses_stdin_and_reports_automation_errors(self):
         with patch.object(subprocess, "run", return_value=Mock(returncode=0)) as run:
             dwork_terminals.open_terminal(self.task)
-            self.assertEqual(run.call_args.args[0], dwork_terminals.macos_terminal_arguments(self.task))
+            self.assertEqual(
+                run.call_args.args[0], dwork_terminals.macos_terminal_arguments(self.task)
+            )
             self.assertEqual(run.call_args.kwargs["input"], dwork_terminals.APPLE_TERMINAL_SCRIPT)
             self.assertTrue(run.call_args.kwargs["capture_output"])
             self.assertNotIn("shell", run.call_args.kwargs)
-            run.return_value = Mock(returncode=1, stderr="Not authorized to send Apple events (-1743)")
+            run.return_value = Mock(
+                returncode=1, stderr="Not authorized to send Apple events (-1743)"
+            )
             with self.assertRaisesRegex(dwork_common.DworkError, "Automation permission"):
                 dwork_terminals.open_terminal(self.task)
 
@@ -101,8 +114,11 @@ class MacOSDictionaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="dwork-applescript-") as temporary:
             script = Path(temporary) / "terminal.applescript"
             script.write_text(dwork_terminals.APPLE_TERMINAL_SCRIPT)
-            result = subprocess.run(["osacompile", "-o", str(Path(temporary) / "terminal.scpt"), str(script)],
-                                    text=True, capture_output=True)
+            result = subprocess.run(
+                ["osacompile", "-o", str(Path(temporary) / "terminal.scpt"), str(script)],
+                text=True,
+                capture_output=True,
+            )
             self.assertEqual(result.returncode, 0, result.stderr)
 
 
@@ -114,27 +130,31 @@ class MacOSIntegrationTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
         interpreter = self.fixture.bin / "osascript"
-        interpreter.write_text('''#!/usr/bin/env python3
+        interpreter.write_text("""#!/usr/bin/env python3
 import json, os, sys
 with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
     stream.write(json.dumps(["apple-terminal", *sys.argv[1:], sys.stdin.read()]) + "\\n")
-''')
+""")
         interpreter.chmod(0o755)
-        (self.root / "dwork.yml").write_text('''version: 1
+        (self.root / "dwork.yml").write_text("""version: 1
 compose: {enabled: false}
 terminals:
   - title: Frontend
     command: [echo, ready]
     window: new
-''')
+""")
 
     def test_cli_confirmation_dry_run_and_script_transport_without_a_gui(self):
         for shell in self.fixture.shells:
-            for args, answer, opens in (("--dry-run", "", False), ("", "n\n", False),
-                                         ("", "y\n", True)):
+            for args, answer, opens in (
+                ("--dry-run", "", False),
+                ("", "n\n", False),
+                ("", "y\n", True),
+            ):
                 with self.subTest(shell=shell, args=args, answer=answer):
                     result, changes, calls = self.fixture.run_dwork(
-                        shell, args, answer=answer, WSL_DISTRO_NAME="", SHELL="/bin/zsh")
+                        shell, args, answer=answer, WSL_DISTRO_NAME="", SHELL="/bin/zsh"
+                    )
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(changes, [])
                     self.assertEqual(bool(calls), opens)
