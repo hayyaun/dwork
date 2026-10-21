@@ -6,6 +6,10 @@
 - Keep configuration fields, defaults, examples, platform requirements, command
   behavior, and the bundled agent skill/reference aligned with the implementation.
   Check that examples and local documentation links remain valid.
+- When work completes or advances a task listed in `TODO.md`, update the related
+  entry in the same change before considering the work complete. Mark fully
+  completed tasks as done; for partial completion, record the progress and keep
+  the remaining work unchecked.
 
 ## graphify
 

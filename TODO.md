@@ -9,12 +9,18 @@
 
 ## Switching policies
 
-- [ ] Add persistent policies for shared infrastructure and projects dwork may stop; retain `DWORK_KEEP_PROJECTS`.
+- [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.
+
+## Workspace groups (idea)
+
+- [ ] Explore named groups of registered workspaces, including projects in different directories, that go up/down together without stopping one another.
+- [ ] Plan group activation as one combined switch and provide group-scoped shutdown, preserving locks, `DWORK_KEEP_PROJECTS`, and the existing-container-only promise.
+- [ ] Decide member activation behavior, overlapping/nested membership, host-task lifecycle, Docker-target restrictions, and rename/forget handling before implementation.
 
 ## Repeatable terminal sessions
 
 - [ ] Give tasks stable IDs and explicit reuse, skip, or launch-another behavior.
-- [ ] Track owned sessions reliably; avoid matching arbitrary processes by command text.
+- [x] Track dwork-launched commands with authenticated supervisors for safe shutdown; avoid matching arbitrary processes by command text or trusting saved PIDs alone.
 
 ## Recovery
 
@@ -37,14 +43,22 @@
 
 ## CLI and releases
 
-- [ ] Add `--version`, shell completions, JSON output, documented exit codes, and explicit noninteractive behavior preserving confirmation controls.
-- [ ] Add CI, automated releases, a changelog, and real Linux/WSL desktop smoke tests.
+- [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
+- [x] Document existing exit codes: 0 for success, 1 for failures, and 130 for interruption.
+- [ ] Add `--version`, JSON output, and explicit noninteractive behavior preserving confirmation controls.
+- [x] Add source and package CI for Linux and macOS.
+- [x] Add a tag-triggered workflow to build and verify Python, Debian, Fedora, and Arch release assets, generate checksums, and create a draft GitHub release.
+- [ ] Add a project changelog and real Linux/WSL desktop smoke tests.
 
 ## Packaging publication
 
-- [ ] Review, commit, and push the prepared Homebrew, PyPI, and Debian packaging changes.
+- [x] Prepare and commit Homebrew, PyPI, and Debian packaging support.
+- [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
+- [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.
+- [ ] Complete packaging review and verify the prepared changes are pushed before tagging a release.
 - [ ] Run the package verification workflow and resolve failures, including the pending Homebrew and Debian checks.
-- [ ] Tag and publish the tested release matching the Python and Debian package versions.
+- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow.
+- [ ] Review and publish the resulting GitHub release and its verified assets.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.
 - [ ] Build and verify Debian/Ubuntu packages and attach them to the matching release; evaluate a signed apt repository or PPA later.
