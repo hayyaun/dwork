@@ -7,9 +7,10 @@ Packaging support is implemented; external publication is a separate step.
 
 ## Release preparation
 
-The source-test CI step uses unittest's `--failfast` option so a failure reports
-its traceback before later interactive tests can block diagnostics. A successful
-run still executes the full suite; `make test` locally reports all failures.
+The source-test CI step runs each test file with unittest's `--failfast` option,
+then fails if any file failed. This reports each file's first traceback before
+later interactive tests can block diagnostics. A successful run still executes
+the full suite; `make test` locally reports all failures in one run.
 
 1. Keep the MIT license and copyright notice in distributions.
 2. Commit the exact source being released. The current Python metadata and Debian

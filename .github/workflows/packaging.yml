@@ -30,7 +30,14 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install build twine PyYAML
-      - run: python -B -m unittest discover -s tests -v --failfast
+      - name: Source tests
+        shell: bash
+        run: |
+          result=0
+          for test_file in tests/test_*.py; do
+            python -B -m unittest discover -s tests -p "$(basename "$test_file")" -v --failfast || result=1
+          done
+          exit "$result"
       - run: python scripts/verify-python-package.py
 
   debian:

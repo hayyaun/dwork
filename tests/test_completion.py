@@ -106,9 +106,9 @@ class CompletionTests(unittest.TestCase):
                                           (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name")):
                         os.write(master, typed)
                         until(result)
-                    os.write(master, b"exit\n")
-                    process.wait(timeout=3)
                 finally:
+                    # Completion assertions are finished. Reap the test-owned
+                    # interactive shell without depending on its exit prompt.
                     if process is not None and process.poll() is None:
                         process.kill()
                         process.wait()
