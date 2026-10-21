@@ -20,7 +20,8 @@ def init_workspace(directory, preview=False):
     if path.exists() or path.is_symlink():
         raise DworkError("dwork.yml already exists; edit it or run dwork validate.")
     enabled = any((directory / name).is_file() for name in FILENAMES)
-    text = ("version: 1\ncompose:\n  enabled: " + ("true" if enabled else "false")
+    text = ("# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n"
+            + "version: 1\ncompose:\n  enabled: " + ("true" if enabled else "false")
             + "\nterminals: []\nbrowsers: []\n")
     if preview:
         print("Would create " + str(path) + ":\n" + text, end="")

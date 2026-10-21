@@ -81,6 +81,67 @@ Compose-only mode remains usable on other platforms, and dry runs do not open GU
 `dwork.yml` is not merged with another dwork file. Unknown fields, duplicate keys,
 and unsupported versions are errors.
 
+## Editor autocomplete
+
+The [JSON Schema](../../schemas/dwork.schema.json) describes configuration version 1.
+It provides field names, fixed value choices (such as `window` and `launcher`),
+hover descriptions, defaults, examples, and diagnostics for missing fields,
+unknown keys, incorrect types, and invalid timeout ranges. Editor defaults are
+suggestions; they do not write values or change dwork's runtime defaults.
+
+Use a schema-capable YAML extension, such as Red Hat YAML in VS Code. Both
+`dwork init` (including its preview) and the shipped `.yml` examples start with:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json
+version: 1
+```
+
+Add that comment to existing `dwork.yml` files to enable the same association.
+It is a YAML comment: dwork ignores it and never downloads a schema during init,
+validation, or activation. The editor fetches the schema and may cache it. The
+remote URL requires the schema to have been published to `main`; it cannot
+describe unpublished local edits. This schema tracks `main`, so check that your
+installed dwork supports the fields you use. To match a release, replace `main`
+with a tag that contains the schema.
+
+For unpublished source changes or offline use, point the comment at the local
+schema instead. Relative paths are resolved from the YAML file, so this example
+works for a `dwork.yml` at the root of a dwork source checkout:
+
+```yaml
+# yaml-language-server: $schema=./schemas/dwork.schema.json
+version: 1
+```
+
+Alternatively, associate all `dwork.yml` files through your editor's YAML settings:
+
+```json
+{
+  "yaml.schemas": {
+    "/absolute/path/to/dwork/schemas/dwork.schema.json": ["**/dwork.yml"]
+  }
+}
+```
+
+Use a path visible to the editor's YAML language server (for example,
+`C:/path/to/dwork/schemas/dwork.schema.json` on Windows). Remove or replace a
+remote schema comment when using a local settings association, since the comment
+takes precedence. No editor settings are changed by dwork. SchemaStore filename
+discovery is not registered yet, so use one of these explicit associations.
+
+A static schema cannot discover service names in another Compose file, check
+directory existence, or check running containers, health checks, and platform
+dependencies. It only checks basic HTTP URL syntax; detailed host/port checks
+remain in dwork. YAML parsing rules (including duplicate keys and the exact
+integer spelling of `version: 1`) are also enforced by the loader rather than
+JSON Schema. Quote numeric and boolean-looking command arguments such as
+`"3000"` and `"yes"`. Continue using `dwork validate` for configuration, path,
+and Compose-reference checks; use `dwork doctor` for environment prerequisites.
+
+Editor association uses the documented
+[YAML language server schema settings and modelines](https://github.com/redhat-developer/yaml-language-server#readme).
+
 ## version
 
 `version: 1` is required.

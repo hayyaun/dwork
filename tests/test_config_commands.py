@@ -40,6 +40,7 @@ class ConfigCommandTests(unittest.TestCase):
             self.assertEqual(changes, [])
             outputs.append(result.stdout)
         self.assertEqual(outputs[0], outputs[1])
+        self.assertIn("# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n", outputs[0])
         self.assertIn("enabled: false", outputs[0])
         self.assertFalse((self.root / "dwork.yml").exists())
         self.assertFalse(self.state.exists())
@@ -53,7 +54,8 @@ class ConfigCommandTests(unittest.TestCase):
                     (directory / filename).write_text("not parsed during init")
                 result, changes, calls = self.cli("init", cwd=directory)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                expected = ("version: 1\ncompose:\n  enabled: " + ("true" if filename else "false")
+                expected = ("# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json\n"
+                            + "version: 1\ncompose:\n  enabled: " + ("true" if filename else "false")
                             + "\nterminals: []\nbrowsers: []\n")
                 self.assertEqual((directory / "dwork.yml").read_text(), expected)
                 self.assertEqual(calls, [])

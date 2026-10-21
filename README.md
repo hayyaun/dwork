@@ -172,6 +172,7 @@ Then use `dwork <Tab>` for commands and `dwork sw <Tab>` for registered workspac
 Put `dwork.yml` beside your Compose file:
 
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json
 version: 1
 compose:
   enabled: true
@@ -222,6 +223,11 @@ policy are specific to your setup. Keep it tracked when the team intentionally
 shares that configuration; an ignore rule does not untrack an existing file.
 
 [Copy an example →](examples/README.md) Backend, full-stack, Compose-only, or host-only.
+
+`dwork init` and the shipped examples include an editor schema comment. With a
+schema-capable YAML extension, it enables field/value completion, hover help,
+and configuration diagnostics. Existing files can add the same comment.
+[Editor setup, local/offline association, and validation limits →](docs/configuration/README.md#editor-autocomplete)
 
 ## A few useful controls
 

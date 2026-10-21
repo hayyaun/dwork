@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json
 # Use an existing Compose project without launching host commands.
 # Your Compose file must define postgres and redis.
 version: 1

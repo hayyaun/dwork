@@ -30,7 +30,8 @@
 ## Configuration experience
 
 - [x] Add deterministic, non-overwriting `dwork init` with a preview and standalone read-only `dwork validate`.
-- [ ] Improve field-level errors and publish a JSON Schema for editor autocomplete, potentially through SchemaStore.
+- [x] Add a version-1 JSON Schema, schema/loader parity tests, explicit editor association, and schema comments in `dwork init` and examples.
+- [ ] Improve runtime field-level errors and submit the schema to SchemaStore for automatic filename discovery.
 
 ## Profiles and selection
 

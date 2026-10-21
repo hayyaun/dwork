@@ -28,6 +28,8 @@
   authenticated shutdown. Read-only diagnostics and previews never write registry state.
 - [`tests/`](../../tests): behavior, loader, YAML, health, and launch-order tests.
 - [`examples/`](../../examples/README.md): configurations developers can adapt.
+- [`schemas/dwork.schema.json`](../../schemas/dwork.schema.json): editor completion,
+  hover help, and structural validation for configuration version 1.
 
 - [`Makefile`](../../Makefile) and [installer](../../scripts/install.py): user
   installation, removal, and package staging.
@@ -37,16 +39,30 @@
 
 `test_config_commands.py` checks version reporting, deterministic initialization,
 overwrite protection, and validation without registry/container operations.
+`test_schema.py` validates the schema, shipped examples, and generated starters,
+compares valid/invalid configurations and defaults against the real loader, and
+checks that editor comments point to the schema's published identity. It uses
+local schema references and a fake Compose model, without network requests.
 
-From the repository root:
+From the repository root, install test dependencies in a virtual environment:
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[test]'
 make test
 ```
 
 Tests use fake Docker and terminal launchers; they do not start containers,
 development servers, or GUI terminals. Shell behavior is checked in Bash and
-Zsh when those shells are installed. PyYAML is needed for configuration tests.
+Zsh when those shells are installed. PyYAML is needed for configuration tests;
+the `test` extra adds `jsonschema` for schema tests, without a runtime dependency.
+CI installs this extra in source-test and release-test jobs. Update the schema,
+its descriptions/defaults, and schema parity tests whenever config rules change.
+The schema is included in source distributions. For editor verification before
+publication, use the [local association](../configuration/README.md#editor-autocomplete),
+then check field completion, `window` choices, hover help, and diagnostics for
+an unknown key or a quoted boolean.
 Registry tests isolate `XDG_STATE_HOME` in temporary directories. Existing switching
 tests explicitly prepare registrations; `test_registry.py` covers first-run consent,
 ownership boundaries, saved selections, target changes, missing directories, and locks.

@@ -13,6 +13,23 @@ and unsupported versions are errors. Use YAML booleans (`true`, `false`), not
 quoted strings, and quote argument strings such as `"3000"` or `"yes"` that YAML
 might otherwise interpret as numbers or booleans.
 
+For editor completion, hover help, and structural diagnostics, preserve or add:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json
+version: 1
+```
+
+`dwork init` and upstream examples include this comment. A schema-capable YAML
+extension fetches it; dwork ignores the comment and does not fetch schemas.
+The URL tracks `main` and requires publication there, so verify the installed
+runtime supports suggested fields. A release tag containing the schema can
+replace `main`. For offline/unpublished work, replace the URL with a local schema
+path relative to `dwork.yml`, or use the editor's `yaml.schemas` association
+without a conflicting modeline. SchemaStore discovery is not registered yet.
+Static completion does not discover Compose service names or check directories;
+keep using `dwork validate` and environment diagnostics.
+
 Only these top-level fields are supported:
 
 - `version`: required integer `1`.

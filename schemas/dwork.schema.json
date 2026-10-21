@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json",
+  "title": "dwork workspace configuration",
+  "description": "Configuration version 1 for existing Compose containers, host commands, and browser URLs. Run dwork validate for filesystem and Compose checks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "description": "Configuration format version. Write the integer 1.",
+      "type": "integer",
+      "const": 1
+    },
+    "confirm": {
+      "description": "Ask before applying a single-workspace activation plan. Registration, group, task, browser, and shutdown confirmations are separate.",
+      "type": "boolean",
+      "default": true
+    },
+    "locked": {
+      "description": "Protect this workspace's containers and tracked commands from switches and dwork down. Activation is still allowed.",
+      "type": "boolean",
+      "default": false
+    },
+    "compose": {
+      "description": "Select existing Compose containers. Omit to use normal Compose discovery with Compose enabled.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Enable Compose management. Set false for host-only workspaces and omit files, services, and terminal health prerequisites.",
+          "type": "boolean",
+          "default": true
+        },
+        "files": {
+          "description": "Nonempty list of Compose file paths relative to dwork.yml. CLI file flags and COMPOSE_FILE take precedence.",
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/nonemptyString"},
+          "examples": [["compose.yaml", "compose.dev.yaml"]]
+        },
+        "services": {
+          "description": "Nonempty list of Compose service names to manage. Omit to manage all existing target-project containers.",
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/nonemptyString"},
+          "examples": [["postgres", "redis"]]
+        }
+      }
+    },
+    "terminals": {
+      "description": "Host commands to launch after container switching and all terminal health gates. Each invocation launches them again.",
+      "type": "array",
+      "default": [],
+      "items": {"$ref": "#/definitions/terminal"}
+    },
+    "browsers": {
+      "description": "Application URLs to open in order after terminal tasks are dispatched. Each entry has separate confirmation and HTTP readiness settings.",
+      "type": "array",
+      "default": [],
+      "items": {"$ref": "#/definitions/browser"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["compose"],
+        "properties": {
+          "compose": {
+            "required": ["enabled"],
+            "properties": {"enabled": {"const": false}}
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "compose": {"properties": {"files": false, "services": false}},
+          "terminals": {
+            "items": {
+              "properties": {
+                "wait_for": {"properties": {"healthy": false}}
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "nonemptyString": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"pattern": "\u0000"}
+    },
+    "terminalString": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"pattern": "[\u0000\r\n;]"}
+    },
+    "httpUrl": {
+      "description": "Absolute HTTP/HTTPS URL without credentials, backslashes, whitespace, or non-ASCII characters. Percent-encode spaces and non-ASCII characters. dwork validate also checks the host and port.",
+      "type": "string",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^/?#@\\\\\\s]+([/?#][^\\\\\\s]*)?$",
+      "not": {"pattern": "[^\u0021-\u007e]|\\\\"},
+      "examples": ["http://localhost:3000", "https://localhost:8443/health"]
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "description": "Executable and argument strings, quoted by dwork. Use a script for pipelines or compound shell commands. Quote numeric or boolean-looking arguments in YAML.",
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/terminalString"},
+          "examples": [["npm", "run", "dev"], ["make", "run"]]
+        },
+        "title": {
+          "description": "Nonempty terminal title. Defaults to dwork: <project>.",
+          "allOf": [{"$ref": "#/definitions/terminalString"}]
+        },
+        "cwd": {
+          "description": "Existing working directory relative to dwork.yml. dwork validate checks that it exists.",
+          "default": ".",
+          "allOf": [{"$ref": "#/definitions/terminalString"}]
+        },
+        "window": {
+          "description": "Open a new window, request an existing-window tab, or run detached with output discarded. Apple Terminal and xterm support new windows only for visible tasks.",
+          "type": "string",
+          "enum": ["new", "current", "none"],
+          "default": "new"
+        },
+        "launcher": {
+          "description": "Terminal adapter. auto uses DWORK_TERMINAL or platform/desktop selection. Ignored for window: none.",
+          "type": "string",
+          "enum": ["auto", "windows-terminal", "apple-terminal", "gnome-terminal", "konsole", "xfce4-terminal", "xterm"],
+          "default": "auto"
+        },
+        "confirm": {
+          "description": "Ask before launching this command. Explicit false skips only this task's prompt.",
+          "type": "boolean",
+          "default": true
+        },
+        "wait_for": {
+          "description": "Existing Compose services that must be running and healthy before any terminal opens.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "healthy": {
+              "description": "Nonempty list of Compose service names with existing containers and health checks. Must also be in compose.services when that selection is set.",
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/definitions/nonemptyString"},
+              "examples": [["postgres"]]
+            },
+            "timeout": {
+              "description": "Health wait timeout in seconds, greater than zero and at most 3600.",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 3600,
+              "default": 180
+            }
+          }
+        }
+      }
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url"],
+      "properties": {
+        "url": {"$ref": "#/definitions/httpUrl"},
+        "browser": {
+          "description": "default, a Linux executable, a macOS application name/path, or a Windows .exe name/absolute path on WSL. One application without command-line flags.",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S([\\s\\S]*\\S)?$",
+          "not": {"pattern": "^[\\s-]|[\u0000-\u001f\u007f]"},
+          "default": "default",
+          "examples": ["default", "firefox", "Google Chrome", "firefox.exe"]
+        },
+        "confirm": {
+          "description": "Ask before waiting for and opening this URL. Explicit false skips only this browser entry's prompt.",
+          "type": "boolean",
+          "default": true
+        },
+        "wait_for": {
+          "description": "HTTP readiness settings. Omit to poll the page URL for 60 seconds; set false to open immediately without an HTTP request.",
+          "anyOf": [
+            {"const": false},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "url": {
+                  "description": "Separate HTTP/HTTPS health endpoint to probe. Defaults to the browser entry's URL.",
+                  "allOf": [{"$ref": "#/definitions/httpUrl"}]
+                },
+                "timeout": {
+                  "description": "HTTP retry deadline in seconds, greater than zero and at most 3600.",
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 3600,
+                  "default": 60
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

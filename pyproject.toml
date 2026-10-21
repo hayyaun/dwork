@@ -21,6 +21,9 @@ classifiers = [
   "Topic :: Software Development",
 ]
 
+[project.optional-dependencies]
+test = ["jsonschema>=4.18,<5"]
+
 [project.scripts]
 dwork = "dwork:cli"
 

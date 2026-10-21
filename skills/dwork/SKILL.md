@@ -59,6 +59,11 @@ invent service names, commands, health checks, or folders.
 
 - Use `version: 1` and only supported fields. Create `dwork.yml` in the intended
   workspace directory, usually beside its Compose file.
+- Preserve the editor schema comment emitted by `dwork init` and the shipped
+  examples. For new hand-written files, include the schema modeline documented
+  in the bundled reference. It enables editor completion without adding a YAML
+  field. Check installed-runtime support for fields suggested by the `main`
+  schema; continue using `dwork validate` for paths and Compose references.
 - Use top-level `locked: true` when the user wants the workspace kept running
   through switches and `dwork down`. It remains listed and can still be activated.
 - Keep workspace activation confirmation enabled by default. Use root-level
