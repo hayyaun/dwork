@@ -23,6 +23,10 @@ containers, wait for healthy dependencies, and open your configured commands in
 new terminals. Only other workspaces you have registered with dwork may be stopped.
 Unregistered projects stay running.
 
+Version 0.3.0 adds macOS support through Apple Terminal and browser launching
+with custom browser selection, optional readiness checks, and confirmation controls.
+See [release publishing and package formats](docs/publishing/README.md).
+
 ## Install
 
 ```sh

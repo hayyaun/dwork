@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dwork-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Switch development workspaces, resume existing containers, and launch terminals"
 readme = "packaging/python/PYPI_README.md"
 requires-python = ">=3.10"

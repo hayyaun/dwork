@@ -17,7 +17,7 @@ python -m pip install build twine
 python -m build
 python -m twine check dist/*
 python -m venv /tmp/dwork-wheel-test
-/tmp/dwork-wheel-test/bin/python -m pip install dist/dwork_cli-0.2.0-py3-none-any.whl
+/tmp/dwork-wheel-test/bin/python -m pip install dist/dwork_cli-0.3.0-py3-none-any.whl
 /tmp/dwork-wheel-test/bin/dwork --help
 ```
 
@@ -28,7 +28,7 @@ only inside its temporary environments.
 
 ## Publish
 
-These files prepare version 0.2.0; they do not publish it. First commit and tag
+These files prepare version 0.3.0; they do not publish it to PyPI. First commit and tag
 the exact source that was tested. Create PyPI and TestPyPI accounts and verify
 the distribution name. Run `python -m twine upload --repository testpypi dist/*`
 first and verify the uploaded package. For TestPyPI installation, install PyYAML

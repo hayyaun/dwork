@@ -15,6 +15,10 @@ It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
 
+The macOS and browser options in this skill require dwork 0.3.0 or newer.
+Check the installed package version or source tag before using them with an
+older installation; updating the skill alone does not update dwork.
+
 Read [the bundled configuration reference](references/configuration.md) before
 writing YAML. It includes the supported version, fields, and examples and works
 without a dwork source checkout or network access.

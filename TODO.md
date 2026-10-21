@@ -56,8 +56,8 @@
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
 - [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.
 - [ ] Complete packaging review and verify the prepared changes are pushed before tagging a release.
-- [ ] Run the package verification workflow and resolve failures, including the pending Homebrew and Debian checks.
-- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow.
+- [ ] Run the package verification workflow and resolve failures. Linux source, Debian, and Linux/macOS Homebrew checks passed for `09bfbee`; the macOS Python 3.13 run reports task-supervision and interactive-terminal test failures. Resolve these before tagging 0.3.0.
+- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Version 0.3.0 metadata is prepared for the macOS and browser features.
 - [ ] Review and publish the resulting GitHub release and its verified assets.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.

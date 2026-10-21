@@ -7,9 +7,13 @@ Packaging support is implemented; external publication is a separate step.
 
 ## Release preparation
 
+The source-test CI step uses unittest's `--failfast` option so a failure reports
+its traceback before later interactive tests can block diagnostics. A successful
+run still executes the full suite; `make test` locally reports all failures.
+
 1. Keep the MIT license and copyright notice in distributions.
 2. Commit the exact source being released. The current Python metadata and Debian
-   changelog prepare 0.2.0; the existing v0.1.0 tag remains unchanged.
+   changelog prepare 0.3.0; existing release tags remain unchanged.
 3. Run `make test`, Python wheel/sdist verification, and the relevant channel build.
 4. Tag the tested commit and publish the matching GitHub release. Never rewrite
    existing release tags or reuse a published PyPI version.
@@ -19,12 +23,12 @@ Packaging support is implemented; external publication is a separate step.
 
 `.github/workflows/release.yml` runs when a stable `vMAJOR.MINOR.PATCH` tag is
 pushed. The tag must match `project.version` in `pyproject.toml` and the upstream
-version in `packaging/debian/changelog` (for example, `v0.2.0`, `0.2.0`, and
-`0.2.0-1`). Commit the version changes and workflow before tagging that commit:
+version in `packaging/debian/changelog` (for example, `v0.3.0`, `0.3.0`, and
+`0.3.0-1`). Commit the version changes and workflow before tagging that commit:
 
 ```sh
-git tag -a v0.2.0 -m "Release 0.2.0"
-git push origin v0.2.0
+git tag -a v0.3.0 -m "Release 0.3.0"
+git push origin v0.3.0
 ```
 
 The workflow runs source tests, builds and smoke-tests the Python wheel and
@@ -71,8 +75,10 @@ Homebrew/AUR updates, and apt repository publication remain separate manual work
   validated on Arch. AUR account registration was temporarily closed on
   2026-10-20; recheck availability before submission. Push recipes to AUR's
   separate SSH Git repository, not package binaries.
-- [Homebrew](../../packaging/homebrew/README.md): v0.1.0 Linux/WSL formula with
-  pinned PyYAML. Publish it in `hayyaun/homebrew-tap/Formula/dwork.rb` after testing.
+- [Homebrew](../../packaging/homebrew/README.md): the stable formula still pins
+  v0.1.0; HEAD supports Linux, macOS, and WSL with pinned PyYAML. Update its source
+  URL and checksum after the new tag exists, then publish it in
+  `hayyaun/homebrew-tap/Formula/dwork.rb` after testing.
 - [PyPI](../../packaging/python/README.md): `dwork-cli` wheel/sdist and `dwork`
   console command. TestPyPI first; Trusted Publishing is recommended for CI.
   The separate PyPI name `dwork` belongs to an unrelated project.
