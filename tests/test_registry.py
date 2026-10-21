@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 import json
 import os
+import re
 import sys
 import unittest
 
@@ -208,7 +209,9 @@ class RegistryTests(unittest.TestCase):
         self.register(name="my-app")
         result, _, _ = self.run_cli("list", cwd=self.fixture.base)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("my-app  " + str(self.root), result.stdout)
+        self.assertIn("NAME", result.stdout.splitlines()[0])
+        self.assertIn("PATH", result.stdout.splitlines()[0])
+        self.assertRegex(result.stdout, r"(?m)^my-app\s+.*  " + re.escape(str(self.root)) + r"$")
         result, changes, _ = self.run_cli("switch my-app", cwd=self.fixture.base,
                                          containers=[legacy.container("a", "main")])
         self.assertEqual(result.returncode, 0, result.stderr)

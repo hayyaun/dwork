@@ -46,6 +46,7 @@
 
 ## CLI and releases
 
+- [x] Show `dwork list`/`ls` as an aligned workspace table with status, lock, and path columns; preserve the names-only completion API.
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
 - [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Python and unsearched prefixes keep explicit setup.
 - [x] Load completion automatically when `dwork.sh` is sourced in interactive Bash/Zsh, respecting existing Zsh initialization, noninteractive use, and missing dependencies; test repeated sourcing and real Tab input.

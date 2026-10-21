@@ -87,7 +87,10 @@ root `confirm`. Later plain `dwork` asks to apply the plan
 unless root `confirm: false` is set; only `y`/`Y` accepts, and EOF cancels.
 `--dry-run` previews the policy without asking. `dwork register NAME`
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
-list, activate, and forget remembered directories. Changed Compose identity,
+list, activate, and forget remembered directories. `list`/`ls` use an aligned
+`NAME`, `STATUS`, `LOCKED`, `PATH` table; the lock column contains `yes` for one
+locked member, protected project names for groups, or `-`. Use `list --names`
+for sorted names only, without a table or Docker status queries. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.
 `dwork down` stops registered container workloads on the current Docker target and
 locally tracked host commands, respecting service selections and `DWORK_KEEP_PROJECTS`,

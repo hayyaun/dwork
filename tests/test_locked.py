@@ -61,7 +61,7 @@ class LockedTests(unittest.TestCase):
         self.assertEqual(changes, [["stop", "b"]])
         result, _, _ = self.run_cli("list", containers=items)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("[locked]", result.stdout)
+        self.assertRegex(result.stdout, r"(?m)^infra\s+.*\s+yes\s+")
         self.assertEqual(len(self.entries()), 3)
 
     def test_locked_workspace_can_still_be_activated(self):
@@ -118,7 +118,7 @@ class LockedTests(unittest.TestCase):
         before = self.state.read_bytes()
         result, changes, _ = self.run_cli("list")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("[locked]", result.stdout)
+        self.assertRegex(result.stdout, r"(?m)^infra\s+.*\s+yes\s+")
         self.assertEqual(changes, [])
         self.assertEqual(self.state.read_bytes(), before)
 
@@ -132,7 +132,7 @@ class LockedTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [["stop", "b"]])
         result, _, _ = self.run_cli("list")
-        self.assertIn("[locked: db]", result.stdout)
+        self.assertRegex(result.stdout, r"(?m)^stack\s+.*\s+db\s+")
 
     def test_legacy_registry_members_default_to_unlocked(self):
         self.register("infra")

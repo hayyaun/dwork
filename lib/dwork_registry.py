@@ -194,14 +194,17 @@ def list_registrations(entries):
             containers = dwork_docker.inventory()
         except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
             print(color("Warning: Docker status unavailable: " + str(error), "warning", sys.stderr), file=sys.stderr)
+    rows = []
+    host_commands = False
     for entry in sorted(entries, key=lambda e: e["name"]):
         style = "warning"
         if not Path(entry["path"]).is_dir() or any(
                 not Path(m["directory"]).is_dir() for m in entry["members"]):
             state = "unavailable directory"
         elif entry["target"] is None:
-            state = "host-only; preview tracked commands with dwork down --dry-run"
+            state = "host-only"
             style = "dim"
+            host_commands = True
         elif target is None:
             state = "Docker status unavailable"
         elif entry["target"] != target:
@@ -214,7 +217,25 @@ def list_registrations(entries):
             state = str(running) + "/" + str(len(selected)) + " containers running"
             style = "start" if running else "stop"
         protected = [m["project"] for m in entry["members"] if m.get("locked", False)]
-        marker = " [locked]" if len(entry["members"]) == 1 and protected else (
-            " [locked: " + ", ".join(protected) + "]" if protected else "")
-        print(colored_name(entry["name"]) + "  " + entry["path"] + "  [" + color(state, style) + "]" + color(marker, "warning"))
+        locked = "yes" if len(entry["members"]) == 1 and protected else (
+            ", ".join(protected) if protected else "-")
+        # Keep each workspace on one line, even when a filesystem path contains
+        # tabs, newlines, or terminal control characters.
+        cells = ["".join(char if char.isprintable() else repr(char)[1:-1] for char in value)
+                 for value in (entry["name"], state, locked, entry["path"])]
+        rows.append((*cells, style))
+    headers = ("NAME", "STATUS", "LOCKED", "PATH")
+    widths = [max([len(header)] + [len(row[index]) for row in rows])
+              for index, header in enumerate(headers[:-1])]
+    print("  ".join(color(header, "bold") + " " * (width - len(header))
+                    for header, width in zip(headers[:-1], widths))
+          + "  " + color(headers[-1], "bold"))
+    for name, state, locked, path, style in rows:
+        # Calculate padding from plain cells; ANSI styling must not affect alignment.
+        print("  ".join((colored_name(name) + " " * (widths[0] - len(name)),
+                         color(state, style) + " " * (widths[1] - len(state)),
+                         color(locked, "warning" if locked != "-" else "dim")
+                         + " " * (widths[2] - len(locked)), path)))
+    if host_commands:
+        print("\nHost commands: preview tracked commands with dwork down --dry-run.")
     return 0

@@ -166,7 +166,8 @@ directory and asks to apply the plan on later activations unless root
 containers and before terminal confirmation; missing outgoing directories do not
 remove their saved ownership from the shutdown plan.
 `DWORK_KEEP_PROJECTS` can preserve registered shared projects. `dwork register NAME`
-remembers without activating, `dwork list` shows remembered directories,
+remembers without activating, `dwork list` shows a `NAME`/`STATUS`/`LOCKED`/`PATH`
+table of remembered directories,
 `dwork switch NAME` activates from anywhere, and `dwork forget NAME` removes only
 the registration. Changed Compose identity or service selection requires explicit
 re-registration. Each browser asks separately after terminals; a declined terminal

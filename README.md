@@ -109,7 +109,7 @@ Remember a project without switching, give it a name, and return from anywhere:
 ```sh
 dwork register my-app       # Remember this directory; start/stop nothing
 dwork scan                  # Find workspaces recursively; optionally select Compose directories
-dwork list                  # Show remembered directories and status
+dwork list                  # Show a table of remembered workspaces and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
 dwork rename my-app api      # Change its saved name to an available name
@@ -152,6 +152,10 @@ Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`
 `confirm: false` opts out. First-time registration and discovered-group consent
 remain separate. `dwork down` always confirms when there is work to stop.
 Enter or `n` cancels; `--dry-run` previews without prompting.
+
+`dwork list` (or `dwork ls`) prints aligned `NAME`, `STATUS`, `LOCKED`, and `PATH`
+columns, with one row per workspace. Use `dwork ls --names` for plain names without
+a header. [Workspace listing details →](docs/workspaces/README.md#list)
 
 ## Tab completion
 

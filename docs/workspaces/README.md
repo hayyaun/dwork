@@ -139,8 +139,20 @@ the calling shell's Compose-selection environment to every discovered project.
 dwork list
 ```
 
-Shows each name, absolute directory path, and a count of running/restarting managed
-containers on the current Docker target. Use `down --dry-run` to inspect tracked host commands. Missing
+`dwork list` and its `ls` alias show a table sorted by workspace name, with
+`NAME`, `STATUS`, `LOCKED`, and `PATH` columns. Paths are absolute and appear last,
+so long paths do not push the status and lock columns out of alignment. Each
+workspace occupies one row; nonprinting characters in cells are escaped.
+`STATUS` includes the count of running/restarting managed containers on the
+current Docker target, or a concise `host-only` label. `LOCKED` is `yes` for a
+protected single workspace, the protected project names for a group, or `-` when
+none are locked. Terminal colors do not affect column widths; redirected output
+and `NO_COLOR` output stay plain.
+
+Use `down --dry-run` to inspect tracked host commands; host-only listings show
+this hint once below the table. `dwork ls --names` (also `list --names`) remains
+sorted names only, with no header or status queries, for shell completion and
+scripts. An empty registry keeps the registration hint instead of empty rows. Missing
 directories, other Docker targets, and unavailable Docker status are identified.
 Listing still works when Docker is offline; it never registers, switches, or opens
 terminals. It does not change Docker contexts to inspect other targets.
@@ -211,7 +223,8 @@ Put this in your shell startup file to make the policy persistent. It protects t
 projects during switches; it does not prevent explicitly activating them.
 
 For a project-level policy, set top-level `locked: true` in its `dwork.yml`.
-`dwork list` marks it `[locked]`; groups with protected children show their names.
+`dwork list` shows `yes` in the `LOCKED` column; groups with protected children
+show their project names in that column.
 It stays registered and can still be activated normally. The current lock policy
 is read without requiring re-registration; switches/shutdowns record it so the
 last known lock is retained if a config or directory disappears. Invalid or

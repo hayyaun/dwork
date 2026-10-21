@@ -40,6 +40,11 @@
 
 ## Tests
 
+`test_list.py` covers aligned workspace tables, ANSI/plain output, service-filtered
+container counts, group locks, offline/missing targets, compact host-only rows,
+and paths with nonprinting characters. Registry and completion tests keep the
+`list`/`ls` read-only behavior and header-free `--names` interface covered.
+
 `test_config_commands.py` checks version reporting, deterministic initialization,
 overwrite protection, and validation without registry/container operations.
 `test_loader.py` checks that noninteractive sourcing never generates completion,

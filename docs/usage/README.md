@@ -94,7 +94,7 @@ and rejected. These commands were added after release 0.3.0.
 ```sh
 dwork register my-app     # Save this workspace without starting or stopping anything
 dwork scan                # Recursively register configured workspaces, then offer Compose selection
-dwork list               # Registered names, directory paths, and container status
+dwork list               # NAME / STATUS / LOCKED / PATH table (alias: ls)
 dwork switch my-app      # Activate the saved workspace from anywhere
 dwork switch my-app --dry-run
 dwork rename my-app api   # Rename to an available workspace name
