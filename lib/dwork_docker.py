@@ -4,7 +4,6 @@ import os
 import re
 import shlex
 import subprocess
-import sys
 import time
 
 from dwork_common import DworkError, color, colored_name
@@ -125,25 +124,3 @@ def show_status(workspaces, containers):
                 print("  " + colored_name(service) + color(": missing container; run the project's initial setup manually.", "warning"))
     if any(w.terminals for w in workspaces):
         print("Host commands are configured; preview tracked commands with dwork down --dry-run.")
-
-
-def report_failure(completed, pending, step, containers):
-    print(color("Switch incomplete at: " + step, "warning", sys.stderr), file=sys.stderr)
-    print("Completed: " + ("; ".join(completed) or "none"), file=sys.stderr)
-    print("Not confirmed complete: " + ("; ".join(pending) or "none"), file=sys.stderr)
-    print("The interrupted or failed operation may have changed state; inspect before retrying.", file=sys.stderr)
-    print("No automatic rollback was attempted. Inspect tracked host commands with dwork down --dry-run.", file=sys.stderr)
-    try:
-        current = inventory() if containers else []
-        running = [((c.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project", "?")
-                    + "/" + c["Id"][:12]) for c in current
-                   if c["State"]["Status"] in ("running", "restarting")]
-        print("Still running/restarting: " + (", ".join(running) or "none"), file=sys.stderr)
-    except (DworkError, OSError, ValueError, KeyError, TypeError):
-        print("Could not refresh container state; check docker ps --all.", file=sys.stderr)
-    print("Inspect current state: dwork status; preview a retry: dwork --dry-run (use the same Compose options).", file=sys.stderr)
-    for action in completed:
-        if action.startswith("stop "):
-            identifier = action.split()[1]
-            print("To restore the stopped container if appropriate: docker start " + identifier, file=sys.stderr)
-    print("For a failed container: docker inspect <container-id> and docker logs --tail 50 <container-id>.", file=sys.stderr)

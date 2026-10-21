@@ -1,6 +1,7 @@
 """Browser config, readiness, and host-opener tests; no real servers or GUIs."""
 
 from pathlib import Path
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import base64
@@ -359,6 +360,9 @@ class BrowserLifecycleTests(unittest.TestCase):
     def switch(self, preview=False):
         return dwork_workspaces.switch_workspace(self.root, [], "switch", preview, [self.entry])
 
+    def planned_task(self):
+        return replace(self.task, workspace=str(self.root), directory=str(self.root), project="app")
+
     def test_servers_launch_before_browser_readiness_and_open(self):
         calls = []
         self.mocks[7].side_effect = lambda task: calls.append("terminal")
@@ -381,7 +385,8 @@ class BrowserLifecycleTests(unittest.TestCase):
         with patch("builtins.input", side_effect=AssertionError("activation must not prompt")):
             self.assertEqual(dwork_workspaces.switch_workspace(
                 self.root, [], "activate", False, [self.entry]), 0)
-        self.mocks[6].assert_called_once_with(self.task)
+        self.mocks[6].assert_called_once_with(self.planned_task())
+        self.assertIsNone(self.task.workspace)
         self.mocks[8].assert_called_once_with(self.browser)
 
     def test_dry_run_has_no_preflight_prompt_probe_or_launch(self):
@@ -404,7 +409,8 @@ class BrowserLifecycleTests(unittest.TestCase):
         with patch("sys.stderr", new_callable=io.StringIO) as errors:
             with self.assertRaises(dwork_common.DworkError):
                 self.switch()
-        self.mocks[7].assert_called_once_with(self.task)
+        self.mocks[7].assert_called_once_with(self.planned_task())
+        self.assertIsNone(self.task.workspace)
         self.mocks[8].assert_called_once_with(self.browser)
         self.mocks[9].assert_called_once_with(self.browser)
         self.mocks[10].assert_not_called()

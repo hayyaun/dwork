@@ -41,22 +41,22 @@ def confirm_action(prompt):
 @dataclass
 class TerminalTask:
     title: str
-    command: list
+    command: list[str]
     cwd: Path
-    healthy: list = field(default_factory=list)
+    healthy: list[str] = field(default_factory=list)
     timeout: float = 180
     window: str = "new"
     launcher: str = "auto"
     confirm: bool = True
-    workspace: str = None
-    directory: str = None
-    project: str = None
+    workspace: str | None = None
+    directory: str | None = None
+    project: str | None = None
 
 
 @dataclass
 class BrowserTask:
     url: str
-    wait_url: str = None
+    wait_url: str | None = None
     timeout: float = 60
     confirm: bool = True
     browser: str = "default"
@@ -66,13 +66,13 @@ class BrowserTask:
 class Workspace:
     name: str
     directory: Path
-    services: dict
+    services: dict[str, object]
     enabled: bool = True
-    selected: object = None
-    terminals: list = field(default_factory=list)
+    selected: list[str] | None = None
+    terminals: list[TerminalTask] = field(default_factory=list)
     configured: bool = False
     locked: bool = False
-    browsers: list = field(default_factory=list)
+    browsers: list[BrowserTask] = field(default_factory=list)
     confirm: bool = True
 
     def manages(self, service):

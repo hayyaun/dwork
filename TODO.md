@@ -6,6 +6,7 @@
 - [x] Add read-only `dwork doctor`: configuration/Compose compatibility, Docker access, shell and terminal dependencies, with actionable fixes.
 - [x] Show the Docker target, affected projects, protected projects, and full plan before every switch; preserve existing confirmation rules.
 - [x] Report completed actions, the failed step, remaining work, and recovery commands after partial failures or interruption.
+- [x] Introduce typed activation plans, explicit lifecycle actions, and execution results; share shutdown execution, derive recovery from action identity, preserve consent/ownership/lock behavior, and cover planning plus every action's failure/interruption outcomes.
 
 ## Switching policies
 

@@ -197,6 +197,14 @@ environment settings, including `DWORK_KEEP_PROJECTS` and `DWORK_TERMINAL`, stil
 `switch` accepts a name and optional `--dry-run`; change the saved Compose options
 by running `register` again in the intended directory with those options.
 
+The activation-plan refactor keeps the same execution order: stop outgoing tracked
+commands, stop eligible containers in one batch, start existing destination
+containers, pass all health gates, then dispatch approved terminals and browsers.
+Locks are still checked again after plan confirmation. A declined task/browser is
+skipped; failures report completed work and the remaining unconfirmed actions.
+Only confirmed container stops produce container recovery suggestions; finished
+host commands do not. There is no automatic rollback or resume command.
+
 When immediate child workspaces are discovered from a parent directory, the parent
 is registered as one workspace containing those children. Switching it activates
 the group together and retains the group confirmation prompt. A child Compose

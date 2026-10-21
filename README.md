@@ -280,6 +280,12 @@ and configuration diagnostics. Existing files can add the same comment.
 [Development](docs/development/README.md) ·
 [Publish packages](docs/publishing/README.md)
 
+The current lifecycle implementation uses typed activation plans, actions, and
+execution results while preserving the same preview, confirmation, ownership,
+and shutdown order. See the [development guide](docs/development/README.md#activation-plans-and-results)
+for the internal model and regression coverage. Configuration and registry formats
+are unchanged.
+
 Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
 GUI behavior has not been visually verified in the WSL development environment.
 Routine macOS CI runs source/package tests on Python 3.13 and Homebrew verification

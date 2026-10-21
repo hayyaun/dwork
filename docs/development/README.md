@@ -16,13 +16,16 @@
 - [`lib/dwork_registry.py`](../../lib/dwork_registry.py): versioned registry,
   atomic updates, switch locking, ownership checks, and registration display.
 - [`lib/dwork_docker.py`](../../lib/dwork_docker.py): Compose models, Docker
-  inventory, health prerequisites, and container status/failure reporting.
+  inventory, health prerequisites, and container status reporting.
+- [`lib/dwork_plans.py`](../../lib/dwork_plans.py): typed activation/shutdown
+  snapshots, explicit action payloads, and per-action execution results.
 - [`lib/dwork_terminals.py`](../../lib/dwork_terminals.py): command construction,
   per-session confirmation, and native Linux / Windows Terminal launching.
 - [`lib/dwork_scan.py`](../../lib/dwork_scan.py): repository scanning, the
   Compose checkbox picker, and bulk registration.
 - [`lib/dwork_workspaces.py`](../../lib/dwork_workspaces.py): switch and shutdown
-  plans, shared shutdown selection/execution, protection policy, and confirmations.
+  orchestration, shared typed execution, protection policy, confirmations, and
+  partial-failure/recovery presentation.
   Switches exclude the selected registration; `down` uses the same path without
   an exclusion. Both stop commands before containers and recheck locks after prompts.
 - [`lib/dwork_common.py`](../../lib/dwork_common.py): shared models, errors,
@@ -38,7 +41,55 @@
   installation, removal, and package staging.
 - [`requirements.txt`](../../requirements.txt): isolated-install Python dependency.
 
+## Activation plans and results
+
+`build_activation_plan` consumes resolved workspace paths, container snapshots,
+and an already-authorized shutdown selection. It performs no I/O, prompts, probes,
+or persistence. Its copied configuration and inventory keep task ownership metadata
+inside the plan instead of mutating the loaded configuration. Actions explicitly
+represent task shutdown, a container-stop batch, individual container starts,
+health gates, terminal/background launches, and browser dispatch with optional
+readiness. They contain data, not executable closures or display labels.
+
+`switch_workspace` still validates registrations, target identity, and ownership
+before building the plan. Dry runs render the planned resources without executing
+them. Existing activation, discovered-group, first-registration, task, browser, and
+shutdown confirmations remain separate. After plan-level consent, live locks are
+rechecked and the approved shutdown selection replaces the preview selection;
+newly protected resources never enter the executor. Registry writes remain in the
+orchestrator under the existing operation lock.
+
+`execute_activation` and `stop_workspaces` share the typed action executor. Order
+remains outgoing tracked commands, one container-stop batch, container starts,
+all health gates, terminal/background confirmations and launches, then browser
+confirmations/readiness/dispatch. No action type authorizes itself: callers must
+complete the existing ownership and consent checks first.
+
+Each `ActionResult` records `pending`, `running`, `completed`, `already_finished`,
+`skipped`, `failed`, or `interrupted`, with an optional error and supervisor PID.
+Completed cleanup of a tracked command is distinct from stopping a container.
+Declined tasks/browser entries are skipped and excluded from pending work; a failed
+or interrupted action and all later actions remain unconfirmed. Launch completion
+means dispatch returned, not that a server is ready. Original exceptions and CLI
+exit codes are preserved. Reusing an execution result cannot replay commands.
+
+Failure messages render these typed outcomes. Container recovery suggestions come
+only from confirmed container-stop actions, never from parsing user-facing text,
+task titles, or ANSI sequences. Completed container changes are not rolled back.
+The models/results are internal and in-memory; they add no config keys, registry
+fields, JSON CLI output, retry/resume interface, or new permissions. Python wheels
+declare `dwork_plans` alongside the existing modules; Make/native installers copy
+the same runtime module set.
+
 ## Tests
+
+`test_plans.py` covers data-only planning, isolated input snapshots, action order,
+existing service/job selection policy, missing-health preview/live behavior, and
+lock changes between preview and execution. Its executor regressions cover separate
+session consent, skipped actions, failures and interrupts at every action type,
+completed task cleanup, supervisor PID results, opaque display labels, and replay
+rejection. Existing CLI, group, ownership, shutdown, and real harmless process tests
+remain the behavioral compatibility checks.
 
 `test_list.py` covers aligned workspace tables, ANSI/plain output, service-filtered
 container counts, group locks, offline/missing targets, compact host-only rows,

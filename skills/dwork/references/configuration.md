@@ -195,6 +195,15 @@ health checks block launch. Container switching happens before terminal prompts;
 declining a terminal does not undo switching. Completed changes are not rolled
 back after a later failure.
 
+Current activation plans and results are typed internal data, with no additional
+configuration or registry fields. Execution still stops outgoing commands before
+containers, starts existing destination containers, passes every health gate, and
+then handles the separate terminal/browser confirmations. Locks are rechecked after
+plan-level consent. Declined entries are skipped, completed supervisor cleanup is
+already finished, and failed/interrupted work remains unconfirmed. A successful
+dispatch is not a readiness guarantee; only confirmed container stops justify
+container recovery suggestions. Do not invent a JSON-output or resume command.
+
 Initial task discovery reports unresolved owned, unprotected outgoing controllers
 and blocks shutdown/activation before workloads change, including in previews.
 Selected, locked, kept, forgotten, and ownership-changed tasks keep their exclusions.

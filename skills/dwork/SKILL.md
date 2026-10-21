@@ -167,6 +167,16 @@ Current builds also block initial planning/previews when an eligible owned task'
 controller is unreachable. Protected or selected tasks retain their exclusions.
 Restore controller access before retrying; never delete records to bypass a block.
 
+Typed activation plans/actions/results are an internal refactor, not new YAML
+fields, a changed registry format, JSON CLI output, or a resume API. A rendered
+plan does not authorize execution. Keep registration/group/activation consent
+separate from task/browser consent, and retain the live lock recheck before stops.
+When explaining partial failures, distinguish completed, already-finished, skipped,
+and unconfirmed work. A dispatched task does not prove server readiness. Restore
+containers only when the reported action actually stopped a container; never infer
+recovery commands by parsing task titles or display labels. Existing commands and
+exit codes remain the interface for configuration and troubleshooting.
+
 When diagnosing nested invocations, distinguish the invocation directory from the
 directory containing `dwork.yml`: explicit Compose file/environment selections
 retain invocation-relative meaning, while YAML `compose.files` and terminal `cwd`

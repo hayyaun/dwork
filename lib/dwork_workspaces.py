@@ -1,10 +1,11 @@
 """Workspace switching and shutdown, including plans and confirmations."""
-from dataclasses import dataclass
+from dataclasses import replace
 from pathlib import Path
 import os
 import shlex
 import shutil
 import sys
+from typing import Any
 
 from dwork_common import DworkError, color, colored_name
 import dwork_common
@@ -14,6 +15,9 @@ import dwork_docker
 import dwork_registry
 import dwork_tasks
 import dwork_terminals
+from dwork_plans import (Action, ActionResult, ActionStatus, ActivationPlan, ExecutionResult,
+                         LaunchTerminal, OpenBrowser, ShutdownPlan, StartContainer,
+                         StopContainers, StopTask, WaitHealthy, build_activation_plan, shutdown_actions)
 
 
 def task_protection(record, entries, keep):
@@ -36,13 +40,6 @@ def task_label(record, entries):
     return (colored_name(name + "/" + record["title"]) + " [" + colored_name(record["project"])
             + "] (PID " + str(record["pid"]) + ") -> "
             + shlex.join(record["command"]))
-
-
-@dataclass
-class ShutdownPlan:
-    containers: list
-    tasks: list
-    protected_tasks: list
 
 
 def keep_projects():
@@ -102,53 +99,166 @@ def recheck_shutdown(plan, entries, target, keep):
     return allowed, changed
 
 
-def shutdown_steps(plan, entries):
-    steps = ["stop task " + task_label(record, entries) for record in plan.tasks]
-    if plan.containers:
-        steps.append("stop containers " + ", ".join(item["Id"] for item in plan.containers))
-    return steps
+def action_label(action: Action, entries: list[dict[str, Any]]) -> str:
+    """Labels are presentation only; execution and recovery use action types."""
+    if isinstance(action, StopTask):
+        return "stop task " + task_label(action.record, entries)
+    if isinstance(action, StopContainers):
+        return "stop containers " + ", ".join(item.identifier for item in action.containers)
+    if isinstance(action, StartContainer):
+        item = action.container
+        return "start " + item.identifier + " (" + item.project + "/" + item.service + ")"
+    if isinstance(action, WaitHealthy):
+        return "wait for healthy " + ", ".join(action.container_ids)
+    if isinstance(action, LaunchTerminal):
+        return ("background task " if action.task.window == "none" else "terminal ") + action.task.title
+    if isinstance(action, OpenBrowser):
+        return "browser " + action.browser.url
+    raise TypeError("Unsupported lifecycle action: " + type(action).__name__)
 
 
-def stop_workspaces(plan, entries, operation, completed=None, pending=None):
-    """Stop host commands before containers for every workspace lifecycle command."""
-    if completed is None:
-        completed = []
-    if pending is None:
-        pending = shutdown_steps(plan, entries)
-    # Stop host commands first so they can release connections before databases
-    # shut down. A failed controller request aborts remaining work with an error.
-    for record in plan.tasks:
-        try:
-            stopped = dwork_tasks.stop(record, dwork_registry.registry_path().parent)
-            label = task_label(record, entries)
-            print(color("Stopped task: " if stopped else "Task already finished: ", "stop") + label, flush=True)
-            completed.append(("stopped task " if stopped else "finished task ") + label)
-            pending.pop(0)
-        except (OSError, ValueError, KeyError, TypeError, DworkError) as error:
-            raise DworkError(operation + " incomplete while stopping " + record["title"] + ": " + str(error)
-                             + ". Earlier tasks may have stopped; inspect dwork down --dry-run before retrying.")
-    if not plan.containers:
-        return
+def completed_labels(result: ActionResult, entries: list[dict[str, Any]]) -> list[str]:
+    action = result.action
+    if isinstance(action, StopTask):
+        prefix = "finished task " if result.status is ActionStatus.ALREADY_FINISHED else "stopped task "
+        return [prefix + task_label(action.record, entries)]
+    if isinstance(action, StopContainers):
+        return ["stop " + item.identifier + " (" + item.project + ")" for item in action.containers]
+    if isinstance(action, LaunchTerminal):
+        return [("launched background task " if action.task.window == "none" else "launched terminal ") + action.task.title]
+    if isinstance(action, OpenBrowser):
+        return ["opened browser " + action.browser.url]
+    return [action_label(action, entries)]
+
+
+def stop_containers(action: StopContainers, operation: str) -> None:
     print(color("Stopping registered workspace containers...", "stop"), flush=True)
     try:
         # Docker accepts multiple IDs; let its supported stop command handle the batch.
-        dwork_docker.docker("stop", *(item["Id"] for item in plan.containers))
+        dwork_docker.docker("stop", *(item.identifier for item in action.containers))
     except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
         print(color(operation + " incomplete; the batch may have partially stopped containers.", "warning", sys.stderr), file=sys.stderr)
         try:
             current = {c["Id"]: c for c in dwork_docker.inventory()}
-            for item in plan.containers:
-                state = current.get(item["Id"], {}).get("State", {}).get("Status", "not found; inspect manually")
+            for item in action.containers:
+                state = current.get(item.identifier, {}).get("State", {}).get("Status", "not found; inspect manually")
                 style = "stop" if state == "exited" else "warning"
-                print(color(dwork_docker.container_name(item) + " / " + item["Id"][:12] + ": " + state, style, sys.stderr), file=sys.stderr)
+                print(color(item.project + "/" + item.service + " / " + item.identifier[:12] + ": " + state, style, sys.stderr), file=sys.stderr)
         except (DworkError, OSError, ValueError, KeyError, TypeError):
             print("Could not refresh state; check docker ps --all before retrying.", file=sys.stderr)
         raise
-    for item in plan.containers:
-        print(color("Stopped: " + dwork_docker.container_name(item) + " / " + item["Id"][:12], "stop"), flush=True)
-        project = (item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project")
-        completed.append("stop " + item["Id"] + " (" + project + ")")
-    pending.pop(0)
+    for item in action.containers:
+        print(color("Stopped: " + item.project + "/" + item.service + " / " + item.identifier[:12], "stop"), flush=True)
+
+
+def execute_action(result: ActionResult, entries: list[dict[str, Any]], operation: str) -> ActionStatus:
+    action = result.action
+    if isinstance(action, StopTask):
+        record = action.record
+        try:
+            stopped = dwork_tasks.stop(record, dwork_registry.registry_path().parent)
+            print(color("Stopped task: " if stopped else "Task already finished: ", "stop")
+                  + task_label(record, entries), flush=True)
+            return ActionStatus.COMPLETED if stopped else ActionStatus.ALREADY_FINISHED
+        except (OSError, ValueError, KeyError, TypeError, DworkError) as error:
+            raise DworkError(operation + " incomplete while stopping " + record["title"] + ": " + str(error)
+                             + ". Earlier tasks may have stopped; inspect dwork down --dry-run before retrying.") from error
+    if isinstance(action, StopContainers):
+        stop_containers(action, operation)
+    elif isinstance(action, (StartContainer, WaitHealthy)):
+        label = action_label(action, entries)
+        style = "start" if isinstance(action, StartContainer) else "warning"
+        print("Executing: " + color(label, style), flush=True)
+        if isinstance(action, StartContainer):
+            dwork_docker.docker("start", action.container.identifier)
+            print(color("Started: " + label.removeprefix("start "), style), flush=True)
+        else:
+            dwork_docker.wait_healthy(action.container_ids, action.timeout)
+    elif isinstance(action, LaunchTerminal):
+        task = action.task
+        background = task.window == "none"
+        if not dwork_terminals.confirm_terminal(task):
+            print(("Skipped background task: " if background else "Skipped terminal: ") + colored_name(task.title), flush=True)
+            return ActionStatus.SKIPPED
+        print(("Starting background task: " if background else "Opening terminal: ") + colored_name(task.title), flush=True)
+        result.supervisor_pid = dwork_terminals.open_terminal(task)
+        if background:
+            print("Started background task: " + colored_name(task.title)
+                  + " (supervisor PID " + str(result.supervisor_pid) + ")", flush=True)
+    elif isinstance(action, OpenBrowser):
+        browser = action.browser
+        if not dwork_browsers.confirm_browser(browser):
+            print("Skipped browser: " + browser.url, flush=True)
+            return ActionStatus.SKIPPED
+        if browser.wait_url is not None:
+            print("Waiting for HTTP readiness: " + browser.wait_url, flush=True)
+        dwork_browsers.wait_ready(browser)
+        print("Opening " + dwork_browsers.browser_label(browser) + ": " + browser.url, flush=True)
+        dwork_browsers.open_browser(browser)
+    else:
+        raise TypeError("Unsupported lifecycle action: " + type(action).__name__)
+    return ActionStatus.COMPLETED
+
+
+def execute_actions(result: ExecutionResult, entries: list[dict[str, Any]], operation: str) -> ExecutionResult:
+    """Record every outcome without replaying an already-used execution result."""
+    if any(item.status is not ActionStatus.PENDING for item in result.results):
+        raise ValueError("Execution result has already been used; build and approve a fresh plan.")
+    for item in result.results:
+        result.current = item
+        item.status = ActionStatus.RUNNING
+        try:
+            item.status = execute_action(item, entries, operation)
+        except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt) as error:
+            item.status = ActionStatus.INTERRUPTED if isinstance(error, KeyboardInterrupt) else ActionStatus.FAILED
+            item.error = str(error)
+            raise
+    result.current = None
+    return result
+
+
+def stop_workspaces(plan: ShutdownPlan, entries: list[dict[str, Any]], operation: str) -> ExecutionResult:
+    """Switch and down use the same typed actions and executor."""
+    return execute_actions(ExecutionResult(shutdown_actions(plan)), entries, operation)
+
+
+def report_failure(result: ExecutionResult, plan: ActivationPlan, entries: list[dict[str, Any]]) -> None:
+    current = result.current.action if result.current is not None else None
+    step = ("workspace shutdown" if isinstance(current, (StopTask, StopContainers))
+            else action_label(current, entries) if current is not None else "before execution")
+    completed = [label for item in result.completed for label in completed_labels(item, entries)]
+    pending = [action_label(item.action, entries) for item in result.pending]
+    print(color("Switch incomplete at: " + step, "warning", sys.stderr), file=sys.stderr)
+    print("Completed: " + ("; ".join(completed) or "none"), file=sys.stderr)
+    print("Not confirmed complete: " + ("; ".join(pending) or "none"), file=sys.stderr)
+    print("The interrupted or failed operation may have changed state; inspect before retrying.", file=sys.stderr)
+    print("No automatic rollback was attempted. Inspect tracked host commands with dwork down --dry-run.", file=sys.stderr)
+    try:
+        current_inventory = dwork_docker.inventory() if plan.inventory else []
+        running = [((item.get("Config", {}).get("Labels") or {}).get("com.docker.compose.project", "?")
+                    + "/" + item["Id"][:12]) for item in current_inventory
+                   if item["State"]["Status"] in ("running", "restarting")]
+        print("Still running/restarting: " + (", ".join(running) or "none"), file=sys.stderr)
+    except (DworkError, OSError, ValueError, KeyError, TypeError):
+        print("Could not refresh container state; check docker ps --all.", file=sys.stderr)
+    print("Inspect current state: dwork status; preview a retry: dwork --dry-run (use the same Compose options).", file=sys.stderr)
+    for item in result.completed:
+        if isinstance(item.action, StopContainers):
+            for container in item.action.containers:
+                print("To restore the stopped container if appropriate: docker start " + container.identifier, file=sys.stderr)
+    print("For a failed container: docker inspect <container-id> and docker logs --tail 50 <container-id>.", file=sys.stderr)
+
+
+def execute_activation(plan: ActivationPlan, entries: list[dict[str, Any]],
+                       *, result: ExecutionResult | None = None) -> ExecutionResult:
+    result = result if result is not None else ExecutionResult(plan.actions)
+    if result.actions != plan.actions:
+        raise ValueError("Execution actions do not match the activation plan.")
+    try:
+        return execute_actions(result, entries, "Switch")
+    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
+        report_failure(result, plan, entries)
+        raise
 
 
 def down_workspaces(entries, preview):
@@ -260,43 +370,13 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         dwork_docker.show_target()
     keep = keep_projects()
     shutdown = plan_shutdown(entries, shutdown_target, containers, keep, exclude_workspace=str(directory))
-    starts, warnings = [], []
-    for c in containers:
-        labels = c.get("Config", {}).get("Labels") or {}
-        project = labels.get("com.docker.compose.project")
-        if not project:
-            continue
-        service = labels.get("com.docker.compose.service", "(unknown service)")
-        identifier, state = c["Id"], c["State"]["Status"]
-        if project in active:
-            if not active[project].manages(service):
-                continue
-            if state in ("created", "exited"):
-                starts.append((identifier, project, service))
-            elif state not in ("running", "restarting"):
-                warnings.append("Container " + identifier[:12] + " is " + state + "; handle it manually.")
-    gates, tasks, browsers = [], [], []
-    for w in workspaces:
-        browsers.extend(w.browsers)
-        for service in w.services:
-            if w.manages(service) and not dwork_docker.service_containers(containers, w.name, service):
-                warnings.append("Service " + w.name + "/" + service + " has no container; create it manually if needed (it may be profile-specific).")
-        for task in w.terminals:
-            task.workspace = str(directory.resolve())
-            task.directory = str(w.directory.resolve())
-            task.project = w.name
-            tasks.append(task)
-            ids = []
-            for service in task.healthy:
-                matches = dwork_docker.service_containers(containers, w.name, service)
-                if not matches:
-                    message = "Required healthy service " + w.name + "/" + service + " has no existing container."
-                    if not preview:
-                        raise DworkError(message + " Create it manually; nothing changed.")
-                    warnings.append(message + " Terminal launch would be blocked.")
-                ids.extend(c["Id"] for c in matches)
-            if ids:
-                gates.append((ids, task.timeout))
+    plan = build_activation_plan(directory.resolve(),
+        [replace(workspace, directory=workspace.directory.resolve()) for workspace in workspaces],
+        containers, shutdown, preview=preview)
+    shutdown = plan.shutdown
+    starts = plan.starts
+    tasks = [action.task for action in plan.terminals]
+    browsers = [action.browser for action in plan.browsers]
     if not preview:
         dwork_terminals.preflight_terminals(tasks)
         dwork_browsers.preflight_browsers(browsers)
@@ -307,7 +387,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     else:
         print("Current Compose project: " + colored_name(workspaces[0].name) if active
               else "Current workspace: " + colored_name(workspaces[0].name) + " (Compose disabled)")
-    for warning in warnings:
+    for warning in plan.warnings:
         print(color("Warning: " + warning, "warning", sys.stderr), file=sys.stderr)
     print("Switch plan: " + str(len(shutdown.containers)) + " stop(s), " + str(len(starts))
           + " start(s), " + str(len(tasks)) + " terminal task(s), " + str(len(browsers)) + " browser URL(s).")
@@ -320,8 +400,9 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
     print("Locked projects: " + (", ".join(dwork_registry.locked_projects(entries, shutdown_target)) or "none"))
     show_shutdown_plan(shutdown, entries)
-    for identifier, project, service in starts:
-        print(color("Would start existing: ", "start") + identifier[:12] + " (" + colored_name(project + "/" + service) + ")")
+    for action in starts:
+        item = action.container
+        print(color("Would start existing: ", "start") + item.identifier[:12] + " (" + colored_name(item.project + "/" + item.service) + ")")
     for task in tasks:
         if task.healthy:
             print("Would wait for healthy: " + ", ".join(task.healthy) + " (timeout " + str(task.timeout) + "s)")
@@ -366,58 +447,5 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         dwork_registry.save_registry(entries)
     if existing is None:
         print("Registered " + colored_name(name) + " at " + str(directory) + ".")
-    actions = []
-    for identifier, project, service in starts:
-        actions.append(("start " + identifier + " (" + project + "/" + service + ")",
-                        lambda identifier=identifier: dwork_docker.docker("start", identifier)))
-    for ids, timeout in gates:
-        actions.append(("wait for healthy " + ", ".join(ids),
-                        lambda ids=ids, timeout=timeout: dwork_docker.wait_healthy(ids, timeout)))
-    completed = []
-    pending = shutdown_steps(shutdown, entries) + [label for label, _ in actions] + [
-        ("background task " if task.window == "none" else "terminal ") + task.title for task in tasks] + [
-        "browser " + browser.url for browser in browsers]
-    step = "before execution"
-    try:
-        if shutdown.containers or shutdown.tasks:
-            step = "workspace shutdown"
-            stop_workspaces(shutdown, entries, "Switch", completed, pending)
-        for label, operation in actions:
-            step = label
-            style = "start" if label.startswith("start ") else "warning"
-            print("Executing: " + color(label, style), flush=True)
-            operation()
-            if label.startswith("start "):
-                print(color("Started: " + label.removeprefix("start "), style), flush=True)
-            completed.append(label)
-            pending.pop(0)
-        for task in tasks:
-            background = task.window == "none"
-            step = ("background task " if background else "terminal ") + task.title
-            if not dwork_terminals.confirm_terminal(task):
-                print(("Skipped background task: " if background else "Skipped terminal: ") + colored_name(task.title), flush=True)
-                pending.pop(0)
-                continue
-            print(("Starting background task: " if background else "Opening terminal: ") + colored_name(task.title), flush=True)
-            pid = dwork_terminals.open_terminal(task)
-            if background:
-                print("Started background task: " + colored_name(task.title) + " (supervisor PID " + str(pid) + ")", flush=True)
-            completed.append(("launched background task " if background else "launched terminal ") + task.title)
-            pending.pop(0)
-        for browser in browsers:
-            step = "browser " + browser.url
-            if not dwork_browsers.confirm_browser(browser):
-                print("Skipped browser: " + browser.url, flush=True)
-                pending.pop(0)
-                continue
-            if browser.wait_url is not None:
-                print("Waiting for HTTP readiness: " + browser.wait_url, flush=True)
-            dwork_browsers.wait_ready(browser)
-            print("Opening " + dwork_browsers.browser_label(browser) + ": " + browser.url, flush=True)
-            dwork_browsers.open_browser(browser)
-            completed.append("opened browser " + browser.url)
-            pending.pop(0)
-    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
-        dwork_docker.report_failure(completed, pending, step, containers)
-        raise
+    execute_activation(replace(plan, shutdown=shutdown), entries)
     return 0

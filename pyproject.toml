@@ -39,6 +39,7 @@ py-modules = [
   "dwork_common",
   "dwork_config",
   "dwork_docker",
+  "dwork_plans",
   "dwork_registry",
   "dwork_scan",
   "dwork_tasks",
