@@ -28,7 +28,8 @@ the full suite; `make test` locally reports all failures in one run.
 ## Automated GitHub release assets
 
 `.github/workflows/release.yml` runs when a stable `vMAJOR.MINOR.PATCH` tag is
-pushed. The tag must match `project.version` in `pyproject.toml` and the upstream
+pushed. The tag must match `__version__` in `lib/dwork_version.py` (also used by
+the CLI and setuptools' dynamic package version) and the upstream
 version in `packaging/debian/changelog` (for example, `v0.3.0`, `0.3.0`, and
 `0.3.0-1`). Commit the version changes and workflow before tagging that commit:
 

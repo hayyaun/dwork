@@ -40,5 +40,7 @@ this repository. Final PyPI upload is `python -m twine upload dist/*`.
 After publication, users can run `pipx install dwork-cli` or
 `uv tool install dwork-cli`. Until then, use the local wheel or a Git source URL.
 
-Keep the version in pyproject.toml and the Debian changelog synchronized for new
+Keep `__version__` in `lib/dwork_version.py` and the Debian changelog synchronized for new
 releases. Never overwrite an existing Git tag or reuse a published PyPI version.
+Setuptools reads that literal through the dynamic `attr` setting in `pyproject.toml`;
+source, Make, and wheel installations report the same value with `dwork --version`.

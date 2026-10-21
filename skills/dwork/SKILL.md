@@ -15,6 +15,15 @@ It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
 
+Use `dwork --version` when supported (added after 0.3.0); older releases may
+require checking installed package metadata or the source tag. `dwork init`
+creates only a deterministic minimal config, detects standard local Compose
+filenames, and refuses overwrites. It does not infer project commands. Use
+`init --dry-run` to preview without writing; generating a starter does not
+authorize activation. Prefer `dwork validate` for standalone schema/path/service
+checks before a switch preview. Compose validation needs its CLI, not the daemon;
+it does not check running containers or desktop prerequisites.
+
 The macOS and browser options in this skill require dwork 0.3.0 or newer.
 Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
@@ -110,7 +119,8 @@ starting development servers, or switching the live workspace.
 ## Verify and hand off
 
 Check the YAML against the reference, command definitions, existing directories,
-Compose service names, and health checks. If dwork is available, run
+Compose service names, and health checks. When supported, run `dwork validate`
+to check configuration without registration or workload inspection. Then, if dwork is available, run
 `dwork --dry-run` **from the directory containing the generated file**. This
 previews operations without switching containers, waiting, prompting, or opening
 terminals or browsers. Compose-enabled previews still need Docker/Compose and access to the

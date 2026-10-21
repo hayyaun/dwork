@@ -14,6 +14,28 @@ COMPOSE_ENV = ("COMPOSE_FILE", "COMPOSE_PROJECT_NAME", "COMPOSE_PROFILES",
                "COMPOSE_ENV_FILES", "COMPOSE_PATH_SEPARATOR", "COMPOSE_DISABLE_ENV_FILE")
 
 
+def init_workspace(directory, preview=False):
+    """Create a predictable local starter without inspecting or running workloads."""
+    path = directory / "dwork.yml"
+    if path.exists() or path.is_symlink():
+        raise DworkError("dwork.yml already exists; edit it or run dwork validate.")
+    enabled = any((directory / name).is_file() for name in FILENAMES)
+    text = ("version: 1\ncompose:\n  enabled: " + ("true" if enabled else "false")
+            + "\nterminals: []\nbrowsers: []\n")
+    if preview:
+        print("Would create " + str(path) + ":\n" + text, end="")
+        return 0
+    # Exclusive creation also protects existing files and links if another process
+    # creates the path after the check above.
+    try:
+        with path.open("x", encoding="utf-8") as stream:
+            stream.write(text)
+    except FileExistsError:
+        raise DworkError("dwork.yml already exists; edit it or run dwork validate.")
+    print("Created " + str(path) + ". Review it, then run dwork validate.")
+    return 0
+
+
 def registration_directory(directory, options, discovered):
     # Preserve the invocation directory for relative CLI/environment file paths.
     if options or os.environ.get("COMPOSE_FILE") or os.environ.get("COMPOSE_ENV_FILES") or discovered:

@@ -65,6 +65,11 @@ class CompletionTests(unittest.TestCase):
                                        ("dwork rename al", 2, ["alpha"]),
                                        ("dwork sc", 1, ["scan"]),
                                        ("dwork scan --d", 2, ["--dry-run"]),
+                                       ("dwork --v", 1, ["--version"]),
+                                       ("dwork in", 1, ["init"]),
+                                       ("dwork val", 1, ["validate"]),
+                                       ("dwork init --d", 2, ["--dry-run"]),
+                                       ("dwork validate --p", 2, ["--project-name", "--project-directory", "--profile"]),
                                        ("dwork -f comp", 2, ["compose dev.yaml"])):
             command = setup + "COMP_WORDS=(" + words + "); COMP_CWORD=" + str(index) + "; _dwork_complete; printf '%s\\n' \"${COMPREPLY[@]}\""
             result = subprocess.run(["bash", "--noprofile", "--norc", "-c", command],

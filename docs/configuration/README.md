@@ -5,6 +5,14 @@
 Place `dwork.yml` in the repository or workspace directory. It is dwork's own
 configuration, separate from Docker Compose.
 
+Use `dwork init --dry-run` to preview a deterministic starter and `dwork init` to
+create it in the current directory without overwriting an existing path. Standard
+local Compose filenames enable Compose; otherwise the starter disables it. Tasks
+and browser lists start empty, and confirmation keeps its default `true`.
+`dwork validate` checks the selected workspace configuration without registration,
+container inspection, health waits, or launches. Compose references require the
+Compose CLI but no running daemon. See [configuration helpers](../usage/README.md#version-initialization-and-validation).
+
 ## Example: database plus a host backend
 
 ```yaml

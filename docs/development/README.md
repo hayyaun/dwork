@@ -9,7 +9,9 @@
 - [`lib/dwork_cli.py`](../../lib/dwork_cli.py): argument routing, shell completion,
   diagnostics, and CLI error/interrupt handling.
 - [`lib/dwork_config.py`](../../lib/dwork_config.py): YAML validation, Compose
-  environment selection, and workspace discovery.
+  environment selection, deterministic initialization, and workspace discovery.
+- [`lib/dwork_version.py`](../../lib/dwork_version.py): single version constant
+  shared by `--version`, package metadata, and release-tag validation.
 - [`lib/dwork_registry.py`](../../lib/dwork_registry.py): versioned registry,
   atomic updates, switch locking, ownership checks, and registration display.
 - [`lib/dwork_docker.py`](../../lib/dwork_docker.py): Compose models, Docker
@@ -32,6 +34,9 @@
 - [`requirements.txt`](../../requirements.txt): isolated-install Python dependency.
 
 ## Tests
+
+`test_config_commands.py` checks version reporting, deterministic initialization,
+overwrite protection, and validation without registry/container operations.
 
 From the repository root:
 
@@ -117,6 +122,9 @@ npx skills add ./skills/dwork --list
 using setuptools. `dwork:cli` is the console entry point and preserves source
 CLI errors/interrupts. Both `dwork.sh` and the Make-installed launcher execute
 the same thin `lib/dwork.py` entry point; its sibling imports resolve from `lib/`.
+The project version is dynamic metadata read from `dwork_version.__version__`
+using setuptools' documented `attr` configuration. Update that literal for a
+release; the CLI does not depend on installed distribution metadata or TOML parsing.
 The Make installer copies all Python modules in `lib/`, including the task
 supervisor, so every distribution uses the same runtime.
 

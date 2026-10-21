@@ -24,22 +24,23 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
-          from pathlib import Path
           import re
           import subprocess
-          import tomllib
+          import sys
+
+          sys.path.insert(0, "lib")
+          from dwork_version import __version__
 
           tag = os.environ["TAG"]
           if not re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", tag):
               raise SystemExit("Release tags must use vMAJOR.MINOR.PATCH (stable releases only)")
           version = tag[1:]
-          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
           debian = subprocess.check_output([
               "dpkg-parsechangelog", "--file", "packaging/debian/changelog",
               "--show-field", "Version",
           ], text=True).strip()
-          if project["version"] != version or debian.split("-", 1)[0] != version:
-              raise SystemExit(f"Tag {tag} does not match Python {project['version']} and Debian {debian}")
+          if __version__ != version or debian.split("-", 1)[0] != version:
+              raise SystemExit(f"Tag {tag} does not match Python {__version__} and Debian {debian}")
           PY
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:

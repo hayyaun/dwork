@@ -33,6 +33,11 @@ class InstallTests(unittest.TestCase):
                                 text=True, capture_output=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Usage: dwork", result.stdout)
+        result = subprocess.run([str(executable), "--version"], cwd="/tmp",
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        version = subprocess.check_output([sys.executable, str(REPO / "lib/dwork.py"), "--version"], text=True)
+        self.assertEqual(result.stdout, version)
         self.assertTrue((self.prefix / "share/dwork/examples/full-stack.yml").is_file())
         self.assertEqual(
             {module.name for module in (REPO / "lib").glob("*.py")},

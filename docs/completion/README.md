@@ -5,6 +5,7 @@
 Completion is available for Bash and Zsh. It suggests commands, aliases, relevant
 flags, registered workspace names after `switch`/`sw`, `forget`/`rm`, and `rename`, and file
 or directory paths after Compose options such as `-f` and `--project-directory`.
+This includes `--version`, `init --dry-run`, and Compose-selection flags for `validate`.
 
 ## Enable it
 

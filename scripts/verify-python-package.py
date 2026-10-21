@@ -31,6 +31,8 @@ def main():
         workspace = work / "workspace"
         workspace.mkdir()
         config = workspace / "dwork.yml"
+        expected_version = subprocess.check_output(
+            [sys.executable, str(ROOT / "lib/dwork.py"), "--version"], text=True).strip()
         for i, artifact in enumerate(artifacts):
             env = work / ("env-" + str(i))
             venv.EnvBuilder(with_pip=True).create(env)
@@ -38,8 +40,15 @@ def main():
             command = env / "bin/dwork"
             run(python, "-m", "pip", "install", artifact)
             run(command, "--help", cwd=workspace)
+            reported = subprocess.check_output([str(command), "--version"], cwd=workspace, text=True).strip()
+            metadata_version = subprocess.check_output(
+                [str(python), "-c", "from importlib.metadata import version; print('dwork ' + version('dwork-cli'))"],
+                cwd=workspace, text=True).strip()
+            if reported != expected_version or metadata_version != expected_version:
+                raise RuntimeError("CLI and package versions disagree")
             config.write_text("version: 1\ncompose:\n  enabled: false\nbrowsers:\n  - url: http://localhost:3000\n")
             run(command, "--dry-run", cwd=workspace)
+            run(command, "validate", cwd=workspace)
             # Installed console entry point must preserve source CLI failures.
             config.write_text("version: 99\n")
             result = subprocess.run([str(command)], cwd=workspace, capture_output=True, text=True)

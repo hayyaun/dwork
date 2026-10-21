@@ -242,6 +242,19 @@ endpoint. Do not interchange these fields.
 
 ## Preview
 
+Configuration helpers added after 0.3.0:
+
+- `dwork --version` reports the shared package version without reading workspace state.
+- `dwork init [--dry-run]` creates/previews a deterministic local starter. Standard
+  local Compose filenames enable Compose; otherwise it is disabled. Task/browser
+  lists are empty. It refuses existing paths, including links, and never registers
+  or launches anything. Edit custom Compose selections and project commands explicitly.
+- `dwork validate` reuses normal discovery/schema checks, validates task working
+  directories and Compose service references, and returns 0/1 for success/failure.
+  It does not read/write the registry, inspect containers, wait, or launch apps.
+  Compose-enabled validation requires the Compose CLI but no daemon. Host-only
+  validation needs no Docker. Use `doctor` for environment checks.
+
 Run `dwork --dry-run` in the workspace directory. Compose-enabled previews read
 the Compose model and inspect Docker containers, but never stop/start containers,
 wait for health/HTTP readiness, or open terminals/browsers. Read warnings even when the command succeeds:

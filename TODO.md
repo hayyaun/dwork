@@ -29,7 +29,7 @@
 
 ## Configuration experience
 
-- [ ] Add deterministic `dwork init` and standalone `dwork validate`.
+- [x] Add deterministic, non-overwriting `dwork init` with a preview and standalone read-only `dwork validate`.
 - [ ] Improve field-level errors and publish a JSON Schema for editor autocomplete, potentially through SchemaStore.
 
 ## Profiles and selection
@@ -46,7 +46,8 @@
 
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
 - [x] Document existing exit codes: 0 for success, 1 for failures, and 130 for interruption.
-- [ ] Add `--version`, JSON output, and explicit noninteractive behavior preserving confirmation controls.
+- [x] Add `--version` with one version source shared by source/Make installs, package metadata, and release validation.
+- [ ] Add JSON output and explicit noninteractive behavior preserving confirmation controls.
 - [x] Add source and package CI for Linux and macOS.
 - [x] Add a tag-triggered workflow to build and verify Python, Debian, Fedora, and Arch release assets, generate checksums, and create a draft GitHub release.
 - [ ] Add a project changelog and real Linux/WSL desktop smoke tests.

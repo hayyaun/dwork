@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 
 from dwork_common import DworkError, LAUNCHERS, color, colored_name
+from dwork_version import __version__
 import dwork_browsers
 import dwork_config
 import dwork_docker
@@ -12,7 +13,7 @@ import dwork_terminals
 import dwork_workspaces
 
 
-COMMANDS = ("register", "scan", "list", "switch", "rename", "forget", "down", "status", "doctor", "completion")
+COMMANDS = ("init", "validate", "register", "scan", "list", "switch", "rename", "forget", "down", "status", "doctor", "completion")
 ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "up", "ps": "status"}
 
 
@@ -26,7 +27,7 @@ _dwork_complete() {
     local cmd="${COMP_WORDS[1]}" choices candidate
     COMPREPLY=()
     if (( COMP_CWORD == 1 )); then
-        choices='@COMMANDS@ --help --dry-run'
+        choices='@COMMANDS@ --help --version --dry-run'
     elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -f -- "$cur")
         return
@@ -47,9 +48,9 @@ _dwork_complete() {
     else
         case "$cmd" in
             list|ls) choices='--names --help' ;;
-            scan|down) choices='--dry-run --help' ;;
+            init|scan|down) choices='--dry-run --help' ;;
             completion) choices='--help' ;;
-            register|reg|status|ps|doctor) choices='--help -f --file -p --project-name --project-directory --env-file --profile' ;;
+            validate|register|reg|status|ps|doctor) choices='--help -f --file -p --project-name --project-directory --env-file --profile' ;;
             *) choices='--dry-run --help -f --file -p --project-name --project-directory --env-file --profile' ;;
         esac
     fi
@@ -64,7 +65,7 @@ _dwork() {
     local cmd="${words[2]}" prev="${words[CURRENT-1]}"
     local -a names choices
     if (( CURRENT == 2 )); then
-        choices=(@COMMANDS@ --help --dry-run)
+        choices=(@COMMANDS@ --help --version --dry-run)
     elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
         _files
         return
@@ -84,9 +85,9 @@ _dwork() {
     else
         case "$cmd" in
             list|ls) choices=(--names --help) ;;
-            scan|down) choices=(--dry-run --help) ;;
+            init|scan|down) choices=(--dry-run --help) ;;
             completion) choices=(--help) ;;
-            register|reg|status|ps|doctor) choices=(--help -f --file -p --project-name --project-directory --env-file --profile) ;;
+            validate|register|reg|status|ps|doctor) choices=(--help -f --file -p --project-name --project-directory --env-file --profile) ;;
             *) choices=(--dry-run --help -f --file -p --project-name --project-directory --env-file --profile) ;;
         esac
     fi
@@ -155,6 +156,11 @@ def doctor(directory, options):
 
 def main():
     options = list(sys.argv[1:])
+    if "--version" in options:
+        if options != ["--version"]:
+            raise DworkError("Usage: dwork --version")
+        print("dwork " + __version__)
+        return 0
     command = options.pop(0) if options and options[0] in (*COMMANDS, *ALIASES) else "activate"
     mode = ALIASES.get(command, command)
     preview = bool(options and options[0] == "--dry-run")
@@ -162,6 +168,9 @@ def main():
         options = options[1:]
     if options and options[0] in ("--help", "-h"):
         print("Usage: dwork [--dry-run] [Docker Compose global options]")
+        print("       dwork --version")
+        print("       dwork init [--dry-run]")
+        print("       dwork validate [Docker Compose global options]")
         print("       dwork register [NAME] [Docker Compose global options]")
         print("       dwork scan [--dry-run]")
         print("       dwork list | forget NAME")
@@ -172,6 +181,8 @@ def main():
         print("       dwork list --names | completion bash|zsh")
         print("Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status.")
         print("register: remember without switching; list: show remembered directories and status.")
+        print("init: create a minimal local dwork.yml without overwriting; --dry-run previews it.")
+        print("validate: check configuration and Compose references without inspecting running workloads.")
         print("scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories.")
         print("switch: activate a remembered workspace; forget: remove only its registration.")
         print("down: stop registered containers on this Docker target and locally tracked commands; respect exclusions.")
@@ -192,6 +203,17 @@ def main():
         print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()
+    if mode == "init":
+        if options:
+            raise DworkError("Usage: dwork init [--dry-run]")
+        return dwork_config.init_workspace(directory, preview)
+    if mode == "validate":
+        if preview:
+            raise DworkError("Usage: dwork validate [Docker Compose global options]; validation is already read-only.")
+        workspaces, _ = dwork_config.discover(directory, options)
+        for workspace in workspaces:
+            print("Valid workspace configuration: " + str(workspace.directory))
+        return 0
     if mode == "completion":
         if preview or len(options) != 1:
             raise DworkError("Usage: dwork completion bash|zsh")

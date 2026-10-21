@@ -76,6 +76,22 @@ configuration when dwork is available. The skill is separate from `make install`
 
 ## Use it
 
+Check the version, generate a starter, and validate it:
+
+```sh
+dwork --version
+dwork init --dry-run  # Preview a minimal local dwork.yml
+dwork init           # Create it without overwriting existing files
+dwork validate       # Check configuration without switching
+```
+
+`init` enables Compose only when a standard Compose filename exists in the current
+directory; otherwise it creates a host-only config. Commands and browser URLs start
+empty. `validate` checks schema, working directories, and Compose references without
+registering, inspecting containers, or opening applications. Compose-enabled validation
+needs Docker Compose CLI, but not a running Docker daemon. Use `doctor` to check
+runtime and desktop prerequisites. These helpers were added after release 0.3.0.
+
 ```sh
 cd your-project
 dwork --dry-run   # Preview the plan

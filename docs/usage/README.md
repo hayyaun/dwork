@@ -54,6 +54,39 @@ containers, networks, or volumes. Current-project containers already running are
 left running. Containers without a Compose project label are left alone.
 Unregistered Compose projects are also left running.
 
+### Version, initialization, and validation
+
+```sh
+dwork --version
+dwork init --dry-run
+dwork init
+dwork validate
+```
+
+`--version` prints `dwork VERSION` without reading project configuration, the
+registry, or Docker. It reports the shared package version, including source and
+Make installations; it is not a Git commit identifier.
+
+`init` creates `dwork.yml` in the current directory. Its contents are deterministic:
+`version: 1`, Compose enabled if a standard Compose filename exists locally,
+and empty `terminals`/`browsers` lists. It does not parse Compose files, infer
+commands, inspect parents or environment selections, or invoke Docker. Edit
+custom Compose files and tasks afterward. Existing files, directories, and even
+broken symlinks are never overwritten. `init --dry-run` previews the same YAML
+without writing. Neither form registers or activates the workspace.
+
+`validate` reuses normal config discovery and validation, including ancestor
+configs and discovered children. It checks supported fields, types, task working
+directories, and Compose service references. Compose-only workspaces are accepted.
+It accepts the same Compose selection options as `doctor`, for example
+`dwork validate -f compose.dev.yaml`. Compose-enabled validation runs only
+`docker compose config`; the CLI is required, the daemon is not. Host-only
+validation needs no Docker. It never reads/writes the registry, inspects containers,
+checks health or desktop dependencies, prompts, or launches commands/browsers.
+Success returns 0 and validation errors return 1. Use `doctor` for environment
+diagnostics and `--dry-run` for the switch plan; `validate --dry-run` is unnecessary
+and rejected. These commands were added after release 0.3.0.
+
 ### Remember and switch workspaces
 
 ```sh

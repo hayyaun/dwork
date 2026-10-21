@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dwork-cli"
-version = "0.3.0"
+dynamic = ["version"]
 description = "Switch development workspaces, resume existing containers, and launch terminals and browsers"
 readme = "packaging/python/PYPI_README.md"
 requires-python = ">=3.10"
@@ -42,5 +42,9 @@ py-modules = [
   "dwork_terminals",
   "dwork_browsers",
   "dwork_workspaces",
+  "dwork_version",
 ]
 package-dir = {"" = "lib"}
+
+[tool.setuptools.dynamic]
+version = {attr = "dwork_version.__version__"}
