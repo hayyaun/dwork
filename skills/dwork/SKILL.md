@@ -113,6 +113,9 @@ rejects a field, check its version/docs rather than bypassing validation.
 Use `dwork doctor` for dependency diagnostics when needed; it checks opener
 availability without probing HTTP or launching applications. A dry run or doctor
 success does not prove that a server will become ready or a GUI will render.
+For task shutdown failures, record the platform, Python/package versions, and
+exact error. Preserve the authenticated task-controller records; do not replace
+`dwork down` with signals sent to saved PIDs.
 
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new

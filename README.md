@@ -108,8 +108,8 @@ Use `dwork down --dry-run` to preview shutdown. `down` respects
 `DWORK_KEEP_PROJECTS` and locked workspaces, and keeps containers, networks, and volumes for next time.
 
 Tracked terminal commands stop while their windows stay open at a shell prompt.
-Detached tasks (`window: none`) stop too. Commands launched before upgrading to
-this version are not tracked. [Task lifecycle details →](docs/terminals/README.md#tracked-commands-and-shutdown)
+Detached tasks (`window: none`) stop too. Commands started outside dwork or by
+versions without task tracking are not tracked. [Task lifecycle details →](docs/terminals/README.md#tracked-commands-and-shutdown)
 
 Keep a workspace running through every switch and `down` by adding this to its `dwork.yml`:
 

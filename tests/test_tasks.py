@@ -104,6 +104,102 @@ class TaskTests(unittest.TestCase):
                                        if r["token"] not in previous])[0]
         return process, record
 
+    def test_group_keeper_joins_exited_command_and_survives_until_final_group_kill(self):
+        child = os.posix_spawn(sys.executable,
+            [sys.executable, "-c", "raise SystemExit(7)"], os.environ, setpgroup=0)
+        owned = {child}
+        control = None
+        try:
+            self.wait_for(lambda: os.waitid(os.P_PID, child,
+                          os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            keeper, control = dwork_tasks.start_group_keeper(child)
+            owned.add(keeper)
+            # Reaping the real command must not release the owned group identity.
+            _, status = os.waitpid(child, 0)
+            owned.remove(child)
+            self.assertEqual(os.waitstatus_to_exitcode(status), 7)
+            self.assertEqual(os.getpgid(keeper), child)
+            os.killpg(child, signal.SIGTERM)
+            os.killpg(child, signal.SIGCONT)
+            self.assertIsNone(os.waitid(os.P_PID, keeper,
+                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            os.killpg(child, signal.SIGKILL)
+            self.wait_for(lambda: os.waitid(os.P_PID, keeper,
+                          os.WEXITED | os.WNOHANG | os.WNOWAIT))
+            _, status = os.waitpid(keeper, 0)
+            owned.remove(keeper)
+            self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
+        finally:
+            if control is not None:
+                os.close(control)
+            for pid in owned:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.waitpid(pid, 0)
+
+    def test_group_keeper_kills_task_when_supervisor_ownership_pipe_closes(self):
+        marker = self.root / "group-child-ready"
+        code = "import pathlib,time; pathlib.Path(" + repr(str(marker)) + ").touch(); time.sleep(60)"
+        child = os.posix_spawn(sys.executable, [sys.executable, "-c", code],
+                               os.environ, setpgroup=0)
+        owned = {child}
+        control = None
+        try:
+            keeper, control = dwork_tasks.start_group_keeper(child)
+            owned.add(keeper)
+            self.wait_for(marker.exists)
+            os.close(control)
+            control = None
+            # The command cannot keep the supervisor's ownership writer open.
+            for pid in (child, keeper):
+                self.wait_for(lambda: os.waitid(os.P_PID, pid,
+                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+                _, status = os.waitpid(pid, 0)
+                owned.remove(pid)
+                self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
+        finally:
+            if control is not None:
+                os.close(control)
+            for pid in owned:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.waitpid(pid, 0)
+
+    def test_group_keeper_kills_task_if_supervisor_exits_before_readiness_ack(self):
+        child = os.posix_spawn(sys.executable,
+            [sys.executable, "-c", "import time; time.sleep(60)"], os.environ, setpgroup=0)
+        owned = {child}
+        read_ack, write_ack = os.pipe()
+        os.close(read_ack)
+        try:
+            # No ACK reader remains: the keeper must clean up even if its first
+            # write fails before it can observe EOF on the ownership pipe.
+            keeper = os.posix_spawn(sys.executable,
+                [sys.executable, str(Path(dwork_tasks.__file__).resolve()), "--group-keeper"],
+                os.environ, setpgroup=child, file_actions=[
+                    (os.POSIX_SPAWN_OPEN, 0, os.devnull, os.O_RDONLY, 0),
+                    (os.POSIX_SPAWN_DUP2, write_ack, 1),
+                    (os.POSIX_SPAWN_CLOSE, write_ack)])
+            owned.add(keeper)
+            for pid in (child, keeper):
+                self.wait_for(lambda: os.waitid(os.P_PID, pid,
+                              os.WEXITED | os.WNOHANG | os.WNOWAIT))
+                _, status = os.waitpid(pid, 0)
+                owned.remove(pid)
+                self.assertEqual(os.waitstatus_to_exitcode(status), -signal.SIGKILL)
+        finally:
+            os.close(write_ack)
+            for pid in owned:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.waitpid(pid, 0)
+
     def test_cli_tracks_background_and_down_preview_decline_lock_rename_and_stop(self):
         # Exercise the actual launch path, including owner information assigned by dwork.
         config = {"version": 1, "compose": {"enabled": False}, "terminals": [{
@@ -268,6 +364,15 @@ class TaskTests(unittest.TestCase):
         self.check_visible_terminal()
 
     def test_visible_zsh_task_returns_to_an_ordinary_shell(self):
+        self.check_visible_zsh()
+
+    def test_macos_keeper_preserves_bash_foreground_input_stop_and_shell_handoff(self):
+        self.check_visible_terminal(force_macos=True)
+
+    def test_macos_keeper_preserves_zsh_foreground_input_stop_and_shell_handoff(self):
+        self.check_visible_zsh(force_macos=True)
+
+    def check_visible_zsh(self, force_macos=False):
         shell = shutil.which("zsh")
         if not shell:
             self.skipTest("Zsh unavailable")
@@ -279,7 +384,7 @@ class TaskTests(unittest.TestCase):
         self.shell.chmod(0o755)
         self.env.update(SHELL=str(self.shell), ZDOTDIR=str(self.fixture.base))
         with patch.dict(os.environ, self.env):
-            self.check_visible_terminal()
+            self.check_visible_terminal(force_macos=force_macos)
 
     def test_controller_failure_reports_incomplete_and_leaves_containers_alone(self):
         (self.root / "dwork.yml").write_text("version: 1\n")
@@ -300,10 +405,18 @@ class TaskTests(unittest.TestCase):
             docker.assert_not_called()
         self.assertIsNone(process.poll())
 
-    def check_visible_terminal(self):
+    def check_visible_terminal(self, force_macos=False):
         import pty
         task = self.task([sys.executable, "-c", "import time; print(input('TASK_INPUT>'),flush=True); time.sleep(60)"], True)
         args = dwork_terminals.task_command(task)
+        if force_macos:
+            # Exercise the complete keeper branch on Linux as well as Darwin.
+            # The public POSIX APIs used by that branch are available on both.
+            code = ("import base64,json,sys; sys.path.insert(0," + repr(str(
+                    Path(dwork_tasks.__file__).parent)) + "); import dwork_tasks; "
+                    "dwork_tasks.sys.platform='darwin'; dwork_tasks.require_support=lambda:None; "
+                    "sys.exit(dwork_tasks.supervise(json.loads(base64.urlsafe_b64decode(sys.argv[1]))))")
+            args = [args[0], "-c", code, args[2]]
         pid, master = pty.fork()
         if pid == 0:
             os.execve(args[0], args, self.env)

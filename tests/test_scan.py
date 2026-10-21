@@ -270,7 +270,14 @@ class ScanTests(unittest.TestCase):
                             break
                     self.assertEqual(process.poll(), 0, output.decode(errors="replace"))
                     self.assertIn("PICKER_RESULT:" + expected, output.decode(errors="replace"))
-                    self.assertEqual(termios.tcgetattr(slave), original)
+                    restored, expected_settings = termios.tcgetattr(slave), original.copy()
+                    if sys.platform == "darwin":
+                        # macOS sets this queue-state bit when canonical input
+                        # is restored; the next read/input clears it. Compare
+                        # every persistent setting, including ICANON and ECHO.
+                        restored[3] &= ~termios.PENDIN
+                        expected_settings[3] &= ~termios.PENDIN
+                    self.assertEqual(restored, expected_settings)
                 finally:
                     if process.poll() is None:
                         process.kill()

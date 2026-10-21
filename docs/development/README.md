@@ -47,6 +47,10 @@ tests explicitly prepare registrations; `test_registry.py` covers first-run cons
 ownership boundaries, saved selections, target changes, missing directories, and locks.
 `test_scan.py` covers recursive registration and exercises the checkbox picker in
 a real pseudo-terminal, including keyboard navigation and terminal restoration.
+The restoration check compares all terminal settings except macOS's transient
+`PENDIN` input-queue state. Completion tests reap their own interactive shells
+after checking real Tab input. Direct-import tests use the fixture's fake Docker;
+confirmation tests select a fake native terminal adapter for the runner's OS.
 `test_locked.py` checks live lock policy and protection during switching/shutdown.
 `test_tasks.py` starts short-lived harmless processes to verify authenticated
 controllers, process-group shutdown, protected workspaces, cancelled previews,
@@ -54,6 +58,12 @@ and returning a real pseudo-terminal to an ordinary usable shell.
 Task supervision uses documented [POSIX process APIs](https://docs.python.org/3/library/os.html)
 (`posix_spawn`, `waitid` with `WNOWAIT`, `killpg`, and terminal foreground groups)
 and [Unix sockets](https://docs.python.org/3/library/socket.html), with no GUI process-tree parsing.
+On macOS, an owned helper joins the command's process group and stays alive
+through its final cleanup signal. This avoids treating a zombie-only group's
+permission error as success. The supervisor retains the unreaped command until
+cleanup, and a private pipe makes the helper clean up the group if its supervisor
+exits. Group creation and joining use the documented
+[`posix_spawn` process-group attribute](https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn.html).
 
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.

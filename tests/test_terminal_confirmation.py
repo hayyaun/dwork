@@ -1,6 +1,7 @@
-"""Session consent behavior for both platforms; fake launchers only."""
+"""Session consent behavior for native and Windows adapters; fake launchers only."""
 import base64
 import json
+import sys
 import unittest
 import test_dwork as legacy
 
@@ -10,7 +11,9 @@ class TerminalConfirmationTests(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
-        for name, label in (("gnome-terminal", "linux-terminal"), ("powershell.exe", "powershell")):
+        self.native_launcher = "apple-terminal" if sys.platform == "darwin" else "gnome-terminal"
+        for name, label in (("gnome-terminal", "linux-terminal"), ("osascript", "apple-terminal"),
+                            ("powershell.exe", "powershell")):
             path = self.fixture.bin / name
             path.write_text("""#!/usr/bin/env python3
 import json, os, sys
@@ -37,13 +40,13 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
             shell, args=args, answer=answer, SHELL="/bin/bash",
             WSL_DISTRO_NAME="Ubuntu" if launcher == "windows-terminal" else "",
             DISPLAY=":test", WAYLAND_DISPLAY="")
-        launches = [call for call in calls if call[0] == "linux-terminal"
+        launches = [call for call in calls if call[0] in ("linux-terminal", "apple-terminal")
                     or (call[0] == "powershell" and "-EncodedCommand" in call)]
         return result, launches, calls
 
     def cases(self):
         return [(shell, launcher) for shell in self.fixture.shells
-                for launcher in ("windows-terminal", "gnome-terminal")]
+                for launcher in ("windows-terminal", self.native_launcher)]
 
     def test_default_decline_empty_and_eof_skip(self):
         for shell, launcher in self.cases():
@@ -105,10 +108,10 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
 
     def test_yaml_option_requires_boolean(self):
         for value in ("false", 0, None):
-            self.write_config("gnome-terminal", [value])
+            self.write_config(self.native_launcher, [value])
             for shell in self.fixture.shells:
                 with self.subTest(shell=shell, value=value):
-                    result, launches, calls = self.run_case(shell, "gnome-terminal")
+                    result, launches, calls = self.run_case(shell, self.native_launcher)
                     self.assertEqual(result.returncode, 1)
                     self.assertIn("terminal.confirm must be true or false", result.stderr)
                     self.assertEqual(calls, [])
@@ -116,8 +119,8 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
     def test_child_discovery_consent_does_not_approve_session(self):
         for shell in self.fixture.shells:
             child = self.root / "backend"
-            self.write_config("gnome-terminal", ["default"], child)
-            result, launches, _ = self.run_case(shell, "gnome-terminal", "y\nn\n")
+            self.write_config(self.native_launcher, ["default"], child)
+            result, launches, _ = self.run_case(shell, self.native_launcher, "y\nn\n")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("Switch all listed projects together? (y/N)", result.stdout)
             self.assertIn("Skipped terminal: Session1", result.stdout)

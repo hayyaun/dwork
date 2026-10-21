@@ -3,8 +3,9 @@ dwork (0.3.0-1) unstable; urgency=medium
   * Add macOS support using Apple Terminal and native browser launching.
   * Add custom browsers, optional readiness checks, and confirmation controls.
   * Update workspace guidance and Linux/macOS package verification.
+  * Correct macOS task-group cleanup and portable terminal test fixtures.
 
- -- Hayyan Hami <hayyaun@users.noreply.github.com>  Wed, 21 Oct 2026 12:00:00 +0330
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Wed, 21 Oct 2026 06:19:02 +0330
 
 dwork (0.2.0-1) unstable; urgency=medium
 

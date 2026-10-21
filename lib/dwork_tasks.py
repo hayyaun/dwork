@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import select
 import signal
 import socket
 import sys
@@ -68,6 +69,64 @@ def arguments(task, state, shell):
     return [sys.executable, str(Path(__file__).resolve()), encoded]
 
 
+def group_keeper():
+    """Keep an owned process alive until group cleanup, or kill the group on EOF."""
+    try:
+        for signum in (signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT,
+                       signal.SIGTTIN, signal.SIGTTOU, signal.SIGTSTP):
+            signal.signal(signum, signal.SIG_IGN)
+        signal.pthread_sigmask(signal.SIG_SETMASK, ())
+        os.write(1, b"1")
+        os.close(1)
+        # Only the supervisor owns the writing end. Its exit must not orphan tasks.
+        while os.read(0, 1):
+            pass
+    finally:
+        # Also covers a supervisor exiting before it receives the readiness ACK.
+        os.killpg(os.getpgrp(), signal.SIGKILL)
+
+
+def start_group_keeper(group):
+    """Join the owned child's existing group with a member kept alive for cleanup."""
+    ready_read, ready_write = os.pipe()
+    control_read, control_write = os.pipe()
+    keeper = None
+    ready = False
+    try:
+        actions = [(os.POSIX_SPAWN_DUP2, control_read, 0),
+                   (os.POSIX_SPAWN_DUP2, ready_write, 1)]
+        actions.extend((os.POSIX_SPAWN_CLOSE, fd) for fd in
+                       (ready_read, ready_write, control_read, control_write))
+        keeper = os.posix_spawn(sys.executable,
+            [sys.executable, str(Path(__file__).resolve()), "--group-keeper"],
+            os.environ, setpgroup=group, file_actions=actions,
+            # An interactive shell can stop its background group before the
+            # keeper finishes starting. Block those signals until it ignores them.
+            setsigmask=(signal.SIGHUP, signal.SIGTERM, signal.SIGINT, signal.SIGQUIT,
+                        signal.SIGTTIN, signal.SIGTTOU, signal.SIGTSTP))
+        os.close(control_read)
+        control_read = None
+        os.close(ready_write)
+        ready_write = None
+        if not select.select([ready_read], [], [], 5)[0] or os.read(ready_read, 1) != b"1":
+            raise DworkError("Task process-group keeper did not become ready")
+        ready = True
+        return keeper, control_write
+    finally:
+        for fd in (ready_read, ready_write, control_read):
+            if fd is not None:
+                os.close(fd)
+        if not ready:
+            os.close(control_write)
+            if keeper is not None:
+                try:
+                    os.kill(keeper, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                finally:
+                    os.waitpid(keeper, 0)
+
+
 def supervise(spec):
     import shlex
     require_support()
@@ -88,6 +147,8 @@ def supervise(spec):
         signal.signal(signum, interrupted)
 
     pid = None
+    keeper = None
+    keeper_control = None
     record_path = None
     exit_code = 0
 
@@ -96,8 +157,17 @@ def supervise(spec):
         return os.waitid(os.P_PID, pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is not None
 
     def stop_group():
-        nonlocal pid
+        nonlocal pid, keeper, keeper_control
         if pid is None:
+            if keeper is not None:
+                try:
+                    os.kill(keeper, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.waitpid(keeper, 0)
+                keeper = None
+                os.close(keeper_control)
+                keeper_control = None
             return
         for signum in (signal.SIGTERM, signal.SIGCONT):
             try:
@@ -113,6 +183,11 @@ def supervise(spec):
             pass
         os.waitpid(pid, 0)
         pid = None
+        if keeper is not None:
+            os.waitpid(keeper, 0)
+            keeper = None
+            os.close(keeper_control)
+            keeper_control = None
 
     try:
         state = Path(spec["state"]) / "tasks"
@@ -132,6 +207,12 @@ def supervise(spec):
                                      setsigdef=(signal.SIGINT, signal.SIGQUIT, signal.SIGTERM,
                                                 signal.SIGHUP, signal.SIGTTOU, signal.SIGTTIN,
                                                 signal.SIGTSTP, signal.SIGPIPE))
+                # Darwin cannot signal a zombie-only group. A live owned member
+                # stays through the final signal, without hiding genuine EPERM.
+                # The unreaped command reserves the group even if it exits before
+                # the keeper joins. Keep PID=PGID for interactive shell job control.
+                if sys.platform == "darwin":
+                    keeper, keeper_control = start_group_keeper(pid)
                 if visible:
                     os.tcsetpgrp(0, pid)
                     os.killpg(pid, signal.SIGCONT)
@@ -185,6 +266,9 @@ def supervise(spec):
 
 if __name__ == "__main__":
     try:
+        if sys.argv[1:] == ["--group-keeper"]:
+            group_keeper()
+            sys.exit(0)
         sys.exit(supervise(json.loads(base64.urlsafe_b64decode(sys.argv[1]))))
     except (DworkError, OSError, ValueError, KeyError, TypeError) as error:
         print("dwork task: " + str(error), file=sys.stderr)

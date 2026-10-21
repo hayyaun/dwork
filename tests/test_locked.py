@@ -159,7 +159,8 @@ class LockedTests(unittest.TestCase):
             self.configure(infra, "infra", True)
             return True
         items = [legacy.container("a", "infra", state="running"), legacy.container("b", "app")]
-        with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}), \
+        with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state"),
+                                    "PATH": str(self.fixture.bin) + os.pathsep + os.environ["PATH"]}), \
                 patch.object(dwork_config, "discover", return_value=([dwork_common.Workspace("app", app, {"web": {}})], False)), \
                 patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
                 patch.object(dwork_docker, "show_target"), patch.object(dwork_docker, "inventory", return_value=items), \
