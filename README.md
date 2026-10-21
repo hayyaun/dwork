@@ -215,3 +215,6 @@ shares that configuration; an ignore rule does not untrack an existing file.
 
 Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
 GUI behavior has not been visually verified in the WSL development environment.
+Routine macOS CI runs source/package tests on Python 3.13 and Homebrew verification
+on Apple Silicon. Release tags and manual package verification also cover Python
+3.14 and Intel Macs. [CI coverage →](docs/development/README.md#ci-coverage)

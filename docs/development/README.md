@@ -59,6 +59,21 @@ Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.
 The default venv installation is additionally smoke-tested in a temporary prefix.
 
+## CI coverage
+
+The Package verification workflow runs on pull requests and pushes to `main`.
+Routine macOS coverage is two jobs on Apple Silicon (`macos-15`): source tests
+and Python package verification on Python 3.13, plus Homebrew formula verification.
+Linux keeps Python 3.10/3.14, Debian, and Homebrew coverage.
+
+Pushing a release tag matching `vMAJOR.MINOR.PATCH`, or manually running
+**Package verification** through `workflow_dispatch`, expands the matrix with
+Apple Silicon Python 3.14, Intel Python 3.14, and Intel Homebrew checks. These
+checks run alongside the separate draft-release workflow on release tags.
+Intel-specific failures may therefore be detected at release/manual verification
+rather than on every pull request. No workflow launches real GUI applications
+or development servers.
+
 ## Agent skill
 
 [`skills/dwork/`](../../skills/dwork/) is the portable, separately installable

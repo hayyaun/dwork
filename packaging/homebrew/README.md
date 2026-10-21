@@ -36,9 +36,11 @@ and any optional graphical terminal are still installed separately.
 
 The formula test parses a host-only YAML config and previews a workspace. It
 never starts Docker, development servers, or GUI terminals.
-Package CI tests the stable formula on Linux and macOS (Apple Silicon and Intel).
-The separate Python CI matrix verifies the current checkout on macOS 3.13/3.14;
-fetching remote HEAD would not verify unpublished pull-request changes.
+Routine package CI tests the stable formula on Linux and Apple Silicon macOS.
+Intel Homebrew verification runs for release tags and manual Package verification
+runs. Source/package tests use macOS Python 3.13 routinely, adding Apple Silicon
+and Intel Python 3.14 on tags/manual runs. Fetching remote HEAD would not verify
+unpublished pull-request changes; the source tests use the actual checkout.
 
 ## Publish your tap
 

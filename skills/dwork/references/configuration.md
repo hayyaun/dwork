@@ -245,3 +245,8 @@ browsers. Field validation depends on the installed runtime: older releases may
 lack these capabilities. Check the installed release's documentation; a feature
 present only on main requires a release that includes it, or Homebrew's supported
 `--HEAD` option when deliberately choosing development source.
+
+Upstream routine macOS CI covers Apple Silicon with Python 3.13 source/package
+tests and a Homebrew job. Python 3.14 and Intel checks run on release tags or manual
+Package verification runs. Do not describe passing routine CI as Intel validation
+or real GUI verification.
