@@ -24,8 +24,8 @@ def task_protection(record, entries, keep):
                    and m["project"] == record["project"]), None)
     if member is None:
         return "workspace ownership changed"
-    if member.get("locked", False):
-        return "locked"
+    if dwork_registry.member_locked(entry, member):
+        return "temporarily locked" if entry.get("temporary_locked", False) else "locked"
     if member["project"] in keep:
         return "DWORK_KEEP_PROJECTS"
     return None
@@ -233,6 +233,8 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     name = name or (existing["name"] if existing else default_name)
     dwork_registry.validate_workspace_name(name)
     candidate = dwork_registry.registration(directory, options, workspaces, target, name, direct=direct)
+    if existing and "temporary_locked" in existing:
+        candidate["temporary_locked"] = existing["temporary_locked"]
     if any(e["name"] == name and e["path"] != candidate["path"] for e in entries):
         raise DworkError("Workspace name already registered: " + name + ". Use dwork register NAME with a unique name.")
     dwork_registry.check_ownership(entries, candidate)

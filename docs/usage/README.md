@@ -98,6 +98,8 @@ dwork list               # NAME / STATUS / LOCKED / PATH table (alias: ls)
 dwork switch my-app      # Activate the saved workspace from anywhere
 dwork switch my-app --dry-run
 dwork rename my-app api   # Rename to an available workspace name
+dwork lock api infra     # Keep these workspaces running until explicitly unlocked
+dwork unlock api         # Release api's temporary protection; keep YAML policy
 dwork down                # Stop all registered workloads on this Docker target
 dwork forget my-app      # Remove only the registration
 ```
@@ -116,6 +118,14 @@ default; Esc cancels selection. The command never starts/stops containers or ope
 development terminals. Use `dwork scan --dry-run` to preview without writing or
 prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).
 
+`lock NAME...` and `unlock NAME...` change only your local registration state.
+They protect containers and tracked commands through switches and `down`, for
+every member of a registered group. Locks survive shell restarts until explicitly
+released; `unlock` still respects YAML `locked: true` and `DWORK_KEEP_PROJECTS`.
+Use `--dry-run` before or after the names to preview. They make no Docker calls
+and work even when a workspace directory is missing. `ls` shows `temporary` in
+the lock column. See [temporary locks](../workspaces/README.md#temporary-locks).
+
 ### Stop all registered workloads
 
 Plain `dwork` in a registered workspace and `dwork up` show the current workspace
@@ -133,7 +143,8 @@ dwork down
 Run from any directory. `down` stops running, restarting, and paused containers
 managed by all registered workspaces on the current Docker target in one Docker
 stop call. Registered service selections and `DWORK_KEEP_PROJECTS` still apply;
-workspaces with `locked: true` and unregistered projects stay running. It does not remove containers, networks,
+workspaces with `locked: true` or temporary CLI locks and unregistered projects
+stay running. It does not remove containers, networks,
 volumes, or registrations. It also stops commands launched through this version of
 dwork, leaving visible terminal windows at a shell prompt. Locked tasks and
 `DWORK_KEEP_PROJECTS` exclusions remain running. The Docker daemon/WSL VM remain

@@ -78,6 +78,11 @@ invent service names, commands, health checks, or folders.
   schema; continue using `dwork validate` for paths and Compose references.
 - Use top-level `locked: true` when the user wants the workspace kept running
   through switches and `dwork down`. It remains listed and can still be activated.
+- For temporary local protection, use `dwork lock NAME...` with registered names
+  instead of editing YAML. It lasts until `dwork unlock NAME...`, survives shell
+  restarts, and protects every member of a registered group. Unlocking preserves
+  YAML locks and `DWORK_KEEP_PROJECTS`. Check runtime support (added after 0.3.0),
+  preview with `--dry-run`, and obtain authorization before changing local locks.
 - Keep workspace activation confirmation enabled by default. Use root-level
   `confirm: false` only when the user explicitly opts out and the installed
   runtime supports it (added after 0.3.0). It skips the plain `dwork`/`up` plan

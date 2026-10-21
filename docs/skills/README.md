@@ -120,7 +120,9 @@ workspaces' tracked commands before their containers and before asking about new
 terminal launches. Containers are scoped to the current Docker target; local
 tracked commands are considered across saved targets. Browser entries
 ask separately after terminal tasks dispatch. Unregistered projects stay running;
-use `DWORK_KEEP_PROJECTS` or `locked: true` for workspaces you want to keep running.
+use `DWORK_KEEP_PROJECTS`, `locked: true`, or `dwork lock NAME...` for workspaces
+you want to keep running. Temporary CLI locks last until `dwork unlock NAME...`
+and preserve YAML policy.
 
 The skill also considers whether `dwork.yml` is personal workspace configuration.
 It suggests ignoring personal configs with a scoped `.gitignore` entry and asks

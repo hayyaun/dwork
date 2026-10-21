@@ -37,6 +37,8 @@ def read_registry():
         for entry in data["workspaces"]:
             if "direct" in entry and type(entry["direct"]) is not bool:
                 raise ValueError()
+            if "temporary_locked" in entry and type(entry["temporary_locked"]) is not bool:
+                raise ValueError()
             if (not isinstance(entry["name"], str) or not entry["name"]
                     or not isinstance(entry["path"], str) or not Path(entry["path"]).is_absolute()
                     or entry["name"] in names or entry["path"] in paths
@@ -138,9 +140,44 @@ def refresh_locks(entries):
     return changed
 
 
+def member_locked(entry, member):
+    """Local workspace holds add protection without replacing YAML lock policy."""
+    return entry.get("temporary_locked", False) or member.get("locked", False)
+
+
+def set_temporary_locks(entries, names, locked, preview=False):
+    """Validate the whole batch before saving; callers serialize real updates."""
+    names = list(dict.fromkeys(names))
+    selected = {entry["name"]: entry for entry in entries}
+    missing = [name for name in names if name not in selected]
+    if missing:
+        raise DworkError("Unknown workspace(s): " + ", ".join(missing) + ". Run dwork list; nothing changed.")
+    if preview:
+        for name in names:
+            print(("Would temporarily lock " if locked else "Would remove temporary lock from ")
+                  + colored_name(name) + ".")
+        return 0
+    changed = False
+    for name in names:
+        entry = selected[name]
+        if entry.get("temporary_locked", False) != locked:
+            changed = True
+            if locked:
+                entry["temporary_locked"] = True
+            else:
+                entry.pop("temporary_locked", None)
+    if changed:
+        save_registry(entries)
+    for name in names:
+        print(("Temporarily locked " if locked else "Removed temporary lock from ") + colored_name(name) + ".")
+    print("Protected until dwork unlock; dwork.yml files were left unchanged." if locked
+          else "Configured dwork.yml locks still apply; project files were left unchanged.")
+    return 0
+
+
 def locked_projects(entries, target):
     return sorted({m["project"] for e in entries if e["target"] == target
-                   for m in e["members"] if m["enabled"] and m.get("locked", False)})
+                   for m in e["members"] if m["enabled"] and member_locked(e, m)})
 
 
 def check_ownership(entries, candidate):
@@ -162,7 +199,7 @@ def registered_services(entries, target):
         if entry["target"] != target:
             continue
         for member in entry["members"]:
-            if member["enabled"] and not member.get("locked", False):
+            if member["enabled"] and not member_locked(entry, member):
                 project = member["project"]
                 if project in managed:
                     raise DworkError("Ambiguous registered Compose project: " + project + "; nothing changed.")
@@ -172,7 +209,7 @@ def registered_services(entries, target):
 
 def confirm_registration(entry):
     print("Register workspace " + colored_name(entry["name"], repr(entry["name"])) + " at " + entry["path"] + "?")
-    if all(m.get("locked", False) for m in entry["members"]):
+    if all(member_locked(entry, m) for m in entry["members"]):
         print("This workspace is locked; switches and down will leave its containers and tracked commands running.")
     else:
         print("Future switches may stop its unlocked managed containers and tracked commands. Unregistered projects stay running.")
@@ -219,6 +256,8 @@ def list_registrations(entries):
         protected = [m["project"] for m in entry["members"] if m.get("locked", False)]
         locked = "yes" if len(entry["members"]) == 1 and protected else (
             ", ".join(protected) if protected else "-")
+        if entry.get("temporary_locked", False):
+            locked = "temporary" + (" + " + ", ".join(protected) if protected else "")
         # Keep each workspace on one line, even when a filesystem path contains
         # tabs, newlines, or terminal control characters.
         cells = ["".join(char if char.isprintable() else repr(char)[1:-1] for char in value)

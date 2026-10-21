@@ -13,7 +13,7 @@ import dwork_terminals
 import dwork_workspaces
 
 
-COMMANDS = ("init", "validate", "register", "scan", "list", "switch", "rename", "forget", "down", "status", "doctor", "completion")
+COMMANDS = ("init", "validate", "register", "scan", "list", "switch", "rename", "forget", "lock", "unlock", "down", "status", "doctor", "completion")
 ALIASES = {"reg": "register", "ls": "list", "sw": "switch", "rm": "forget", "up": "up", "ps": "status"}
 
 
@@ -34,6 +34,14 @@ _dwork_complete() {
     elif [[ "$prev" == --project-directory ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -d -- "$cur")
         return
+    elif [[ "$cmd" == lock || "$cmd" == unlock ]]; then
+        if [[ "$cur" != -* ]]; then
+            while IFS= read -r candidate; do
+                [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
+            done < <(dwork list --names 2>/dev/null)
+            return
+        fi
+        choices='--dry-run --help'
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( COMP_CWORD == 2 )) && [[ "$cur" != -* ]]; then
             while IFS= read -r candidate; do
@@ -72,6 +80,13 @@ _dwork() {
     elif [[ "$prev" == --project-directory ]]; then
         _files -/
         return
+    elif [[ "$cmd" == lock || "$cmd" == unlock ]]; then
+        if [[ "$PREFIX" != -* ]]; then
+            names=("${(@f)$(dwork list --names 2>/dev/null)}")
+            (( ${#names} )) && compadd -- "${names[@]}"
+            return
+        fi
+        choices=(--dry-run --help)
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( CURRENT == 3 )) && [[ "$PREFIX" != -* ]]; then
             names=("${(@f)$(dwork list --names 2>/dev/null)}")
@@ -176,6 +191,8 @@ def main():
         print("       dwork list | forget NAME")
         print("       dwork switch NAME [--dry-run]")
         print("       dwork rename NAME NEW_NAME")
+        print("       dwork lock NAME... [--dry-run]")
+        print("       dwork unlock NAME... [--dry-run]")
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
@@ -185,6 +202,7 @@ def main():
         print("validate: check configuration and Compose references without inspecting running workloads.")
         print("scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories.")
         print("switch: activate a remembered workspace; forget: remove only its registration.")
+        print("lock/unlock: add/remove local temporary protection until explicitly unlocked; preserve dwork.yml locks.")
         print("down: stop registered containers on this Docker target and locally tracked commands; respect exclusions.")
         print("status: read-only workspace/container state; doctor: read-only dependency diagnostics.")
         print("Read dwork.yml when present; otherwise use existing Compose containers.")
@@ -196,13 +214,22 @@ def main():
         print("Browser URLs use the default or configured browser; WSL uses Windows browsers. Set wait_for: false to skip readiness.")
         print("Dry-run previews containers, health prerequisites, terminals, and browser URLs without mutation.")
         print("Only other registered workspaces on this Docker target may be stopped.")
-        print("Workspaces with locked: true never stop during a switch or down.")
+        print("Workspaces with locked: true or temporary CLI locks never stop during a switch or down.")
         print("Never creates, rebuilds, recreates, or removes containers.")
         print("DWORK_KEEP_PROJECTS: comma-separated projects to leave running.")
         print("DWORK_TERMINAL: " + ", ".join(LAUNCHERS) + ".")
         print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()
+    if mode in ("lock", "unlock"):
+        if options[-1:] == ["--dry-run"] and not preview:
+            preview, options = True, options[:-1]
+        if not options or any(value.startswith("-") for value in options):
+            raise DworkError("Usage: dwork " + mode + " NAME... [--dry-run]")
+        if preview:
+            return dwork_registry.set_temporary_locks(dwork_registry.read_registry(), options, mode == "lock", True)
+        with dwork_registry.registry_lock():
+            return dwork_registry.set_temporary_locks(dwork_registry.read_registry(), options, mode == "lock")
     if mode == "init":
         if options:
             raise DworkError("Usage: dwork init [--dry-run]")

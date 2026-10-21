@@ -189,7 +189,11 @@ are not implemented. Browser windows remain open after switches and `down`.
 
 `locked: true` protects that workspace's tasks, including individual locked children
 of a workspace group. `DWORK_KEEP_PROJECTS` also protects tasks belonging to those
-project names. Locks are checked again after confirmation. Renaming a workspace
+project names. `dwork lock NAME...` also protects all tracked commands in the named
+registrations until `dwork unlock NAME...`, without changing YAML locks. This
+includes every member of a group. See [temporary locks](../workspaces/README.md#temporary-locks).
+YAML locks are checked again after confirmation; local registry changes serialize
+with switches and shutdowns. Renaming a workspace
 preserves its tracked tasks; `forget` relinquishes management without stopping them.
 Re-registering the same directory restores management when the project identity matches.
 

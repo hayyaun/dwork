@@ -278,6 +278,31 @@ class TaskTests(unittest.TestCase):
         self.assertIsNone(process.poll())
         self.assertEqual(dwork_tasks.request(record, "status")["state"], "running")
 
+    def test_temporary_lock_protects_real_task_on_down_and_switch_until_unlocked(self):
+        process, record = self.launch()
+        result, changes, calls = self.cli("lock host")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((changes, calls), ([], []))
+        result, changes, calls = self.cli("down", answer="y\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Keep task (temporarily locked): host/Worker", result.stdout)
+        self.assertIsNone(process.poll())
+        selected = self.root / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text(json.dumps({"version": 1, "compose": {"enabled": False}}))
+        result, _, _ = self.cli("register selected", cwd=selected)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result, changes, calls = self.cli("switch selected", answer="y\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((changes, calls), ([], []))
+        self.assertIsNone(process.poll())
+        self.assertIsNotNone(dwork_tasks.request(record, "status"))
+        result, _, _ = self.cli("unlock host")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result, _, _ = self.cli("down", answer="y\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(process.wait(timeout=6), 0)
+
     def test_host_only_switch_stops_outgoing_tasks_and_preserves_selected_workspace(self):
         selected = self.fixture.base / "selected"
         selected.mkdir()

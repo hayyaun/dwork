@@ -185,12 +185,19 @@ Changes to this setting take effect without re-registration. dwork reads the cur
 lock policy when planning switches, shutdowns, and listings. Registering or executing
 a switch/shutdown records the latest policy; if the YAML file or directory later
 disappears, the last recorded lock is retained. A readable, valid config with
-`locked: false` (or with the option omitted) unlocks the workspace.
+`locked: false` (or with the option omitted) clears its YAML lock policy. Any
+temporary CLI lock continues to apply.
 
 If a registered lock policy cannot be read or is invalid, dwork reports a warning
 and protects that workspace until the config is fixed. Listing and previews do not
 write lock snapshots. For a group of child workspaces, set `locked: true` in each
 child that should stay running; unlocked children remain eligible to stop.
+
+For local protection without editing YAML, use `dwork lock NAME...` and
+`dwork unlock NAME...` with registered workspace names. This registry flag protects
+every member of a group until explicitly released, including across shell restarts.
+`unlock` never clears YAML `locked: true`; both policies are additive. See
+[temporary locks](../workspaces/README.md#temporary-locks).
 
 This option protects dwork-managed containers and tracked host commands. It does
 not prevent someone from stopping them directly with Docker or operating-system tools.

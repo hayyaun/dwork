@@ -113,6 +113,8 @@ dwork list                  # Show a table of remembered workspaces and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
 dwork rename my-app api      # Change its saved name to an available name
+dwork lock api              # Keep it running until explicitly unlocked
+dwork unlock api            # Release that temporary protection
 dwork down                  # Stop registered containers and dwork-launched commands
 dwork forget my-app         # Forget it; leave containers and files alone
 ```
@@ -143,7 +145,11 @@ Keep a workspace running through every switch and `down` by adding this to its `
 locked: true
 ```
 
-It still appears in `dwork list` and can be activated normally.
+It still appears in `dwork list` and can be activated normally. For temporary local
+protection without editing YAML, use `dwork lock NAME...` and `dwork unlock NAME...`.
+Locks survive shell restarts until released; `unlock` preserves `locked: true`.
+`dwork ls` marks local locks as `temporary`. See
+[temporary locks](docs/workspaces/README.md#temporary-locks) for groups and previews.
 
 Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`,
 `ps` = `status`, and `up` activates the current workspace.

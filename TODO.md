@@ -10,6 +10,7 @@
 ## Switching policies
 
 - [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.
+- [x] Add local temporary `dwork lock NAME...` / `unlock NAME...` protection until explicitly released; preserve YAML locks, support groups and previews, show it in `ls`, and complete names in Bash/Zsh.
 - [x] Confirm plain workspace activation before applying its plan; use a root-level `confirm` boolean (default `true`) with `confirm: false` to opt out, preserving separate registration, group, task/browser, and shutdown confirmations.
 - [x] Share shutdown planning and execution between workspace switches and `down`: stop outgoing tracked commands before containers, exclude the selected registration during switches, and apply the same ownership, lock, service, and Docker-target rules.
 

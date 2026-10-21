@@ -146,7 +146,8 @@ workspace occupies one row; nonprinting characters in cells are escaped.
 `STATUS` includes the count of running/restarting managed containers on the
 current Docker target, or a concise `host-only` label. `LOCKED` is `yes` for a
 protected single workspace, the protected project names for a group, or `-` when
-none are locked. Terminal colors do not affect column widths; redirected output
+none are locked. Local CLI locks show `temporary`, followed by ` + ` and any
+YAML-protected project names when both policies apply. Terminal colors do not affect column widths; redirected output
 and `NO_COLOR` output stay plain.
 
 Use `down --dry-run` to inspect tracked host commands; host-only listings show
@@ -204,7 +205,7 @@ Only other registered workspaces on that same target are eligible for container
 shutdown, using saved ownership even if their directories are unavailable.
 Their registered `compose.services` selection is respected;
 when omitted, all containers in that Compose project are managed. Workspaces with
-`locked: true` are excluded from stop plans, including `dwork down`.
+`locked: true` or a temporary CLI lock are excluded from stop plans, including `dwork down`.
 
 Use unique Compose project names across repositories and Git worktrees. Registering
 two directories that claim the same project on the same target fails before any
@@ -229,7 +230,8 @@ It stays registered and can still be activated normally. The current lock policy
 is read without requiring re-registration; switches/shutdowns record it so the
 last known lock is retained if a config or directory disappears. Invalid or
 unreadable policy protects the workspace with a warning. A valid config with
-`locked: false` or no `locked` key unlocks it. See [locked](../configuration/README.md#locked).
+`locked: false` or no `locked` key clears this YAML policy. A separate temporary
+lock still applies until released. See [locked](../configuration/README.md#locked).
 
 Tracked commands from other eligible registered workspaces stop during switching,
 regardless of their saved Docker target. Container shutdown stays scoped to the
@@ -306,6 +308,41 @@ Renaming works from any directory, even if the workspace directory is unavailabl
 or Docker is offline. It preserves the directory, Compose identity, options, and
 lock policy; containers, terminals, and project files are unaffected.
 
+## Temporary locks
+
+```sh
+dwork lock infra api             # Protect one or more registered workspaces
+dwork lock infra api --dry-run   # Preview without changing state
+dwork unlock api                 # Release only api's temporary lock
+dwork unlock infra --dry-run
+```
+
+Use these commands from any directory to keep selected workspaces running through
+switches and `down` without editing `dwork.yml` or setting environment variables.
+Names come from `dwork list`; a group name protects every registered member,
+including both containers and tracked commands. Locked workspaces can still be
+activated normally. The commands never start or stop workloads and need no Docker
+access or available workspace directory.
+
+Temporary means **until explicitly unlocked**, with no automatic timeout. These
+locks are saved in your local registry, survive shell restarts, renaming, and
+re-registration, and apply to invocations sharing that registry. Forgetting a
+workspace discards its temporary lock. They are not written to YAML or shared
+with other users. Use a runtime containing this feature; older releases do not
+enforce local CLI locks.
+
+`unlock` removes only temporary protection. YAML `locked: true` and
+`DWORK_KEEP_PROJECTS` continue to apply. A group returns to its individual members'
+YAML policies after unlocking. `dwork ls` shows `temporary` in `LOCKED`, plus any
+YAML-protected project names. Locking/unlocking several names validates all of
+them before making any change; an unknown name rejects the whole request.
+Repeated operations are safe. `--dry-run` can precede or follow the names and
+never writes registry or lock files.
+
+For a single invocation, the existing alternative is
+`DWORK_KEEP_PROJECTS=infra,monitoring dwork down`; those are Compose/project names,
+whereas `lock` and `unlock` take registered workspace names.
+
 ## Forget
 
 ```sh
@@ -325,7 +362,8 @@ paths, selection options, and resolved project identities. They are local state,
 not a portable project configuration.
 
 Updates replace the registry atomically. A per-user file lock prevents concurrent
-registrations, scans, renames, forget operations, switches, and shutdowns from interleaving; a second mutating
+registrations, scans, renames, temporary lock changes, forget operations, switches,
+and shutdowns from interleaving; a second mutating
 invocation reports that another operation is in progress. Read-only commands do not
 create registry or lock files. A malformed registry blocks registry operations and
 switching without overwriting the file; restore or repair it before retrying.

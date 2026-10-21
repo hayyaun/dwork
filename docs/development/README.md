@@ -89,6 +89,11 @@ after checking real Tab input. The shared fixture prepends fake Docker to `PATH`
 for both direct imports and CLI subprocesses, regardless of host Docker availability;
 confirmation tests select a fake native terminal adapter for the runner's OS.
 `test_locked.py` checks live lock policy and protection during switching/shutdown.
+`test_temporary_locks.py` checks batch lock/unlock validation, read-only previews,
+YAML-policy precedence, whole-group protection, and survival across renaming,
+re-registration, and missing directories. Completion tests exercise multiple
+lock/unlock names with real Tab input in Bash and Zsh. Task tests verify that a
+real harmless process survives both shutdown and a switch until explicitly unlocked.
 `test_shutdown.py` checks common shutdown ownership and protection rules, paused
 containers, batch ordering, host-only destinations, missing directories, and Docker
 target isolation. `test_tasks.py` also verifies outgoing-command shutdown during

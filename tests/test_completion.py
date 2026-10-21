@@ -63,6 +63,10 @@ class CompletionTests(unittest.TestCase):
         setup = ("source " + shlex.quote(str(script))
                  + "\ndwork() { printf 'alpha\\nbeta\\n'; }\n")
         for words, index, expected in (("dwork sw al", 2, ["alpha"]),
+                                       ("dwork lock al", 2, ["alpha"]),
+                                       ("dwork unlock alpha be", 3, ["beta"]),
+                                       ("dwork lock --dry-run be", 3, ["beta"]),
+                                       ("dwork unlock alpha --d", 3, ["--dry-run"]),
                                        ("dwork rename al", 2, ["alpha"]),
                                        ("dwork sc", 1, ["scan"]),
                                        ("dwork scan --d", 2, ["--dry-run"]),
@@ -135,6 +139,8 @@ class CompletionTests(unittest.TestCase):
                     os.write(master, setup.encode())
                     until(b"\r\nREADY\r\n")
                     for typed, result in ((b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
+                                          (b"dwork lock al\tbe\t\n", b"EXECUTED:lock alpha beta"),
+                                          (b"dwork unlock --d\tal\tbe\t\n", b"EXECUTED:unlock --dry-run alpha beta"),
                                           (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
                                           (b"dwork rm be\t\n", b"EXECUTED:rm beta"),
                                           (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name")):

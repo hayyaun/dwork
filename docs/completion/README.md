@@ -3,7 +3,8 @@
 [Project home](../../README.md) · [Usage](../usage/README.md) · [Installation](../installation/README.md)
 
 Completion is available for Bash and Zsh. It suggests commands, aliases, relevant
-flags, registered workspace names after `switch`/`sw`, `forget`/`rm`, and `rename`, and file
+flags, registered workspace names after `switch`/`sw`, `forget`/`rm`, `rename`,
+`lock`, and `unlock`, and file
 or directory paths after Compose options such as `-f` and `--project-directory`.
 This includes `--version`, `init --dry-run`, and Compose-selection flags for `validate`.
 
@@ -115,6 +116,9 @@ dwork sw<Tab>            switch or sw, according to your shell's matching rules
 dwork switch <Tab>       registered workspace names
 dwork sw my<Tab>         matching workspace names
 dwork rm <Tab>           registered names to forget
+dwork lock <Tab>         registered names to protect temporarily
+dwork unlock api <Tab>   another registered name to unlock
+dwork lock --d<Tab>      --dry-run
 dwork scan --d<Tab>      --dry-run
 dwork -f <Tab>           file paths
 ```

@@ -89,7 +89,8 @@ unless root `confirm: false` is set; only `y`/`Y` accepts, and EOF cancels.
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
 list, activate, and forget remembered directories. `list`/`ls` use an aligned
 `NAME`, `STATUS`, `LOCKED`, `PATH` table; the lock column contains `yes` for one
-locked member, protected project names for groups, or `-`. Use `list --names`
+locked member, protected project names for groups, or `-`. Local CLI locks show
+`temporary`, plus any YAML-protected project names when both apply. Use `list --names`
 for sorted names only, without a table or Docker status queries. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.
 `dwork down` stops registered container workloads on the current Docker target and
@@ -109,7 +110,21 @@ ownership and last known lock policy for shutdown in both operations.
 `locked: true` protects a workspace from both operations. Lock changes are read
 without re-registration; a missing config retains the last recorded policy, and an
 unreadable/invalid lock policy protects the workspace with a warning. To unlock,
-use a readable valid config with `locked: false` or omit the field.
+use a readable valid config with `locked: false` or omit the field. Any separate
+temporary CLI lock still applies.
+
+`dwork lock NAME...` protects one or more registered workspaces without changing
+YAML. `dwork unlock NAME...` removes only these local locks, preserving YAML
+`locked: true` and `DWORK_KEEP_PROJECTS`. They protect containers and tracked
+commands, including every registered member of a group. A temporary lock lasts
+until explicitly released, survives shell restarts, renaming, and re-registration,
+and is discarded by `forget`. It is stored in the local registry; users sharing
+no registry do not share this policy. These commands require a runtime containing
+this feature (added after 0.3.0); older versions do not enforce the registry flag.
+They work from any directory without Docker or workspace-directory access.
+`--dry-run` before or after the names previews without writing state. All names
+are validated before any changes; an unknown name fails the whole request.
+
 `dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
 checkbox picker for unregistered Compose-only directories. It does not activate
 anything. `dwork scan --dry-run` previews without writing or prompting.
