@@ -1,19 +1,27 @@
 # Switch development workspaces. Source this module; invoke dwork to do work.
+# Capture the location while sourcing: a relative BASH_SOURCE/%x must not be
+# reinterpreted after the caller changes directories. Use shell builtins only.
+if [ -n "${BASH_VERSION:-}" ]; then
+    _DWORK_SOURCE_DIRECTORY="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+    _DWORK_SOURCE_DIRECTORY="${(%):-%x}"
+fi
+case "${_DWORK_SOURCE_DIRECTORY:-}" in
+    */*) _DWORK_SOURCE_DIRECTORY="${_DWORK_SOURCE_DIRECTORY%/*}/" ;;
+    *) _DWORK_SOURCE_DIRECTORY=. ;;
+esac
+_DWORK_SOURCE_DIRECTORY=$(CDPATH= cd -- "$_DWORK_SOURCE_DIRECTORY" && pwd -P) || return
+
 dwork() (
     command -v python3 >/dev/null 2>&1 || {
         printf "%s\n" "dwork: python3 is required." >&2
         return 1
     }
-    if [ -n "${BASH_VERSION:-}" ]; then
-        _dwork_file="${BASH_SOURCE[0]}"
-    elif [ -n "${ZSH_VERSION:-}" ]; then
-        _dwork_file="${(%):-%x}"
-    else
+    if [ -z "${BASH_VERSION:-}${ZSH_VERSION:-}" ]; then
         printf "%s\n" "dwork: Bash or Zsh is required." >&2
         return 1
     fi
-    _dwork_dir=$(CDPATH= cd -- "$(dirname -- "$_dwork_file")" && pwd -P) || return
-    python3 "$_dwork_dir/lib/dwork.py" "$@"
+    python3 "$_DWORK_SOURCE_DIRECTORY/lib/dwork.py" "$@"
 )
 
 # Enable completion in interactive source-based setups. Zsh's completion system

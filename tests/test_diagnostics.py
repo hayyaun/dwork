@@ -7,6 +7,7 @@ import io
 import json
 import os
 import sys
+import time
 import unittest
 
 import test_dwork as legacy
@@ -133,6 +134,24 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertEqual(changes, [])
         self.assertEqual(calls, [])
         self.assertIn("Fix:", result.stderr)
+
+    def test_health_deadline_terminates_a_stalled_fake_docker(self):
+        executable = self.fixture.bin / "docker"
+        executable.write_text("#!" + sys.executable + "\nimport time; time.sleep(10)\n")
+        started = time.monotonic()
+        with self.assertRaisesRegex(dwork_common.DworkError, "Timed out running command: docker inspect"):
+            dwork_docker.wait_healthy(["a"], .2)
+        self.assertLess(time.monotonic() - started, 3)
+
+    def test_health_inspections_share_one_deadline(self):
+        item = legacy.container("a", "main", state="running")
+        item["State"]["Health"] = {"Status": "starting"}
+        with patch.object(dwork_docker.time, "monotonic", side_effect=[0, .1, .3, .6, 1]), \
+                patch.object(dwork_docker.time, "sleep"), \
+                patch.object(dwork_docker, "docker", return_value=json.dumps([item])) as docker:
+            with self.assertRaisesRegex(dwork_common.DworkError, "Timed out waiting for healthy"):
+                dwork_docker.wait_healthy(["a"], 1)
+        self.assertEqual([call.kwargs["timeout"] for call in docker.call_args_list], [.9, .4])
 
     def test_health_failure_blocks_terminal_and_reports_service(self):
         item = legacy.container("a", "main", state="running")

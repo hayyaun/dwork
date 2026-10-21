@@ -172,6 +172,12 @@ exclusion rules as visible tasks.
 If a command finishes while shutdown confirmation is open, its supervisor's
 completed cleanup is recognized and the plan continues. A failed or inaccessible
 controller with a remaining task record still aborts shutdown and activation.
+This includes failures during initial task discovery: an unresolved controller
+for an owned, unprotected outgoing task blocks the operation before any workload
+changes and is reported in previews too. Selected, locked, kept, forgotten, or
+ownership-changed tasks retain their existing protection rules. Restore controller
+access and inspect the plan before retrying; do not bypass this check by signalling
+saved PIDs or discarding records.
 
 New visible and detached tasks run under a small local supervisor. Run
 `dwork down --dry-run` to see their workspace name, task title, command, PID, and

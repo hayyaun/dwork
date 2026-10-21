@@ -63,7 +63,11 @@ def plan_shutdown(entries, target, containers, keep, exclude_workspace=None, tas
                 and item["State"]["Status"] in ("running", "restarting", "paused")):
             selected.append(item)
     if task_records is None:
-        task_records = dwork_tasks.running(dwork_registry.registry_path().parent)
+        def controller_error(record, error):
+            if record["workspace"] != exclude_workspace and not task_protection(record, entries, keep):
+                raise DworkError("Cannot inspect tracked task " + task_label(record, entries) + ": " + str(error)
+                                 + ". Shutdown blocked; no workloads changed. Restore controller access before retrying.")
+        task_records = dwork_tasks.running(dwork_registry.registry_path().parent, on_error=controller_error)
     selected_tasks, protected_tasks = [], []
     for record in task_records:
         if record["workspace"] == exclude_workspace:

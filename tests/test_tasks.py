@@ -525,15 +525,19 @@ class TaskTests(unittest.TestCase):
         before = path.read_bytes()
         path.write_text(json.dumps(dict(record, token="wrong")))
         result, _, _ = self.cli("down", answer="y\n")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("Shutdown blocked", result.stderr)
         self.assertIsNone(process.poll())
         path.write_bytes(before)
         dwork_tasks.request(record, "stop")
         process.wait(timeout=6)
         path.write_text(json.dumps(record))  # Simulate state left after a crash/reboot.
         result, _, _ = self.cli("down", answer="y\n")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        # A vanished controller with a remaining record cannot prove cleanup.
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("Shutdown blocked", result.stderr)
         self.assertNotIn("Would stop task:", result.stdout)
+        self.assertEqual(path.read_text(), json.dumps(record))
 
     def test_background_failure_keeps_nonzero_exit_and_cleans_record(self):
         task = self.task([sys.executable, "-c", "raise SystemExit(7)"])
@@ -612,6 +616,82 @@ class TaskTests(unittest.TestCase):
                 dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False)
             docker.assert_not_called()
         self.assertIsNone(process.poll())
+
+    def write_unreachable_record(self):
+        record = {"token": "a" * 48, "socket": str(self.fixture.base / "missing.sock"),
+                  "pid": 999999, "workspace": str(self.root), "directory": str(self.root),
+                  "project": self.root.name, "title": "Worker", "command": ["echo", "worker"]}
+        path = self.state / "tasks" / (record["token"] + ".json")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(record))
+        return record, path
+
+    def test_discovery_errors_block_shutdown_and_activation_before_mutations(self):
+        (self.root / "dwork.yml").write_text("version: 1\n")
+        self.fixture.model(self.root, self.root.name)
+        self.assertEqual(self.cli("register host")[0].returncode, 0)
+        selected = self.fixture.base / "selected"
+        selected.mkdir()
+        (selected / "dwork.yml").write_text("version: 1\ncompose: {enabled: false}\n")
+        self.assertEqual(self.cli("register selected", cwd=selected)[0].returncode, 0)
+        _, path = self.write_unreachable_record()
+        before = dwork_registry.registry_path().read_bytes()
+        for error in (TimeoutError("slow controller"), PermissionError("denied"),
+                      FileNotFoundError("missing socket"), ValueError("identity changed"),
+                      json.JSONDecodeError("malformed response", "invalid", 0)):
+            for mode in ("down", "switch"):
+                for preview in (False, True):
+                    with self.subTest(error=type(error).__name__, mode=mode, preview=preview), \
+                            patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                            patch.object(dwork_docker, "show_target"), \
+                            patch.object(dwork_docker, "inventory", return_value=[legacy.container("a", self.root.name, state="running")]), \
+                            patch.object(dwork_tasks, "request", side_effect=error), \
+                            patch.object(dwork_docker, "docker") as docker, \
+                            patch.object(dwork_terminals, "open_terminal") as launch, \
+                            patch("builtins.input") as prompt, contextlib.redirect_stdout(io.StringIO()):
+                        entries = dwork_registry.read_registry()
+                        with self.assertRaisesRegex(dwork_common.DworkError, "Shutdown blocked; no workloads changed"):
+                            if mode == "down":
+                                dwork_workspaces.down_workspaces(entries, preview)
+                            else:
+                                dwork_workspaces.registry_command(selected, [], "switch", preview, "selected", entries)
+                        docker.assert_not_called()
+                        launch.assert_not_called()
+                        prompt.assert_not_called()
+                        self.assertTrue(path.exists())
+                        self.assertEqual(dwork_registry.registry_path().read_bytes(), before)
+
+    def test_unreachable_controllers_preserve_protection_and_ownership_boundaries(self):
+        record, _ = self.write_unreachable_record()
+        for policy in ("locked", "temporary", "kept", "forgotten", "changed", "selected"):
+            entries = dwork_registry.read_registry()
+            keep, exclude = set(), None
+            if policy == "locked":
+                entries[0]["members"][0]["locked"] = True
+            elif policy == "temporary":
+                entries[0]["temporary_locked"] = True
+            elif policy == "kept":
+                keep = {record["project"]}
+            elif policy == "forgotten":
+                entries = []
+            elif policy == "changed":
+                entries[0]["members"][0]["project"] = "new-owner"
+            else:
+                exclude = record["workspace"]
+            with self.subTest(policy=policy), patch.object(dwork_tasks, "request", side_effect=TimeoutError("slow")):
+                plan = dwork_workspaces.plan_shutdown(entries, None, [], keep, exclude)
+                self.assertEqual(plan.tasks, [])
+
+    def test_discovery_accepts_supervisor_cleanup_during_status_request(self):
+        _, path = self.write_unreachable_record()
+        def finish(record, action):
+            path.unlink()
+            raise ConnectionRefusedError("finished")
+        with patch.object(dwork_tasks, "request", side_effect=finish), \
+                patch.object(dwork_tasks.os, "kill") as signal_process:
+            plan = dwork_workspaces.plan_shutdown(dwork_registry.read_registry(), None, [], set())
+        self.assertEqual(plan.tasks, [])
+        signal_process.assert_not_called()
 
     def check_visible_terminal(self, force_macos=False):
         import pty

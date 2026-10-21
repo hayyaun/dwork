@@ -198,6 +198,14 @@ class SchemaTests(unittest.TestCase):
                 target["typo"] = True
                 self.check_config(config, False)
 
+    def test_huge_integer_timeouts_are_rejected_without_overflow(self):
+        for key, task in (("terminals", {"command": ["echo"]}),
+                          ("browsers", {"url": "http://localhost/"})):
+            for timeout in (10 ** 400, -(10 ** 400)):
+                with self.subTest(key=key, timeout=timeout):
+                    self.check_config({"version": 1, "compose": {"enabled": False},
+                                       key: [{**task, "wait_for": {"timeout": timeout}}]}, False)
+
     def test_disabled_compose_rejects_files_services_and_health_prerequisites(self):
         for extra in ({"files": ["compose.yaml"]}, {"services": ["db"]}):
             with self.subTest(extra=extra):

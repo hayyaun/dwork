@@ -23,15 +23,19 @@ def docker_target():
     return target
 
 
-def run_command(args, cwd=None):
-    result = subprocess.run(args, cwd=cwd, text=True, capture_output=True)
+def run_command(args, cwd=None, *, timeout=None):
+    try:
+        result = subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        raise DworkError("Timed out running command: " + shlex.join(args)
+                         + ". Inspect workload state before retrying.") from error
     if result.returncode:
         raise DworkError(result.stderr.strip() or "Command failed: " + shlex.join(args))
     return result.stdout
 
 
-def docker(*args, cwd=None):
-    return run_command(["docker", *args], cwd)
+def docker(*args, cwd=None, timeout=None):
+    return run_command(["docker", *args], cwd, timeout=timeout)
 
 
 def read_model(directory, options):
@@ -64,7 +68,10 @@ def service_containers(containers, project, service):
 def wait_healthy(ids, timeout):
     deadline = time.monotonic() + timeout
     while True:
-        items = json.loads(docker("inspect", "--type", "container", *ids))
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise DworkError("Timed out waiting for healthy containers; terminals were not opened.")
+        items = json.loads(docker("inspect", "--type", "container", *ids, timeout=remaining))
         if {c["Id"] for c in items} != set(ids):
             raise DworkError("A required container disappeared; terminals were not opened.")
         ready = True

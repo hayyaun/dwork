@@ -117,7 +117,14 @@ def read_config(path):
     return mapping(config, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml")
 
 
-def load_workspace(directory, options=()):
+def timeout_value(value, where):
+    # Bound integers before isfinite converts them to floats (which can overflow).
+    if type(value) not in (int, float) or not 0 < value <= 3600 or not math.isfinite(value):
+        raise DworkError(where + " must be greater than 0 and at most 3600 seconds.")
+    return value
+
+
+def load_workspace(directory, options=(), *, compose_directory=None):
     path = directory / "dwork.yml"
     if not path.is_file():
         name, services = dwork_docker.read_model(directory, options)
@@ -142,7 +149,7 @@ def load_workspace(directory, options=()):
         explicit_files = any(a in ("-f", "--file") or a.startswith("--file=") for a in options)
         file_options = [] if explicit_files or os.environ.get("COMPOSE_FILE") else [
             arg for file in files for arg in ("-f", str((directory / file).resolve()))]
-        name, services = dwork_docker.read_model(directory, [*file_options, *options])
+        name, services = dwork_docker.read_model(compose_directory or directory, [*file_options, *options])
         if selected is not None and set(selected) - set(services):
             raise DworkError("compose.services contains an unknown service.")
     else:
@@ -173,9 +180,7 @@ def load_workspace(directory, options=()):
             raise DworkError("terminal.window must be new, current, or none.")
         wait = mapping(task.get("wait_for", {}), ("healthy", "timeout"), "terminal.wait_for")
         healthy = strings(wait["healthy"], "wait_for.healthy") if "healthy" in wait else []
-        timeout = wait.get("timeout", 180)
-        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
-            raise DworkError("wait_for.timeout must be greater than 0 and at most 3600 seconds.")
+        timeout = timeout_value(wait.get("timeout", 180), "wait_for.timeout")
         if healthy and (not enabled or set(healthy) - set(services)):
             raise DworkError("Health prerequisites must name services in this workspace Compose model.")
         if selected is not None and set(healthy) - set(selected):
@@ -201,9 +206,7 @@ def load_workspace(directory, options=()):
         if wait is not False:
             wait = mapping(wait, ("url", "timeout"), "browser.wait_for")
             wait_url = dwork_browsers.validate_url(wait.get("url", url), "browser.wait_for.url")
-            timeout = wait.get("timeout", 60)
-            if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
-                raise DworkError("browser.wait_for.timeout must be greater than 0 and at most 3600 seconds.")
+            timeout = timeout_value(wait.get("timeout", 60), "browser.wait_for.timeout")
         browsers.append(BrowserTask(url, wait_url, timeout, confirm, selected_browser))
     return Workspace(name, directory, services, enabled, selected, terminals, True, locked, browsers,
                      confirm=workspace_confirm)
@@ -213,14 +216,14 @@ def config_directory(directory, options):
     """Use explicit Compose directory/file selection as the config search origin."""
     for index, arg in enumerate(options):
         if arg == "--project-directory" and index + 1 < len(options):
-            return Path(options[index + 1]).resolve()
+            return (directory / options[index + 1]).resolve()
         if arg.startswith("--project-directory="):
-            return Path(arg.split("=", 1)[1]).resolve()
+            return (directory / arg.split("=", 1)[1]).resolve()
     for index, arg in enumerate(options):
         if arg in ("-f", "--file") and index + 1 < len(options) and options[index + 1] != "-":
-            return Path(options[index + 1]).resolve().parent
+            return (directory / options[index + 1]).resolve().parent
         if arg.startswith("--file=") and arg != "--file=-":
-            return Path(arg.split("=", 1)[1]).resolve().parent
+            return (directory / arg.split("=", 1)[1]).resolve().parent
     return directory
 
 
@@ -228,7 +231,10 @@ def discover(directory, options):
     origin = config_directory(directory, options)
     cfg_dir = next((p for p in (origin, *origin.parents) if (p / "dwork.yml").is_file()), None)
     if cfg_dir is not None:
-        return [load_workspace(cfg_dir, options)], False
+        # YAML-owned paths use cfg_dir; explicit Compose selections retain the
+        # caller's cwd, including when the configuration is found in a parent.
+        explicit = options or os.environ.get("COMPOSE_FILE") or os.environ.get("COMPOSE_ENV_FILES")
+        return [load_workspace(cfg_dir, options, compose_directory=directory if explicit else None)], False
     try:
         return [load_workspace(directory, options)], False
     except DworkError:

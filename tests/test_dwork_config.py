@@ -92,9 +92,9 @@ terminals:
                     self.assertEqual(changes, [])
                     self.assertEqual(calls, [])
 
-    def health_config(self):
+    def health_config(self, timeout=.02):
         self.fixture.model(self.root, "main", services={"db": {"healthcheck": {"test": ["CMD", "true"]}}})
-        self.config("""version: 1
+        self.config(f"""version: 1
 compose:
   services: [db]
 terminals:
@@ -102,7 +102,7 @@ terminals:
     command: [echo, run]
     wait_for:
       healthy: [db]
-      timeout: 0.02
+      timeout: {timeout}
 """)
         executable = self.fixture.bin / "powershell.exe"
         executable.write_text("""#!/usr/bin/env python3
@@ -113,7 +113,8 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as f:
         executable.chmod(0o755)
 
     def test_healthy_container_starts_before_terminal_launch(self):
-        self.health_config()
+        # The health budget now includes starting the fake Docker interpreter.
+        self.health_config(timeout=5)
         item = legacy.container("a", "main", "db")
         item["State"]["Health"] = {"Status": "healthy"}
         for shell in self.shells:

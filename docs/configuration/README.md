@@ -230,6 +230,13 @@ compose:
 When `enabled: false`, omit `files`, `services`, Compose CLI options, and health
 prerequisites.
 
+Explicit relative `-f`/`--file`, `--env-file`, `--project-directory`, `COMPOSE_FILE`,
+and `COMPOSE_ENV_FILES` selections keep the invocation directory as their Compose
+execution context, even when `dwork.yml` is found in a parent. Configured
+`compose.files` and terminal `cwd` remain relative to `dwork.yml`. Saved switches
+restore the registered invocation context; paths inside Compose files follow
+Compose's own rules.
+
 Reading Compose does not recreate containers or update their stored environment.
 Environment values for existing containers do not need to be supplied again just
 to start them.
@@ -318,11 +325,16 @@ wait_for:
 `healthy` is a nonempty list of service names from this workspace's Compose model.
 When `compose.services` is set, health prerequisites must also appear there.
 `timeout` defaults to 180 seconds and must be greater than zero and at most 3600.
+Both terminal and browser timeout validation reject out-of-range values, including
+very large integers, with a configuration error.
 
 The services must already have containers and Docker health checks. A missing
 required container aborts before other projects are stopped; create it manually.
 A paused, exited, dead, unhealthy, or missing-health-check container blocks terminal
 launch. Containers still starting are polled until healthy or the timeout expires.
+Each Docker health inspection is limited to the remaining deadline, so a stalled
+`docker inspect` fails the gate instead of waiting indefinitely. A timeout stops
+further launches; completed container changes are not rolled back.
 
 All configured health gates pass before any terminal opens. Failed stops, starts,
 health checks, or launcher operations stop further work; completed container changes

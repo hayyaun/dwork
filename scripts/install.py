@@ -8,9 +8,11 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 
 SOURCE = Path(__file__).resolve().parents[1]
 MARKER = ".dwork-install.json"
+LICENSE_FILES = ("LICENSE", "LICENSE.md", "COPYING")
 COMPLETION_FILES = {
     "share/bash-completion/completions/dwork",
     "etc/bash_completion.d/dwork",
@@ -44,6 +46,24 @@ def paths(prefix_text, destdir_text):
 
 def digest(text):
     return hashlib.sha256(text.encode()).hexdigest()
+
+def atomic_write(path, text, mode=0o644):
+    """Publish a complete file; an interrupted replacement keeps old or new data."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(text)
+            stream.flush()
+            os.fchmod(stream.fileno(), mode)
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+def write_marker(data, record):
+    atomic_write(data / MARKER, json.dumps(record, indent=2) + "\n", 0o600)
 
 def completion_path(root, relative):
     if relative not in COMPLETION_FILES:
@@ -85,15 +105,30 @@ def ownership(data, launcher, prefix):
     record = json.loads(marker.read_text())
     if record.get("tool") != "dwork" or record.get("format") != 1 or record.get("prefix") != str(prefix):
         raise InstallError("Installation marker does not match this PREFIX.")
-    if launcher.exists() and (not launcher.is_file() or digest(launcher.read_text()) != record.get("launcher_sha256")):
-        raise InstallError("Installed launcher was modified; refusing to overwrite or remove it.")
+    pending = record.get("pending", {})
+    if not isinstance(pending, dict):
+        raise InstallError("Invalid pending installation ownership record.")
+    if launcher.exists():
+        if not launcher.is_file() or digest(launcher.read_text()) not in (
+                record.get("launcher_sha256"), pending.get("launcher_sha256")):
+            raise InstallError("Installed launcher was modified; refusing to overwrite or remove it.")
+        record["launcher_sha256"] = digest(launcher.read_text())
     completions = record.get("completions", {})
-    if not isinstance(completions, dict):
+    pending_completions = pending.get("completions", {})
+    if not isinstance(completions, dict) or not isinstance(pending_completions, dict):
         raise InstallError("Invalid completion ownership record.")
-    for relative, expected_hash in completions.items():
+    current_completions = {}
+    for relative in completions.keys() | pending_completions.keys():
         path = completion_path(data.parent.parent, relative)
-        if path.exists() and (not path.is_file() or digest(path.read_text()) != expected_hash):
+        expected = (completions.get(relative), pending_completions.get(relative))
+        current = digest(path.read_text()) if path.is_file() else None
+        if path.exists() and (not path.is_file() or current not in expected):
             raise InstallError("Installed completion was modified; refusing to overwrite or remove it: " + str(path))
+        current_completions[relative] = current or pending_completions.get(relative) or completions[relative]
+    # A retry journals only the verified current contents plus its own new files.
+    # It cannot expand ownership to arbitrary edits made after an interruption.
+    record["completions"] = current_completions
+    record.pop("pending", None)
     return record
 
 def checked(command):
@@ -118,7 +153,8 @@ def install(args):
         if path.exists() and relative not in previous_completions:
             raise InstallError("Refusing to overwrite an unrelated completion: " + str(path))
     # Do not follow user-added links while updating managed code or environments.
-    for name in ("lib", "docs", "examples", "completions", "venv", "venv/bin", "README.md", "requirements.txt", MARKER):
+    for name in ("lib", "docs", "examples", "completions", "venv", "venv/bin",
+                 "README.md", "requirements.txt", MARKER, *LICENSE_FILES):
         path = data / name
         if path.is_symlink():
             raise InstallError("Refusing to update a linked install path: " + str(path))
@@ -144,10 +180,11 @@ def install(args):
     record["completions"] = {relative: digest(native_scripts[shell])
                              for shell, (relative, _) in locations.items()}
     data.mkdir(parents=True, exist_ok=True)
-    # Record ownership before dependency setup, so an interrupted first install
-    # can be safely retried or explicitly uninstalled.
-    if previous is None:
-        (data / MARKER).write_text(json.dumps(record, indent=2) + "\n")
+    # Journal generated hashes before replacing owned files. After interruption,
+    # only the previous or planned contents authorize retry/uninstall.
+    journal = dict(previous or record)
+    journal["pending"] = {key: record[key] for key in ("launcher_sha256", "completions")}
+    write_marker(data, journal)
     try:
         if args.venv == "1":
             env_python = data / "venv/bin/python"
@@ -169,17 +206,16 @@ def install(args):
             (completions / filename).write_text(scripts[shell])
             _, target = locations[shell]
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(native_scripts[shell])
+            atomic_write(target, native_scripts[shell])
         for name in ("examples", "docs"):
             if (SOURCE / name).is_dir():
                 shutil.copytree(SOURCE / name, data / name, dirs_exist_ok=True)
-        for name in ("LICENSE", "LICENSE.md", "COPYING"):
+        for name in LICENSE_FILES:
             if (SOURCE / name).is_file():
                 shutil.copy2(SOURCE / name, data / name)
         launcher.parent.mkdir(parents=True, exist_ok=True)
-        launcher.write_text(launcher_text)
-        launcher.chmod(0o755)
-        (data / MARKER).write_text(json.dumps(record, indent=2) + "\n")
+        atomic_write(launcher, launcher_text, 0o755)
+        write_marker(data, record)
     except (OSError, subprocess.CalledProcessError, InstallError):
         # Keep a marked partial install for a safe retry; never remove user files.
         raise

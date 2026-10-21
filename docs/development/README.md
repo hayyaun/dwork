@@ -130,7 +130,21 @@ is available. Real Tab tests cover the installed Zsh autoload entry as well as
 explicitly sourced Bash/Zsh scripts, including the first completion request.
 Native-file hashes are stored in the install marker; uninstall uses those
 recorded paths, so distro-specific directory flags are not needed again.
+Interrupted-upgrade regressions inject failures after each native completion or
+launcher replacement and before the final marker commit, then exercise both retry
+and uninstall. They also verify that edits made after interruption remain protected
+and that linked license destinations cannot overwrite outside files. Pending
+ownership records authorize only previously verified or installer-generated hashes;
+atomic replacement prevents partial external files or truncated marker JSON.
 The default venv installation is additionally smoke-tested in a temporary prefix.
+
+Stage-one regressions also combine relative Bash/Zsh sourcing with later directory
+changes, keep nested explicit Compose selections separate from YAML-relative paths,
+reject huge integer timeouts through schema/runtime parity, and run a stalled fake
+Docker executable against the health deadline. Task-discovery tests exercise
+controller timeout, permission, missing-socket, identity, and protocol failures
+before shutdown/activation, while preserving protected and selected tasks and
+recognizing a supervisor record removed during completed cleanup.
 
 ## CI coverage
 

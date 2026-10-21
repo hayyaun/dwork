@@ -68,8 +68,12 @@ def stop(record, state):
     return True
 
 
-def running(state):
-    """Read-only discovery; stale files never authorize signalling a process."""
+def running(state, *, on_error=None):
+    """Discover live tasks; optionally report unresolved validated controllers.
+
+    Stale files never authorize signalling a process. The lifecycle caller uses
+    ownership/protection policy to decide which unresolved tasks block shutdown.
+    """
     records = []
     for path in sorted((Path(state) / "tasks").glob("*.json")):
         try:
@@ -79,11 +83,21 @@ def running(state):
                     or type(record.get("pid")) is not int or not isinstance(record.get("command"), list)
                     or any(not isinstance(arg, str) for arg in record["command"])):
                 continue
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        try:
             response = request(record, "status")
             if response.get("state") == "running":
                 records.append(record)
-        except (OSError, ValueError, KeyError, TypeError):
-            continue
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            # A supervisor may finish between reading its record and connecting.
+            # Only absence of the record establishes completed cleanup.
+            try:
+                path.lstat()
+            except FileNotFoundError:
+                continue
+            if on_error is not None:
+                on_error(record, error)
     return records
 
 

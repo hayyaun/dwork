@@ -27,6 +27,8 @@
 
 ## Recovery
 
+- [x] Harden initial task discovery, nested Compose path resolution, relative shell sourcing, Docker health deadlines, and oversized timeout validation without changing confirmation or ownership policy; add focused regressions.
+- [x] Reject linked license destinations and make interrupted installer upgrades recoverable through atomic generated-file replacement and pending ownership hashes, preserving edited-file protection.
 - [ ] Evaluate opt-in rollback separately: restoring containers cannot undo application side effects.
 
 ## Configuration experience

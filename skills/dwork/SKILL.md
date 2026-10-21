@@ -163,6 +163,21 @@ success does not prove that a server will become ready or a GUI will render.
 For task shutdown failures, record the platform, Python/package versions, and
 exact error. Preserve the authenticated task-controller records; do not replace
 `dwork down` with signals sent to saved PIDs.
+Current builds also block initial planning/previews when an eligible owned task's
+controller is unreachable. Protected or selected tasks retain their exclusions.
+Restore controller access before retrying; never delete records to bypass a block.
+
+When diagnosing nested invocations, distinguish the invocation directory from the
+directory containing `dwork.yml`: explicit Compose file/environment selections
+retain invocation-relative meaning, while YAML `compose.files` and terminal `cwd`
+remain YAML-relative. Current source loaders also support relative sourcing followed
+by directory changes. Terminal health timeouts include Docker inspection time;
+terminal/browser timeouts must be numeric, greater than zero, and at most 3600.
+For an interrupted Make upgrade, use the current installer with the same prefix
+and completion directories to retry, or uninstall the marked partial installation.
+Do not bypass ownership hashes or linked-path rejection to force recovery; genuine
+launcher/completion edits remain protected. These fixes require a build containing
+the hardening changes and are not implied by the unchanged release version alone.
 
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new

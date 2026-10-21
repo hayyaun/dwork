@@ -63,8 +63,15 @@ To let a coding agent create `dwork.yml` for your projects, separately
 [install the optional dwork skill](../skills/README.md). It supports Codex,
 Claude Code, Cursor, and other agents through the skills CLI or manual copying.
 
-If dependency setup is interrupted, retry `make install` with the same prefix.
-A marked partial installation can also be removed with `make uninstall`.
+If dependency setup or an upgrade is interrupted, retry `make install` with the
+same prefix and completion directories, or remove the marked partial installation
+with `make uninstall`. Current installers record the previous and planned generated
+launcher/completion hashes before replacing those files atomically. This permits
+recovery from a mixed old/new installation without accepting unrelated user edits.
+Modified launchers/completions still block overwrite/removal. Reinstallation also
+rejects linked license destinations before writing, preserving their targets.
+Use the current installer for this recovery; older published installers may not
+recognize an interrupted upgrade's pending ownership record.
 
 ## Python, Homebrew, and Debian packages
 
@@ -170,6 +177,9 @@ Adjust the path to your clone. Load it in the current shell with:
 
 Keep `dwork.sh` and `lib/` together. This method uses the `python3` on your PATH;
 install PyYAML separately for YAML support (Ubuntu: `sudo apt install python3-yaml`).
+The current loader captures its absolute checkout directory when sourced. Relative
+sourcing such as `. ./dwork.sh` remains usable after `cd` to another project;
+sourcing again updates that location without changing the caller's directory.
 
 The current loader enables completion automatically in interactive Bash and Zsh.
 In Zsh, put the source line after Oh My Zsh or your existing `compinit` setup;

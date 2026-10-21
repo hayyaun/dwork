@@ -1,5 +1,8 @@
 """Installer tests use temporary prefixes and never change the user's install."""
 import json
+import contextlib
+import importlib.util
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -8,6 +11,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[1]
 INSTALLER = REPO / "scripts/install.py"
@@ -198,6 +202,91 @@ class InstallTests(unittest.TestCase):
         self.assertNotEqual(self.installer("uninstall").returncode, 0)
         self.assertNotEqual(self.installer("install", "--venv", "0").returncode, 0)
         self.assertEqual(executable.read_text(), "my edited launcher")
+
+    def test_reinstall_rejects_license_links_before_writing(self):
+        self.assertEqual(self.installer("install", "--venv", "0").returncode, 0)
+        data = self.prefix / "share/dwork"
+        marker = (data / ".dwork-install.json").read_bytes()
+        for name in ("LICENSE", "LICENSE.md", "COPYING"):
+            with self.subTest(name=name):
+                outside = self.root / ("unrelated-" + name)
+                outside.write_text("personal content")
+                path = data / name
+                previous = path.read_bytes() if path.exists() else None
+                path.unlink(missing_ok=True)
+                path.symlink_to(outside)
+                result = self.installer("install", "--venv", "0")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("linked install path", result.stderr)
+                self.assertEqual(outside.read_text(), "personal content")
+                self.assertEqual((data / ".dwork-install.json").read_bytes(), marker)
+                path.unlink()
+                if previous is not None:
+                    path.write_bytes(previous)
+
+    def interrupted_upgrade(self, prefix, point):
+        self.assertEqual(self.installer("install", "--venv", "0", prefix=prefix).returncode, 0)
+        marker = prefix / "share/dwork/.dwork-install.json"
+        record = json.loads(marker.read_text())
+        # Model a previous release with different generated external files.
+        for relative in record["completions"]:
+            path = prefix / relative
+            path.write_text(path.read_text() + "\n# previous release\n")
+        launcher = prefix / "bin/dwork"
+        launcher.write_text(launcher.read_text() + "\n# previous release\n")
+        spec = importlib.util.spec_from_file_location("dwork_installer_test", INSTALLER)
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        record["launcher_sha256"] = installer.digest(launcher.read_text())
+        record["completions"] = {relative: installer.digest((prefix / relative).read_text())
+                                 for relative in record["completions"]}
+        marker.write_text(json.dumps(record))
+        original = installer.atomic_write
+        def interrupt(path, text, mode=0o644):
+            if point == "marker" and path == marker and "pending" not in json.loads(text):
+                raise OSError("injected upgrade interruption")
+            original(path, text, mode)
+            if str(path.relative_to(prefix)) == point:
+                raise OSError("injected upgrade interruption")
+        with patch.object(sys, "argv", [str(INSTALLER), "install", "--prefix", str(prefix), "--venv", "0"]), \
+                patch.object(installer, "atomic_write", side_effect=interrupt), \
+                contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(OSError, "injected upgrade interruption"):
+                installer.main()
+        self.assertIn("pending", json.loads(marker.read_text()))
+
+    def test_interrupted_upgrades_allow_retry_or_uninstall(self):
+        points = ("share/bash-completion/completions/dwork", "share/zsh/site-functions/_dwork",
+                  "bin/dwork", "marker")
+        for index, point in enumerate(points):
+            for action in ("install", "uninstall"):
+                with self.subTest(point=point, recovery=action):
+                    prefix = self.root / (str(index) + "-" + action)
+                    self.interrupted_upgrade(prefix, point)
+                    options = ("--venv", "0") if action == "install" else ()
+                    result = self.installer(action, *options, prefix=prefix)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    if action == "install":
+                        marker = json.loads((prefix / "share/dwork/.dwork-install.json").read_text())
+                        self.assertNotIn("pending", marker)
+                        self.assertEqual(self.installer("uninstall", prefix=prefix).returncode, 0)
+                    self.assertFalse((prefix / "bin/dwork").exists())
+                    self.assertFalse((prefix / "share/dwork").exists())
+
+    def test_interrupted_upgrade_still_preserves_user_edits(self):
+        self.interrupted_upgrade(self.prefix, "share/bash-completion/completions/dwork")
+        for relative in ("bin/dwork", "share/bash-completion/completions/dwork"):
+            with self.subTest(relative=relative):
+                path = self.prefix / relative
+                original = path.read_bytes()
+                path.write_text("personal edit after interruption")
+                for action in ("install", "uninstall"):
+                    options = ("--venv", "0") if action == "install" else ()
+                    result = self.installer(action, *options)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("was modified", result.stderr)
+                    self.assertEqual(path.read_text(), "personal edit after interruption")
+                path.write_bytes(original)
 
     def test_symlink_escape_is_rejected(self):
         outside = self.root / "outside"

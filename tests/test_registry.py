@@ -13,6 +13,8 @@ import test_dwork as legacy
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import dwork_registry
+import dwork_config
+import dwork_docker
 
 
 class RegistryTests(unittest.TestCase):
@@ -310,6 +312,47 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(len(self.entries()), 1)
         result, _, _ = self.run_cli(cwd=child)
         self.assertNotIn("Register and switch?", result.stdout)
+
+    def test_nested_explicit_compose_file_keeps_meaning_on_saved_switch(self):
+        (self.root / "dwork.yml").write_text("version: 1\n")
+        nested = self.root / "nested"
+        nested.mkdir()
+        for directory, name in ((self.root, "wrong-parent"), (nested, "intended-child")):
+            (directory / "compose.dev.yaml").write_text(json.dumps({"name": name, "services": {"web": {}}}))
+        self.register(nested, "app -f compose.dev.yaml")
+        entry = self.entries()[0]
+        self.assertEqual(entry["path"], str(nested))
+        self.assertEqual(entry["members"][0]["project"], "intended-child")
+        result, changes, _ = self.run_cli("switch app", cwd=self.fixture.base,
+            containers=[legacy.container("a", "intended-child"), legacy.container("b", "wrong-parent")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(changes, [["start", "a"]])
+
+    def test_nested_compose_context_is_separate_from_yaml_paths(self):
+        (self.root / "dwork.yml").write_text(json.dumps({"version": 1,
+            "compose": {"files": ["configured.yaml"]}, "terminals": [{"command": ["echo"]}]}))
+        nested = self.root / "nested"
+        nested.mkdir()
+        cases = [([], {}), (["-f", "one.yaml", "-f", "two.yaml"], {}),
+                 (["--file=one.yaml"], {}), (["-f", "-"], {}),
+                 (["--env-file", ".env.dev"], {}), (["--env-file=.env.dev"], {}),
+                 (["--project-directory", "."], {}), (["--project-directory=."], {}),
+                 ([], {"COMPOSE_FILE": "one.yaml:two.yaml"}),
+                 ([], {"COMPOSE_ENV_FILES": ".env.dev,.env.local"})]
+        for options, environment in cases:
+            with self.subTest(options=options, environment=environment), \
+                    dwork_config.compose_environment(environment), \
+                    patch.object(dwork_docker, "read_model", return_value=("demo", {"web": {}})) as model:
+                workspaces, discovered = dwork_config.discover(nested, options)
+                self.assertFalse(discovered)
+                explicit = bool(options or environment)
+                self.assertEqual(model.call_args.args[0], nested if explicit else self.root)
+                self.assertEqual(workspaces[0].directory, self.root)
+                self.assertEqual(workspaces[0].terminals[0].cwd, self.root)
+                self.assertEqual(model.call_args.args[1][-len(options):] if options else [], options)
+                if not any(arg in ("-f", "--file") or arg.startswith("--file=") for arg in options) \
+                        and not environment.get("COMPOSE_FILE"):
+                    self.assertEqual(model.call_args.args[1][:2], ["-f", str(self.root / "configured.yaml")])
 
     def test_discovered_children_are_one_switchable_workspace(self):
         (self.root / "compose.yaml").unlink()

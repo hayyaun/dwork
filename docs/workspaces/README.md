@@ -55,6 +55,10 @@ Ordinary parent-config discovery remembers the configuration directory, so runni
 from a nested directory or a symlink does not create another registration. Explicit
 Compose options or file-selection environment variables preserve the invocation
 directory so relative paths keep their meaning.
+This also applies beneath an ancestor `dwork.yml`: explicit Compose arguments and
+file-selection environment variables use the invocation context, while paths
+owned by the YAML continue to use its directory. A saved `switch` restores the
+registered context rather than using the shell's current directory.
 
 ## Scan a directory tree
 

@@ -73,6 +73,9 @@ when the ignore preference should apply only to one clone.
 - `files`: optional nonempty list of Compose file paths relative to `dwork.yml`.
   Omit for normal Compose discovery. Explicit CLI `-f`/`--file` or `COMPOSE_FILE`
   takes precedence over this list.
+  Explicit Compose file/environment selections retain the invocation directory,
+  including beneath an ancestor `dwork.yml`; saved switches restore that context.
+  YAML-owned `compose.files` and terminal `cwd` remain relative to `dwork.yml`.
 - `services`: optional nonempty list of service names in the Compose model.
   Omit to manage all existing target-project containers. When specified, other
   services in the target project are untouched.
@@ -183,11 +186,20 @@ require a GUI.
   must have existing containers and Docker health checks. If `compose.services`
   is present, every prerequisite must also be listed there.
 - `timeout`: number of seconds greater than zero and at most 3600; default 180.
+  The deadline includes every Docker health inspection. A stalled inspection fails
+  the gate and blocks further launches. Terminal/browser timeout validation also
+  rejects extremely large integers as ordinary configuration errors.
 
 All health gates pass before any terminal opens. Missing containers or missing
 health checks block launch. Container switching happens before terminal prompts;
 declining a terminal does not undo switching. Completed changes are not rolled
 back after a later failure.
+
+Initial task discovery reports unresolved owned, unprotected outgoing controllers
+and blocks shutdown/activation before workloads change, including in previews.
+Selected, locked, kept, forgotten, and ownership-changed tasks keep their exclusions.
+Preserve controller records while diagnosing failures; never signal saved PIDs or
+delete records to bypass the check. Only completed supervisor cleanup removes them.
 
 ## Browser URLs and HTTP readiness
 

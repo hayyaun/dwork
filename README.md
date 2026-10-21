@@ -57,6 +57,14 @@ available from the [0.3.0 release](https://github.com/hayyaun/dwork/releases/tag
 On Ubuntu, the installer prerequisites are `git make python3 python3-venv`.
 [Custom prefixes, manual sourcing, migration, and uninstall →](docs/installation/README.md)
 
+Current checkout hardening preserves invocation-relative Compose file selections,
+keeps relative shell sourcing usable after changing directories, and includes
+Docker health inspections in their configured timeout. Unreachable owned task
+controllers block shutdown before workloads change; protected tasks remain
+protected. Interrupted Make upgrades can be retried or uninstalled while edited
+launchers/completions and linked install destinations remain protected. These
+fixes apply to builds containing this change, not existing release downloads.
+
 </details>
 
 ## Let your agent configure it
