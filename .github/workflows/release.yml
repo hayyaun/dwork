@@ -1,0 +1,156 @@
+name: Draft release
+
+on:
+  push:
+    tags: ["v[0-9]*.[0-9]*.[0-9]*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  packages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check release versions
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tomllib
+
+          tag = os.environ["TAG"]
+          if not re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", tag):
+              raise SystemExit("Release tags must use vMAJOR.MINOR.PATCH (stable releases only)")
+          version = tag[1:]
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          debian = subprocess.check_output([
+              "dpkg-parsechangelog", "--file", "packaging/debian/changelog",
+              "--show-field", "Version",
+          ], text=True).strip()
+          if project["version"] != version or debian.split("-", 1)[0] != version:
+              raise SystemExit(f"Tag {tag} does not match Python {project['version']} and Debian {debian}")
+          PY
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper python3-yaml zsh lintian
+          python -m pip install build twine PyYAML
+      - name: Test source
+        run: make test
+      - name: Build and verify Python distributions
+        run: python scripts/verify-python-package.py --output dist/release
+      - name: Build and lint Debian package
+        run: |
+          /usr/bin/python3 scripts/build-deb.py
+          lintian dist/debian/*.deb
+      - name: Smoke-test installed Debian package
+        run: |
+          sudo apt-get install -y ./dist/debian/dwork_*_all.deb
+          /usr/bin/dwork --help
+          workspace=$(mktemp -d)
+          cd "$workspace"
+          printf 'version: 1\ncompose:\n  enabled: false\n' > dwork.yml
+          /usr/bin/dwork --dry-run
+      - name: Collect verified packages
+        run: |
+          cp dist/debian/*.deb dist/release/
+          cd dist/release
+          sha256sum -- *.whl *.tar.gz *.deb > SHA256SUMS.python-debian
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-assets-python-debian
+          path: dist/release/
+          if-no-files-found: error
+          retention-days: 7
+
+  fedora:
+    needs: packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build and smoke-test in Fedora 44
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=${TAG#v}
+          mkdir -p dist/source dist/fedora
+          git archive --format=tar.gz --prefix="dwork-$version/" HEAD > "dist/source/dwork-$version.tar.gz"
+          docker run --rm \
+            --mount "type=bind,source=$PWD,target=/checkout,readonly" \
+            --mount "type=bind,source=$PWD/dist/fedora,target=/output" \
+            fedora:44 bash /checkout/packaging/fedora/build-in-container.sh "$version"
+          cd dist/fedora
+          sha256sum -- *.rpm > SHA256SUMS.fedora
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-assets-fedora
+          path: dist/fedora/
+          if-no-files-found: error
+          retention-days: 7
+
+  arch:
+    needs: packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build and smoke-test in Arch Linux
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=${TAG#v}
+          mkdir -p dist/source dist/arch
+          git archive --format=tar.gz --prefix="dwork-$version/" HEAD > "dist/source/dwork-$version.tar.gz"
+          docker run --rm \
+            --mount "type=bind,source=$PWD,target=/checkout,readonly" \
+            --mount "type=bind,source=$PWD/dist/arch,target=/output" \
+            archlinux:base-devel bash /checkout/packaging/arch/build-in-container.sh "$version"
+          cd dist/arch
+          sha256sum -- *.pkg.tar.zst > SHA256SUMS.arch
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-assets-arch
+          path: dist/arch/
+          if-no-files-found: error
+          retention-days: 7
+
+  draft:
+    needs: [packages, fedora, arch]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: release-assets
+      - name: Create draft with verified assets
+        working-directory: release-assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          sha256sum --check SHA256SUMS.python-debian SHA256SUMS.fedora SHA256SUMS.arch
+          sha256sum -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst > SHA256SUMS
+          sha256sum --check SHA256SUMS
+          gh release create "$TAG" --verify-tag --draft --title "$TAG" \
+            --generate-notes -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst SHA256SUMS

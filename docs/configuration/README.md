@@ -85,7 +85,8 @@ locked: true
 
 `locked` is a boolean, defaulting to `false`. A locked workspace remains registered
 and visible in `dwork list`, but its containers are excluded from both workspace
-switch stops and `dwork down`. It can still be activated and its existing containers
+switch stops and `dwork down`. Its tracked host commands also stay running on `down`.
+It can still be activated and its existing containers
 started. Strings such as `"true"`, numbers, and null are rejected.
 
 Changes to this setting take effect without re-registration. dwork reads the current
@@ -99,8 +100,8 @@ and protects that workspace until the config is fixed. Listing and previews do n
 write lock snapshots. For a group of child workspaces, set `locked: true` in each
 child that should stay running; unlocked children remain eligible to stop.
 
-This option controls dwork's container operations; it does not supervise host
-terminal processes or prevent someone from stopping containers directly with Docker.
+This option protects dwork-managed containers and tracked host commands. It does
+not prevent someone from stopping them directly with Docker or operating-system tools.
 
 ## compose
 
@@ -160,9 +161,10 @@ run `dwork register NAME` with the intended options before switching again.
 - `wait_for`: optional health prerequisites described below.
 
 Visible commands run in the foreground of their new terminal. dwork checks dependencies
-and reports immediate launcher failures; it does not supervise later GUI startup,
-the command, or its eventual exit status. Every invocation launches the configured tasks again. It does not detect
-already-running host processes or close terminals from previous projects.
+and reports immediate launcher failures. New commands are supervised and stopped
+by `dwork down`, while their terminal windows remain open at a shell prompt.
+It does not monitor later GUI startup or deduplicate tasks: every invocation
+launches the configured tasks again. See [tracked commands](../terminals/README.md#tracked-commands-and-shutdown).
 
 For detached execution, use `window: none`; `confirm` and health gates still apply.
 `launcher` is not used in that mode. See [background task behavior](../terminals/README.md#detached-background-tasks).

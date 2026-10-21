@@ -87,7 +87,7 @@ dwork list                  # Show remembered directories and status
 dwork switch my-app         # Activate it from any directory
 dwork switch my-app --dry-run
 dwork rename my-app api      # Change its saved name to an available name
-dwork down                  # Stop all registered workspace containers
+dwork down                  # Stop registered containers and dwork-launched commands
 dwork forget my-app         # Forget it; leave containers and files alone
 ```
 
@@ -101,6 +101,10 @@ where it is. [Workspace registration and switching →](docs/workspaces/README.m
 
 Use `dwork down --dry-run` to preview shutdown. `down` respects
 `DWORK_KEEP_PROJECTS` and locked workspaces, and keeps containers, networks, and volumes for next time.
+
+Tracked terminal commands stop while their windows stay open at a shell prompt.
+Detached tasks (`window: none`) stop too. Commands launched before upgrading to
+this version are not tracked. [Task lifecycle details →](docs/terminals/README.md#tracked-commands-and-shutdown)
 
 Keep a workspace running through every switch and `down` by adding this to its `dwork.yml`:
 

@@ -15,6 +15,56 @@ Packaging support is implemented; external publication is a separate step.
    existing release tags or reuse a published PyPI version.
 5. Update fixed source URLs, checksums, versions, and channel metadata together.
 
+## Automated GitHub release assets
+
+`.github/workflows/release.yml` runs when a stable `vMAJOR.MINOR.PATCH` tag is
+pushed. The tag must match `project.version` in `pyproject.toml` and the upstream
+version in `packaging/debian/changelog` (for example, `v0.2.0`, `0.2.0`, and
+`0.2.0-1`). Commit the version changes and workflow before tagging that commit:
+
+```sh
+git tag -a v0.2.0 -m "Release 0.2.0"
+git push origin v0.2.0
+```
+
+The workflow runs source tests, builds and smoke-tests the Python wheel and
+source distribution, then builds, lints, installs, and smoke-tests the Debian
+package on Ubuntu 24.04. Two more jobs build from the tagged Git checkout in
+`fedora:44` and `archlinux:base-devel` containers using `rpmbuild` and `makepkg`.
+Both run the source tests as an ordinary build user, install the package with
+the distro package manager, verify its installed files, and smoke-test `--help`
+and a host-only `--dry-run` as that user outside the source tree. Arch performs
+a full system upgrade before building, as required for its rolling packages.
+
+All three package jobs must pass before the release job can run. Each records
+checksums after verification; the release job checks these again after downloading
+the artifacts. It collects the exact verified `.whl`, `.tar.gz`, `.deb`, `.rpm`,
+and `.pkg.tar.zst` files,
+creates `SHA256SUMS` covering all five packages, and attaches all six files to
+a draft GitHub Release with generated notes.
+Only the final draft job receives repository write permission; it uses
+the built-in `GITHUB_TOKEN`, so no extra release secret is needed.
+
+Review the notes and assets in GitHub Releases before publishing the draft.
+Download all assets into one directory and run `sha256sum --check SHA256SUMS` to
+verify their checksums. The `.deb` uses system Python and PyYAML; the wheel also
+requires Python. The RPM targets Fedora 44; the Arch package targets the current
+Arch rolling distribution. `noarch`/`any` describe architecture-independent
+application code, not compatibility with every RPM/pacman-based distribution.
+These packages use distro Python and PyYAML and are not standalone executables.
+
+The release recipes live in `packaging/fedora` and `packaging/arch`. Version
+values come from the validated tag; the Arch source checksum is calculated from
+the local tagged Git archive and verified by makepkg. The existing
+`packaging/aur` recipe is separate and is not changed or published by this flow.
+The packages are unsigned; SHA-256 checksums verify file integrity, not publisher
+identity. Package signing and repository publication need separate setup.
+
+The workflow does not overwrite existing releases. If an upload fails after a
+draft is created, delete that incomplete draft in GitHub (keep its tag) before
+rerunning the failed job. Never move an existing release tag. PyPI publication,
+Homebrew/AUR updates, and apt repository publication remain separate manual work.
+
 ## Channel guides
 
 - [AUR](../../packaging/aur/README.md): v0.1.0 PKGBUILD and generated .SRCINFO,

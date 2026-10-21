@@ -29,5 +29,16 @@ Documentation = "https://github.com/hayyaun/dwork/tree/main/docs"
 Issues = "https://github.com/hayyaun/dwork/issues"
 
 [tool.setuptools]
-py-modules = ["dwork"]
+py-modules = [
+  "dwork",
+  "dwork_cli",
+  "dwork_common",
+  "dwork_config",
+  "dwork_docker",
+  "dwork_registry",
+  "dwork_scan",
+  "dwork_tasks",
+  "dwork_terminals",
+  "dwork_workspaces",
+]
 package-dir = {"" = "lib"}

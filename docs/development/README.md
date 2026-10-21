@@ -5,10 +5,25 @@
 ## Source layout
 
 - [`dwork.sh`](../../dwork.sh): the Bash/Zsh function and public source entry point.
-- [`lib/dwork.py`](../../lib/dwork.py): configuration, Compose switching, health
-  prerequisites, per-session confirmation, and native Linux / Windows Terminal launching.
-  Also owns the versioned user registry, atomic updates and switch lock; read-only
-  diagnostics and previews never write registry state.
+- [`lib/dwork.py`](../../lib/dwork.py): thin entry point shared by source and installed commands.
+- [`lib/dwork_cli.py`](../../lib/dwork_cli.py): argument routing, shell completion,
+  diagnostics, and CLI error/interrupt handling.
+- [`lib/dwork_config.py`](../../lib/dwork_config.py): YAML validation, Compose
+  environment selection, and workspace discovery.
+- [`lib/dwork_registry.py`](../../lib/dwork_registry.py): versioned registry,
+  atomic updates, switch locking, ownership checks, and registration display.
+- [`lib/dwork_docker.py`](../../lib/dwork_docker.py): Compose models, Docker
+  inventory, health prerequisites, and container status/failure reporting.
+- [`lib/dwork_terminals.py`](../../lib/dwork_terminals.py): command construction,
+  per-session confirmation, and native Linux / Windows Terminal launching.
+- [`lib/dwork_scan.py`](../../lib/dwork_scan.py): repository scanning, the
+  Compose checkbox picker, and bulk registration.
+- [`lib/dwork_workspaces.py`](../../lib/dwork_workspaces.py): switch and shutdown
+  plans, protection policy, confirmations, and execution.
+- [`lib/dwork_common.py`](../../lib/dwork_common.py): shared models, errors,
+  terminal choices, and console formatting.
+- [`lib/dwork_tasks.py`](../../lib/dwork_tasks.py): local task supervision and
+  authenticated shutdown. Read-only diagnostics and previews never write registry state.
 - [`tests/`](../../tests): behavior, loader, YAML, health, and launch-order tests.
 - [`examples/`](../../examples/README.md): configurations developers can adapt.
 
@@ -33,6 +48,12 @@ ownership boundaries, saved selections, target changes, missing directories, and
 `test_scan.py` covers recursive registration and exercises the checkbox picker in
 a real pseudo-terminal, including keyboard navigation and terminal restoration.
 `test_locked.py` checks live lock policy and protection during switching/shutdown.
+`test_tasks.py` starts short-lived harmless processes to verify authenticated
+controllers, process-group shutdown, protected workspaces, cancelled previews,
+and returning a real pseudo-terminal to an ordinary usable shell.
+Task supervision uses documented [POSIX process APIs](https://docs.python.org/3/library/os.html)
+(`posix_spawn`, `waitid` with `WNOWAIT`, `killpg`, and terminal foreground groups)
+and [Unix sockets](https://docs.python.org/3/library/socket.html), with no GUI process-tree parsing.
 
 Installer tests use temporary prefixes with `VENV=0` and test Make targets,
 ownership checks, paths with spaces, reinstall/uninstall, and DESTDIR staging.
@@ -56,9 +77,12 @@ npx skills add ./skills/dwork --list
 
 ## Distribution packaging
 
-[`pyproject.toml`](../../pyproject.toml) packages the existing `lib/dwork.py`
-module using setuptools. `dwork:cli` is the console entry point and preserves
-source CLI errors/interrupts. No duplicate runtime is maintained.
+[`pyproject.toml`](../../pyproject.toml) packages the `lib/dwork*.py` modules
+using setuptools. `dwork:cli` is the console entry point and preserves source
+CLI errors/interrupts. Both `dwork.sh` and the Make-installed launcher execute
+the same thin `lib/dwork.py` entry point; its sibling imports resolve from `lib/`.
+The Make installer copies all Python modules in `lib/`, including the task
+supervisor, so every distribution uses the same runtime.
 
 Channel recipes, build instructions, and publication steps live under
 [`packaging/`](../../packaging/README.md). Verify wheels and sdists with

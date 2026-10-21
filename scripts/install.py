@@ -100,7 +100,8 @@ def install(args):
             checked([env_python, "-m", "pip", "install", "--quiet", "--disable-pip-version-check",
                      "-r", SOURCE / "requirements.txt"])
         (data / "lib").mkdir(exist_ok=True)
-        shutil.copy2(SOURCE / "lib/dwork.py", data / "lib/dwork.py")
+        for module in sorted((SOURCE / "lib").glob("*.py")):
+            shutil.copy2(module, data / "lib" / module.name)
         shutil.copy2(SOURCE / "requirements.txt", data / "requirements.txt")
         shutil.copy2(SOURCE / "README.md", data / "README.md")
         completions = data / "completions"

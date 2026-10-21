@@ -108,8 +108,6 @@ targeting.
 
 Reference: [Windows Terminal window selection](https://learn.microsoft.com/en-us/windows/terminal/command-line-arguments#options-and-commands).
 
-## Commands and startup
-
 ## Detached background tasks
 
 ```yaml
@@ -137,15 +135,55 @@ sets `confirm: false`. The prompt says "Run background task"; previews say "Woul
 run detached". Declining or previewing never starts it.
 
 Input, standard output, and standard error are redirected to the null device.
-dwork starts a new process session, reports its PID, and returns after a short
+dwork starts a detached supervisor, reports its PID, and returns after a short
 immediate-failure check. A command that exits unsuccessfully immediately is reported
 as a failure; run it manually to inspect its output. A successful launch does not
 guarantee later readiness or success, and there is no implicit log file.
 
-These are host processes: dwork does not supervise, deduplicate, or stop them.
-Every activation starts another copy if approved. `dwork down` remains container-only
-and does not terminate background tasks; manage their lifecycle with the project's
-normal tools. The reported PID can help identify the launched process.
+Every activation starts another copy if approved. These commands are tracked and
+stopped by `dwork down`, following the same lock and exclusion rules as visible tasks.
+
+## Tracked commands and shutdown
+
+New visible and detached tasks run under a small local supervisor. Run
+`dwork down --dry-run` to see their workspace name, task title, command, PID, and
+whether they will stop or remain protected. `dwork down` shows the same plan and
+requires confirmation before stopping tasks, then containers. Cancelling leaves
+both running. Ordinary workspace switches continue to leave existing host tasks alone.
+
+`locked: true` protects that workspace's tasks, including individual locked children
+of a workspace group. `DWORK_KEEP_PROJECTS` also protects tasks belonging to those
+project names. Locks are checked again after confirmation. Renaming a workspace
+preserves its tracked tasks; `forget` relinquishes management without stopping them.
+Re-registering the same directory restores management when the project identity matches.
+
+For visible tasks, dwork stops the command and leaves the window/tab open at an
+ordinary Bash or Zsh shell prompt. Work subsequently started in that shell is outside
+dwork's tracking. Terminal input and Ctrl+C continue to reach the running command.
+Detached tasks have no window to preserve. A command's normal completion also
+returns visible tasks to a shell prompt.
+
+Shutdown sends SIGTERM to the command's process group, allowing up to five seconds
+for its main process to exit, then kills any remaining group members. Children
+that stay in that group stop too. Configure foreground commands: programs that
+daemonize, create other sessions/process groups, launch Windows processes, or
+delegate work to external services need their own lifecycle tools.
+
+Tracking is local to the Linux installation/WSL distribution and user. Host tasks
+are considered across all registered workspaces locally, regardless of their saved
+Docker context; container shutdown remains scoped to the current Docker target.
+Host-only workspaces need no Docker connection. If registered Compose workspaces
+exist, Docker must be reachable to build the complete shutdown plan.
+
+Private records live beside the workspace registry in `dwork/tasks/*.json` beneath
+the state directory. Each supervisor uses an authenticated Unix socket in a private
+temporary directory. Shutdown contacts the live supervisor; it never kills a process
+solely because its PID appears in a record. Finished records are removed; stale or
+unreachable records cannot authorize a stop. A controller failure during shutdown
+reports incomplete work and leaves later tasks and containers alone. After a supervisor crash, manage any
+surviving command manually. Commands launched by older dwork versions are untracked;
+restart them through this version to enable tracking. There is no restart policy,
+deduplication, or readiness check beyond the existing health prerequisites.
 
 ## Commands and startup
 
@@ -156,8 +194,8 @@ directory and title are passed through the emulator's supported interface.
 xterm inherits the working directory from the launcher process.
 
 Native emulator processes are detached so dwork can return while their terminals
-stay open. dwork catches executable and immediate launcher failures, but does not
-supervise GUI startup, commands, or terminals that exit later. The same health
+stay open. dwork catches executable and immediate launcher failures; GUI startup
+is not monitored for later failures. The same health
 prerequisites run before terminals launch on either platform.
 
 Dependencies are checked before container changes. `--dry-run` never opens a

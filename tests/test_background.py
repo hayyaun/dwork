@@ -1,4 +1,7 @@
 """Detached task launch: no GUI dependency, explicit consent, and preserved health gates."""
+
+from pathlib import Path
+from unittest.mock import Mock, patch
 import contextlib
 import io
 import json
@@ -6,10 +9,13 @@ import os
 import subprocess
 import sys
 import unittest
-from unittest.mock import Mock, patch
 
 import test_dwork as legacy
-from test_dwork_config import runtime
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_common
+import dwork_terminals
 
 
 class BackgroundTests(unittest.TestCase):
@@ -18,19 +24,19 @@ class BackgroundTests(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
-        self.task = runtime.TerminalTask("Worker", ["echo", "hello world", "$(not-a-command)"], self.root, window="none")
+        self.task = dwork_common.TerminalTask("Worker", ["echo", "hello world", "$(not-a-command)"], self.root, window="none")
 
     def test_preflight_ignores_graphical_and_launcher_dependencies(self):
         with patch.dict(os.environ, {"SHELL": "/bin/bash", "DWORK_TERMINAL": "invalid", "DISPLAY": "", "WAYLAND_DISPLAY": ""}), \
-                patch.object(runtime, "choose_launcher", side_effect=AssertionError("must not choose GUI")):
-            runtime.preflight_terminals([self.task])
+                patch.object(dwork_terminals, "choose_launcher", side_effect=AssertionError("must not choose GUI")):
+            dwork_terminals.preflight_terminals([self.task])
 
     def test_detached_flags_quoting_and_immediate_failure(self):
         process = Mock(pid=4321)
         process.wait.side_effect = subprocess.TimeoutExpired("worker", .2)
-        with patch.object(runtime, "command_shell", return_value="/bin/bash"), \
-                patch.object(runtime.subprocess, "Popen", return_value=process) as launch:
-            self.assertEqual(runtime.open_terminal(self.task), 4321)
+        with patch.object(dwork_terminals, "command_shell", return_value="/bin/bash"), \
+                patch.object(subprocess, "Popen", return_value=process) as launch:
+            self.assertEqual(dwork_terminals.open_terminal(self.task), 4321)
             self.assertEqual(launch.call_args.args[0], ["/bin/bash", "-lc", "exec echo 'hello world' '$(not-a-command)'"])
             self.assertTrue(launch.call_args.kwargs["start_new_session"])
             self.assertEqual(launch.call_args.kwargs["cwd"], self.root)
@@ -38,8 +44,8 @@ class BackgroundTests(unittest.TestCase):
                 self.assertEqual(launch.call_args.kwargs[stream], subprocess.DEVNULL)
             process.wait.side_effect = None
             process.wait.return_value = 7
-            with self.assertRaisesRegex(runtime.DworkError, "exited immediately"):
-                runtime.open_terminal(self.task)
+            with self.assertRaisesRegex(dwork_common.DworkError, "exited immediately"):
+                dwork_terminals.open_terminal(self.task)
 
     def test_real_harmless_child_runs_in_its_own_session_and_survives_dispatch(self):
         # Avoid personal login hooks while testing the process/session behavior.
@@ -49,7 +55,7 @@ class BackgroundTests(unittest.TestCase):
         output = self.root / "child.json"
         code = ("import json,os,time; from pathlib import Path; Path(" + repr(str(output)) + ").write_text("
                 "json.dumps({'pid':os.getpid(),'sid':os.getsid(0),'stdin':os.isatty(0)})); time.sleep(0.8)")
-        task = runtime.TerminalTask("Harmless test", [sys.executable, "-c", code], self.root, window="none")
+        task = dwork_common.TerminalTask("Harmless test", [sys.executable, "-c", code], self.root, window="none")
         processes = []
         real_launch = subprocess.Popen
         def launch(*args, **kwargs):
@@ -57,9 +63,9 @@ class BackgroundTests(unittest.TestCase):
             processes.append(process)
             return process
         try:
-            with patch.object(runtime, "command_shell", return_value=str(shell)), \
-                    patch.object(runtime.subprocess, "Popen", side_effect=launch):
-                pid = runtime.open_terminal(task)
+            with patch.object(dwork_terminals, "command_shell", return_value=str(shell)), \
+                    patch.object(subprocess, "Popen", side_effect=launch):
+                pid = dwork_terminals.open_terminal(task)
             self.assertIsNone(processes[0].poll())
             self.assertEqual(processes[0].wait(timeout=5), 0)
             state = json.loads(output.read_text())
@@ -74,11 +80,11 @@ class BackgroundTests(unittest.TestCase):
 
     def test_confirmation_is_not_bypassed(self):
         with patch("builtins.input", return_value="") as ask:
-            self.assertFalse(runtime.confirm_terminal(self.task))
+            self.assertFalse(dwork_terminals.confirm_terminal(self.task))
             self.assertIn("Run background task 'Worker'", ask.call_args.args[0])
         self.task.confirm = False
         with patch("builtins.input", side_effect=AssertionError("no prompt expected")):
-            self.assertTrue(runtime.confirm_terminal(self.task))
+            self.assertTrue(dwork_terminals.confirm_terminal(self.task))
 
     def test_preview_and_decline_do_not_launch_background_commands(self):
         marker = self.root / "should-not-exist"

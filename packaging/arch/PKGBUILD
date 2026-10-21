@@ -1,0 +1,32 @@
+# Local release recipe; publishing the separate packaging/aur recipe is manual.
+pkgname=dwork
+pkgver=${DWORK_VERSION:?Set DWORK_VERSION to the validated release version}
+pkgrel=1
+pkgdesc='Switch development workspaces, resume existing containers, and launch terminals'
+arch=('any')
+url='https://github.com/hayyaun/dwork'
+license=('MIT')
+depends=('sh' 'python>=3.10' 'python-yaml')
+makedepends=('make')
+checkdepends=('zsh' 'docker')
+optdepends=(
+  'docker: manage existing project containers'
+  'docker-compose: read Compose workspace configuration'
+  'gnome-terminal: launch development terminals on GNOME'
+  'konsole: launch development terminals on KDE'
+  'xfce4-terminal: launch development terminals on Xfce'
+  'xterm: launch development terminals on X11'
+)
+source=("dwork-$pkgver.tar.gz")
+sha256sums=("${DWORK_SOURCE_SHA256:?Set the SHA-256 of the local source archive}")
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make test PYTHON=/usr/bin/python
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  make install VENV=0 PREFIX=/usr DESTDIR="$pkgdir" PYTHON=/usr/bin/python
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -34,6 +34,10 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Usage: dwork", result.stdout)
         self.assertTrue((self.prefix / "share/dwork/examples/full-stack.yml").is_file())
+        self.assertEqual(
+            {module.name for module in (REPO / "lib").glob("*.py")},
+            {module.name for module in (self.prefix / "share/dwork/lib").glob("*.py")},
+        )
         self.assertIn("complete -o", (self.prefix / "share/dwork/completions/dwork.bash").read_text())
         self.assertIn("compdef _dwork dwork", (self.prefix / "share/dwork/completions/_dwork").read_text())
         result = subprocess.run(["make", "uninstall", "PREFIX=" + str(self.prefix),
@@ -61,7 +65,10 @@ class InstallTests(unittest.TestCase):
         launcher = stage / "usr/bin/dwork"
         self.assertIn("/usr/share/dwork/lib/dwork.py", launcher.read_text())
         self.assertNotIn(str(stage), launcher.read_text())
-        self.assertTrue((stage / "usr/share/dwork/lib/dwork.py").is_file())
+        self.assertEqual(
+            {module.name for module in (REPO / "lib").glob("*.py")},
+            {module.name for module in (stage / "usr/share/dwork/lib").glob("*.py")},
+        )
         result = self.installer("uninstall", "--destdir", str(stage), prefix=Path("/usr"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(launcher.exists())

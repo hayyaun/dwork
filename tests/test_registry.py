@@ -1,12 +1,17 @@
 """Workspace ownership and CLI integration; fake Docker and isolated user state."""
+
+from pathlib import Path
+from unittest.mock import patch
 import json
 import os
-from pathlib import Path
+import sys
 import unittest
-from unittest.mock import patch
 
 import test_dwork as legacy
-from test_dwork_config import runtime
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_registry
 
 
 class RegistryTests(unittest.TestCase):
@@ -359,7 +364,7 @@ with open(os.environ["DWORK_TEST_LOG"], "a") as stream:
 
     def test_registry_lock_prevents_concurrent_mutation(self):
         with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}):
-            with runtime.registry_lock():
+            with dwork_registry.registry_lock():
                 result, changes, calls = self.run_cli("register")
                 self.assertEqual(result.returncode, 1)
                 self.assertIn("in progress", result.stderr)

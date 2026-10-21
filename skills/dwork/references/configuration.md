@@ -41,9 +41,13 @@ The first normal run asks before registering a new directory. `dwork register NA
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
 list, activate, and forget remembered directories. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.
-`dwork down` stops all registered container workloads on the current Docker target,
-respecting service selections and `DWORK_KEEP_PROJECTS`, without removing containers
-or volumes. `dwork down --dry-run` previews without stopping anything.
+`dwork down` stops registered container workloads on the current Docker target and
+locally tracked host commands, respecting service selections and `DWORK_KEEP_PROJECTS`,
+without removing containers or volumes. It shows a plan and requires confirmation.
+Visible terminal windows remain open at a shell prompt. `dwork down --dry-run`
+previews without stopping anything or prompting. Commands launched by older versions
+are not tracked. Tracking does not follow commands that daemonize into other groups
+or sessions. Ordinary workspace switches leave existing host tasks running.
 `locked: true` protects a workspace from both operations. Lock changes are read
 without re-registration; a missing config retains the last recorded policy, and an
 unreadable/invalid lock policy protects the workspace with a warning. To unlock,
@@ -64,7 +68,8 @@ Each item in `terminals` supports:
   arguments, e.g. `[npm, run, dev]`. It is not a shell command string.
 - `title`: optional nonempty string, default `dwork: <project>`.
 - `cwd`: optional existing directory relative to `dwork.yml`, default `.`.
-- `window`: `new` (default) or `current` (request an existing-window tab).
+- `window`: `new` (default), `current` (request an existing-window tab), or `none`
+  (detached background task with output discarded and no window).
   On Windows Terminal, `current` selects the most recently used window, not
   necessarily the calling shell's window. The field is `window`, not `terminal`.
 - `launcher`: `auto` (default), `windows-terminal`, `gnome-terminal`, `konsole`,
@@ -78,8 +83,9 @@ Commands use the user's Bash/Zsh login and interactive startup environment and
 run in the foreground in a new terminal. Use an existing script for pipelines or
 compound commands. Terminal titles, resolved working directories, and command
 arguments cannot contain NUL, newlines, or semicolons. Repeated dwork invocations
-launch tasks again: dwork does not detect already-running host processes,
-supervise commands, or close old terminals.
+launch tasks again without deduplication. Commands are supervised for `down`, which
+respects workspace locks, terminates their process groups, and preserves terminal
+windows. Detached commands use noninteractive login shell startup.
 
 Terminal launching supports Linux graphical desktops with the listed native
 emulators, or WSL2 with Windows Terminal and Windows PowerShell. It is not a

@@ -1,11 +1,19 @@
 """Batch shutdown stays inside registered ownership; never contacts real Docker."""
+
+from pathlib import Path
+from unittest.mock import patch
 import contextlib
 import io
+import sys
 import unittest
-from unittest.mock import patch
 
 import test_dwork as legacy
-from test_dwork_config import runtime
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_cli
+import dwork_docker
+import dwork_registry
 
 
 class DownTests(unittest.TestCase):
@@ -145,16 +153,16 @@ class DownTests(unittest.TestCase):
         target = {"context": "default", "daemon": "test"}
         entries = [{"target": target, "path": str(self.root), "members": [
             {"enabled": True, "project": "api", "directory": str(self.root), "services": None}]}]
-        with patch.object(runtime, "read_registry", return_value=entries), \
-                patch.object(runtime, "registry_lock", return_value=contextlib.nullcontext()), \
-                patch.object(runtime, "docker_target", return_value=target), \
-                patch.object(runtime, "show_target"), \
-                patch.object(runtime, "inventory", return_value=[legacy.container("a", "api", state="running")]), \
-                patch.object(runtime, "docker", side_effect=KeyboardInterrupt), \
+        with patch.object(dwork_registry, "read_registry", return_value=entries), \
+                patch.object(dwork_registry, "registry_lock", return_value=contextlib.nullcontext()), \
+                patch.object(dwork_docker, "docker_target", return_value=target), \
+                patch.object(dwork_docker, "show_target"), \
+                patch.object(dwork_docker, "inventory", return_value=[legacy.container("a", "api", state="running")]), \
+                patch.object(dwork_docker, "docker", side_effect=KeyboardInterrupt), \
                 patch("builtins.input", return_value="y"), \
-                patch.object(runtime.sys, "argv", ["dwork", "down"]), \
+                patch.object(sys, "argv", ["dwork", "down"]), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
-            self.assertEqual(runtime.cli(), 130)
+            self.assertEqual(dwork_cli.cli(), 130)
         self.assertIn("Down incomplete", errors.getvalue())
 
 

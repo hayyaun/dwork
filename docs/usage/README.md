@@ -82,8 +82,8 @@ prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tre
 ### Stop all registered workloads
 
 `dwork up` shows the current workspace plan and asks for confirmation before
-applying it. `dwork down` shows the containers it will stop and asks for confirmation
-when there are containers to stop. Only `y` or `Y` proceeds; Enter, `n`, and
+applying it. `dwork down` shows the containers and tracked commands it will stop
+and asks for confirmation when there is work to stop. Only `y` or `Y` proceeds; Enter, `n`, and
 end-of-input cancel. `--dry-run` previews without prompting. Existing registration,
 group, and terminal-task confirmations still apply.
 
@@ -96,8 +96,12 @@ Run from any directory. `down` stops running, restarting, and paused containers
 managed by all registered workspaces on the current Docker target in one Docker
 stop call. Registered service selections and `DWORK_KEEP_PROJECTS` still apply;
 workspaces with `locked: true` and unregistered projects stay running. It does not remove containers, networks,
-volumes, or registrations, and it does not stop host terminal commands or the
-Docker daemon/WSL VM. Docker's normal stop signal and timeout behavior apply.
+volumes, or registrations. It also stops commands launched through this version of
+dwork, leaving visible terminal windows at a shell prompt. Locked tasks and
+`DWORK_KEEP_PROJECTS` exclusions remain running. The Docker daemon/WSL VM remain
+running. Docker's normal stop signal and timeout behavior apply to containers.
+See [tracked command shutdown](../terminals/README.md#tracked-commands-and-shutdown)
+for process-group shutdown and tracking limits.
 
 Unlike a workspace switch, explicit `down` also stops registered workloads whose
 directories have moved or disappeared. It uses the saved ownership, without
@@ -136,8 +140,8 @@ prompt, or launch terminal tasks. They use the same workspace discovery and
 Compose options as switching.
 
 `status` shows the Docker context, selected workspaces, container states and
-health, unmanaged target services, and missing managed services. Host command
-sessions are not tracked. When `DOCKER_HOST` overrides the context endpoint,
+health, unmanaged target services, and missing managed services. Preview tracked
+host commands with `dwork down --dry-run`. When `DOCKER_HOST` overrides the context endpoint,
 dwork reports the override without printing its potentially sensitive value.
 
 `doctor` checks configuration and required Compose flags, Docker access, and each

@@ -1,5 +1,7 @@
 """Build, validate, and smoke-test wheels and sdists in isolated environments."""
+import argparse
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,6 +14,12 @@ def run(*args, cwd=None):
 
 def main():
     # Invoke this script with an interpreter that has build and twine installed.
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, help="Retain verified wheel and sdist in an empty directory")
+    args = parser.parse_args()
+    output = args.output.expanduser().resolve() if args.output else None
+    if output and output.exists() and (not output.is_dir() or any(output.iterdir())):
+        parser.error("--output must name a new or empty directory")
     with tempfile.TemporaryDirectory(prefix="dwork-python-package-") as temp:
         work = Path(temp)
         dist = work / "dist"
@@ -37,6 +45,10 @@ def main():
             result = subprocess.run([str(command)], cwd=workspace, capture_output=True, text=True)
             if result.returncode != 1 or "dwork:" not in result.stderr or "Traceback" in result.stderr:
                 raise RuntimeError("Packaged CLI did not preserve friendly errors: " + result.stderr)
+        if output:
+            output.mkdir(parents=True, exist_ok=True)
+            for artifact in artifacts:
+                shutil.copy2(artifact, output / artifact.name)
         print("Wheel and sdist installs, YAML support, and CLI error handling passed.")
 
 if __name__ == "__main__":

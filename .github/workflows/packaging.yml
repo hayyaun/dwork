@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - run: sudo apt-get update && sudo apt-get install -y debhelper python3-yaml zsh lintian
+      - run: sudo apt-get update && sudo apt-get install -y build-essential debhelper python3-yaml zsh lintian
       - run: python3 scripts/build-deb.py
       - run: lintian dist/debian/*.deb
       - run: |
@@ -51,3 +51,8 @@ jobs:
           brew install --build-from-source hayyaun/dwork-test/dwork
           brew test hayyaun/dwork-test/dwork
           brew audit --strict hayyaun/dwork-test/dwork
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com

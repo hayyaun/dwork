@@ -134,7 +134,7 @@ dwork list
 ```
 
 Shows each name, absolute directory path, and a count of running/restarting managed
-containers on the current Docker target. Host-only sessions are not tracked. Missing
+containers on the current Docker target. Use `down --dry-run` to inspect tracked host commands. Missing
 directories, other Docker targets, and unavailable Docker status are identified.
 Listing still works when Docker is offline; it never registers, switches, or opens
 terminals. It does not change Docker contexts to inspect other targets.
@@ -206,7 +206,7 @@ unreadable policy protects the workspace with a warning. A valid config with
 
 When all selected workspaces disable Compose, no Docker calls run and no other
 workspace containers are stopped. Existing terminal processes from other workspaces
-are not stopped or supervised.
+are left running during a switch. Use `dwork down` to stop tracked commands.
 
 ## Configuration or location changes
 
@@ -240,22 +240,25 @@ dwork down
 
 Stops all registered container workloads on the current Docker target together,
 including workloads from unavailable directories. It respects recorded service
-selections and `DWORK_KEEP_PROJECTS`. Unregistered projects and other Docker targets
-are untouched, and locked workspaces remain running. Containers, networks, volumes,
+selections and `DWORK_KEEP_PROJECTS`. Unregistered containers and containers on other
+Docker targets are untouched, and locked workspaces remain running. Containers, networks, volumes,
 and registrations are retained.
 
 `down` works from any directory. It reads workspace lock policies without loading
 Compose models or opening terminals.
-It does not close host terminal sessions or stop their processes. The Docker daemon
-and WSL VM remain running; this command releases the stopped workloads' resources,
+It also stops locally tracked dwork commands, leaving visible terminal windows open
+at a shell prompt. Locked tasks and `DWORK_KEEP_PROJECTS` exclusions remain running.
+The plan lists affected commands and protected tasks before confirmation.
+See [task lifecycle details](../terminals/README.md#tracked-commands-and-shutdown).
+The Docker daemon and WSL VM remain running; this command releases the stopped workloads' resources,
 not a guaranteed amount of host-visible memory.
 
 Docker receives one `stop` call with all selected container IDs. If it fails or is
 interrupted, dwork refreshes the selected containers' states and reports partial
 completion when possible. Preview first to inspect the scope; the explicit `down`
-command shows the stop plan and asks `Stop all listed registered containers? (y/N)`.
+command shows the stop plan and asks `Stop all listed containers and tracked commands? (y/N)`.
 Only `y` or `Y` proceeds; Enter, another answer, or end-of-input cancels.
-`--dry-run` does not prompt. If no containers need stopping, no confirmation is needed.
+`--dry-run` does not prompt. If no containers or tracked commands need stopping, no confirmation is needed.
 
 ## Rename
 

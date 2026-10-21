@@ -1,18 +1,21 @@
 """Config and health-gated terminal tests; no real Docker or terminals."""
+
+from pathlib import Path
+from unittest.mock import patch
 import base64
-import importlib.util
 import json
 import os
-from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
+
 import test_dwork as legacy
 
-SPEC = importlib.util.spec_from_file_location("dwork_runtime", legacy.SOURCE.parent / "lib/dwork.py")
-runtime = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = runtime
-SPEC.loader.exec_module(runtime)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_common
+import dwork_docker
+import dwork_terminals
+
 
 class ConfigTests(unittest.TestCase):
     def setUp(self):
@@ -200,30 +203,30 @@ terminals:
             self.assertFalse(any("-EncodedCommand" in call for call in calls))
 
     def test_terminal_argument_quoting_and_encoded_transport(self):
-        task = runtime.TerminalTask("Title ' & space", ["echo", "hello world", 'a"$b&c'],
+        task = dwork_common.TerminalTask("Title ' & space", ["echo", "hello world", 'a"$b&c'],
                                     Path("/home/user/repo with spaces"))
         with patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu", "SHELL": "/bin/bash"}):
-            args = runtime.terminal_arguments(task)
+            args = dwork_terminals.terminal_arguments(task)
             self.assertEqual(args[-1], "exec echo 'hello world' 'a\"$b&c'")
             self.assertIn(str(task.cwd), args)
-            with patch.object(runtime, "run_command") as command:
-                runtime.open_terminal(task)
+            with patch.object(dwork_docker, "run_command") as command:
+                dwork_terminals.open_terminal(task)
                 call = command.call_args.args[0]
                 self.assertIn("-EncodedCommand", call)
                 decoded = base64.b64decode(call[-1]).decode("utf-16le")
-                self.assertEqual(decoded, runtime.powershell_script(task))
+                self.assertEqual(decoded, dwork_terminals.powershell_script(task))
                 self.assertIn("Title '' & space", decoded)
 
     def test_all_health_gates_pass_before_any_launch(self):
         self.health_config()
         # Direct health tests use official inspect JSON fields and a bounded clock.
-        with patch.object(runtime, "docker", return_value=json.dumps([
+        with patch.object(dwork_docker, "docker", return_value=json.dumps([
             {"Id": "a", "State": {"Status": "running", "Health": {"Status": "healthy"}}}
         ])):
-            runtime.wait_healthy(["a"], 1)
-        with patch.object(runtime, "docker", return_value="[]"):
-            with self.assertRaises(runtime.DworkError):
-                runtime.wait_healthy(["a"], 1)
+            dwork_docker.wait_healthy(["a"], 1)
+        with patch.object(dwork_docker, "docker", return_value="[]"):
+            with self.assertRaises(dwork_common.DworkError):
+                dwork_docker.wait_healthy(["a"], 1)
 
 if __name__ == "__main__":
     unittest.main()

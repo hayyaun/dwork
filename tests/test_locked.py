@@ -1,13 +1,23 @@
 """Lock policy is live, persistent when unavailable, and cannot be stopped by dwork."""
-import json
+
+from pathlib import Path
+from unittest.mock import patch
 import contextlib
 import io
+import json
 import os
+import sys
 import unittest
-from unittest.mock import patch
 
 import test_dwork as legacy
-from test_dwork_config import runtime
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_common
+import dwork_config
+import dwork_docker
+import dwork_registry
+import dwork_workspaces
 
 
 class LockedTests(unittest.TestCase):
@@ -136,9 +146,9 @@ class LockedTests(unittest.TestCase):
     def test_locked_requires_boolean_before_docker_is_called(self):
         for value in ("true", "false", 0, 1, None):
             self.configure(self.root, "infra", value)
-            with patch.object(runtime, "read_model") as model:
-                with self.assertRaisesRegex(runtime.DworkError, "locked must be true or false"):
-                    runtime.load_workspace(self.root)
+            with patch.object(dwork_docker, "read_model") as model:
+                with self.assertRaisesRegex(dwork_common.DworkError, "locked must be true or false"):
+                    dwork_config.load_workspace(self.root)
             model.assert_not_called()
 
     def test_lock_enabled_while_registration_prompt_is_open_is_rechecked_before_stopping(self):
@@ -150,13 +160,13 @@ class LockedTests(unittest.TestCase):
             return True
         items = [legacy.container("a", "infra", state="running"), legacy.container("b", "app")]
         with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}), \
-                patch.object(runtime, "discover", return_value=([runtime.Workspace("app", app, {"web": {}})], False)), \
-                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(runtime, "show_target"), patch.object(runtime, "inventory", return_value=items), \
-                patch.object(runtime, "confirm_registration", side_effect=accept_and_lock), \
-                patch.object(runtime, "docker") as docker, contextlib.redirect_stdout(io.StringIO()) as output:
-            with runtime.registry_lock():
-                self.assertEqual(runtime.switch_workspace(app, [], "activate", False, runtime.read_registry()), 0)
+                patch.object(dwork_config, "discover", return_value=([dwork_common.Workspace("app", app, {"web": {}})], False)), \
+                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(dwork_docker, "show_target"), patch.object(dwork_docker, "inventory", return_value=items), \
+                patch.object(dwork_registry, "confirm_registration", side_effect=accept_and_lock), \
+                patch.object(dwork_docker, "docker") as docker, contextlib.redirect_stdout(io.StringIO()) as output:
+            with dwork_registry.registry_lock():
+                self.assertEqual(dwork_workspaces.switch_workspace(app, [], "activate", False, dwork_registry.read_registry()), 0)
         self.assertIn("Skipped stop: infra is now locked", output.getvalue())
         self.assertEqual([call.args for call in docker.call_args_list], [("start", "b")])
         self.assertEqual(len(self.entries()), 2)

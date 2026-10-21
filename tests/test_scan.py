@@ -1,19 +1,26 @@
 """Recursive registration and the real checkbox picker; isolated state/fake Docker."""
+
+from pathlib import Path
+from unittest.mock import patch
 import contextlib
 import io
 import json
 import os
-from pathlib import Path
 import select
+import shutil
 import subprocess
 import sys
 import time
 import unittest
-from unittest.mock import patch
 
-import test_dwork as legacy
-from test_dwork_config import runtime
 from test_colors import TTY
+import test_dwork as legacy
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_docker
+import dwork_registry
+import dwork_scan
 
 
 class ScanTests(unittest.TestCase):
@@ -56,8 +63,8 @@ class ScanTests(unittest.TestCase):
             (repo / marker).write_text("")
         self.configured(self.root / "sibling")
         real_scandir = os.scandir
-        with patch.object(runtime.os, "scandir", side_effect=real_scandir) as scanned:
-            configured, _, errors = runtime.scan_directories(self.root)
+        with patch.object(os, "scandir", side_effect=real_scandir) as scanned:
+            configured, _, errors = dwork_scan.scan_directories(self.root)
         self.assertEqual(configured, [self.root / "sibling"])
         self.assertEqual(errors, [])
         self.assertFalse(any(Path(call.args[0]).name == "nested" for call in scanned.call_args_list))
@@ -65,7 +72,7 @@ class ScanTests(unittest.TestCase):
     def test_root_boundary_is_checked_before_pruning(self):
         self.configured(self.root)
         self.configured(self.root / "nested")
-        configured, _, errors = runtime.scan_directories(self.root)
+        configured, _, errors = dwork_scan.scan_directories(self.root)
         self.assertEqual(configured, [self.root])
         self.assertEqual(errors, [])
 
@@ -74,7 +81,7 @@ class ScanTests(unittest.TestCase):
         (self.root / "git-repo/.git").mkdir()
         self.fixture.model(self.root / "compose-repo", "compose-repo")
         self.configured(self.root / "compose-repo/nested")
-        configured, compose, errors = runtime.scan_directories(self.root)
+        configured, compose, errors = dwork_scan.scan_directories(self.root)
         self.assertEqual(configured, [])
         self.assertEqual(compose, [self.root / "compose-repo"])
         self.assertEqual(errors, [])
@@ -88,8 +95,8 @@ class ScanTests(unittest.TestCase):
         for directory in expected:
             self.configured(directory)
         real_scandir = os.scandir
-        with patch.object(runtime.os, "scandir", side_effect=real_scandir) as scanned:
-            configured, compose, errors = runtime.scan_directories(self.root)
+        with patch.object(os, "scandir", side_effect=real_scandir) as scanned:
+            configured, compose, errors = dwork_scan.scan_directories(self.root)
         self.assertEqual(set(configured), set(expected))
         self.assertEqual(compose, [])
         self.assertEqual(errors, [])
@@ -99,7 +106,7 @@ class ScanTests(unittest.TestCase):
     def test_explicit_scan_root_is_searched_even_if_its_name_is_ignored(self):
         root = self.root / "vendor"
         self.configured(root / "my-project")
-        configured, _, errors = runtime.scan_directories(root)
+        configured, _, errors = dwork_scan.scan_directories(root)
         self.assertEqual(configured, [root / "my-project"])
         self.assertEqual(errors, [])
 
@@ -107,9 +114,9 @@ class ScanTests(unittest.TestCase):
         deepest = self.root / "one/two"
         deepest.mkdir(parents=True)
         with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
-                patch.object(runtime.shutil, "get_terminal_size", return_value=os.terminal_size((200, 24))), \
+                patch.object(shutil, "get_terminal_size", return_value=os.terminal_size((200, 24))), \
                 contextlib.redirect_stdout(TTY()) as output:
-            runtime.scan_directories(self.root)
+            dwork_scan.scan_directories(self.root)
         text = output.getvalue()
         self.assertIn("\033[90mSearching: " + str(self.root), text)
         self.assertTrue(text.endswith("\033[90mone\033[0m\n\033[90m  two\033[0m\n"))
@@ -118,10 +125,10 @@ class ScanTests(unittest.TestCase):
         directories = [self.root, self.root / "bbb", self.root / "bbb/b2", self.root / "ccc"]
         walk = [(str(path), [], []) for path in directories]
         with patch.dict(os.environ, {"TERM": "xterm", "NO_COLOR": ""}), \
-                patch.object(runtime.os, "walk", return_value=iter(walk)), \
-                patch.object(runtime.time, "monotonic", side_effect=range(10)), \
+                patch.object(os, "walk", return_value=iter(walk)), \
+                patch.object(time, "monotonic", side_effect=range(10)), \
                 contextlib.redirect_stdout(TTY()) as output:
-            runtime.scan_directories(self.root)
+            dwork_scan.scan_directories(self.root)
         text = output.getvalue()
         self.assertIn("\033[90mbbb\033[0m\n\033[90m  b2\033[0m", text)
         self.assertEqual(text.rsplit("\033[J", 1)[1], "\033[90mccc\033[0m\n")
@@ -129,7 +136,7 @@ class ScanTests(unittest.TestCase):
     def test_progress_is_omitted_for_redirected_output(self):
         (self.root / "child").mkdir()
         with contextlib.redirect_stdout(io.StringIO()) as output:
-            runtime.scan_directories(self.root)
+            dwork_scan.scan_directories(self.root)
         self.assertEqual(output.getvalue(), "")
 
     def test_interrupted_scan_finishes_its_progress_line(self):
@@ -137,10 +144,10 @@ class ScanTests(unittest.TestCase):
             yield str(self.root), [], []
             raise KeyboardInterrupt
         with patch.dict(os.environ, {"TERM": "xterm"}), \
-                patch.object(runtime.os, "walk", side_effect=interrupted), \
+                patch.object(os, "walk", side_effect=interrupted), \
                 contextlib.redirect_stdout(TTY()) as output:
             with self.assertRaises(KeyboardInterrupt):
-                runtime.scan_directories(self.root)
+                dwork_scan.scan_directories(self.root)
         self.assertTrue(output.getvalue().endswith("\n"))
 
     def test_optional_compose_prompt_defaults_to_no(self):
@@ -209,12 +216,12 @@ class ScanTests(unittest.TestCase):
         self.fixture.model(child, "child")
         self.fixture.model(skipped, "skip")
         with patch.dict(os.environ, {"XDG_STATE_HOME": str(self.fixture.base / "state")}), \
-                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(runtime, "read_model", return_value=("child", {"web": {}})), \
-                patch.object(runtime, "choose_compose_directories", return_value=[child]) as picker, \
+                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(dwork_docker, "read_model", return_value=("child", {"web": {}})), \
+                patch.object(dwork_scan, "choose_compose_directories", return_value=[child]) as picker, \
                 patch("builtins.input", return_value="y"), contextlib.redirect_stdout(io.StringIO()):
-            with runtime.registry_lock():
-                self.assertEqual(runtime.scan_workspaces(self.root, [], False), 0)
+            with dwork_registry.registry_lock():
+                self.assertEqual(dwork_scan.scan_workspaces(self.root, [], False), 0)
         self.assertEqual(picker.call_args.args[0], [child, skipped])
         self.assertEqual({e["path"] for e in self.entries()}, {str(self.root / "configured"), str(child)})
         for args in ("switch child", ""):
@@ -238,7 +245,7 @@ class ScanTests(unittest.TestCase):
         import termios
         lib = legacy.SOURCE.parent / "lib"
         script = ("import sys,json; from pathlib import Path; sys.path.insert(0," + repr(str(lib)) + "); "
-                  "import dwork; result=dwork.choose_compose_directories([Path('first'),Path('second')],Path('.')); "
+                  "import dwork_scan; result=dwork_scan.choose_compose_directories([Path('first'),Path('second')],Path('.')); "
                   "print('PICKER_RESULT:'+json.dumps([str(p) for p in result]))")
         for keys, expected in ((b" \x1bOB \x1bOA \n", '["second"]'), (b"q", "[]")):
             master, slave = pty.openpty()

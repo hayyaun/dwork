@@ -1,13 +1,24 @@
 """Read-only diagnostics and partial-failure behavior using fake Docker."""
+
+from pathlib import Path
+from unittest.mock import patch
 import contextlib
 import io
 import json
 import os
+import sys
 import unittest
-from unittest.mock import patch
 
 import test_dwork as legacy
-from test_dwork_config import runtime
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+import dwork_cli
+import dwork_common
+import dwork_config
+import dwork_docker
+import dwork_registry
+import dwork_terminals
 
 
 class DiagnosticsTests(unittest.TestCase):
@@ -63,7 +74,7 @@ class DiagnosticsTests(unittest.TestCase):
             result, _, calls = self.fixture.run_dwork(shell, "status")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(calls, [])
-            self.assertIn("not tracked", result.stdout)
+            self.assertIn("preview tracked commands with dwork down --dry-run", result.stdout)
             result, changes, calls = self.fixture.run_dwork(shell, "doctor", SHELL="/no/shell")
             self.assertEqual(result.returncode, 1)
             self.assertEqual(calls, [])
@@ -93,18 +104,18 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertIn("docker start b", result.stderr)
 
     def test_interrupt_preserves_exit_code_and_reports_uncertain_action(self):
-        workspace = runtime.Workspace("main", self.root, {"web": {}})
+        workspace = dwork_common.Workspace("main", self.root, {"web": {}})
         item = legacy.container("a", "main")
         stderr = io.StringIO()
-        with patch.object(runtime.sys, "argv", ["dwork"]), \
-                patch.object(runtime, "discover", return_value=([workspace], False)), \
-                patch.object(runtime, "inventory", return_value=[item]), \
-                patch.object(runtime, "show_target"), \
-                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(runtime, "confirm_registration", return_value=True), \
-                patch.object(runtime, "docker", side_effect=KeyboardInterrupt), \
+        with patch.object(sys, "argv", ["dwork"]), \
+                patch.object(dwork_config, "discover", return_value=([workspace], False)), \
+                patch.object(dwork_docker, "inventory", return_value=[item]), \
+                patch.object(dwork_docker, "show_target"), \
+                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(dwork_registry, "confirm_registration", return_value=True), \
+                patch.object(dwork_docker, "docker", side_effect=KeyboardInterrupt), \
                 contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(stderr):
-            self.assertEqual(runtime.cli(), 130)
+            self.assertEqual(dwork_cli.cli(), 130)
         self.assertIn("Switch incomplete at: start a", stderr.getvalue())
 
     def test_context_override_is_disclosed_without_exposing_endpoint(self):
@@ -126,20 +137,20 @@ class DiagnosticsTests(unittest.TestCase):
     def test_health_failure_blocks_terminal_and_reports_service(self):
         item = legacy.container("a", "main", state="running")
         item["State"]["Health"] = {"Status": "unhealthy"}
-        with patch.object(runtime.sys, "argv", ["dwork"]), \
-                patch.object(runtime, "discover", return_value=([
-                    runtime.Workspace("main", self.root, {"web": {}}, terminals=[
-                        runtime.TerminalTask("App", ["echo", "hello"], self.root, ["web"])])], False)), \
-                patch.object(runtime, "inventory", return_value=[item]), \
-                patch.object(runtime, "show_target"), \
-                patch.object(runtime, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
-                patch.object(runtime, "confirm_registration", return_value=True), \
-                patch.object(runtime, "preflight_terminals"), \
-                patch.object(runtime, "docker", return_value=json.dumps([item])), \
-                patch.object(runtime, "open_terminal") as launch, \
+        with patch.object(sys, "argv", ["dwork"]), \
+                patch.object(dwork_config, "discover", return_value=([
+                    dwork_common.Workspace("main", self.root, {"web": {}}, terminals=[
+                        dwork_common.TerminalTask("App", ["echo", "hello"], self.root, ["web"])])], False)), \
+                patch.object(dwork_docker, "inventory", return_value=[item]), \
+                patch.object(dwork_docker, "show_target"), \
+                patch.object(dwork_docker, "docker_target", return_value={"context": "default", "daemon": "test-daemon"}), \
+                patch.object(dwork_registry, "confirm_registration", return_value=True), \
+                patch.object(dwork_terminals, "preflight_terminals"), \
+                patch.object(dwork_docker, "docker", return_value=json.dumps([item])), \
+                patch.object(dwork_terminals, "open_terminal") as launch, \
                 contextlib.redirect_stdout(io.StringIO()), \
                 contextlib.redirect_stderr(io.StringIO()) as errors:
-            self.assertEqual(runtime.cli(), 1)
+            self.assertEqual(dwork_cli.cli(), 1)
         launch.assert_not_called()
         self.assertIn("wait for healthy a", errors.getvalue())
         self.assertIn("terminal App", errors.getvalue())
