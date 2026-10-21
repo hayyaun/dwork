@@ -56,13 +56,14 @@
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
 - [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.
 - [x] Complete packaging review and verify the prepared changes are pushed before tagging a release.
-- [ ] Run the package verification workflow and resolve failures. Source and Python package checks pass on Linux, Apple Silicon, and Intel after task-group and portable-fixture fixes; the remaining Intel Homebrew dependency build is pending. The formula now pins the 0.3.0 tag and its verified archive checksum for follow-up verification.
-- [ ] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Tag v0.3.0 points to tested commit 33310a7; release package builds and draft creation are pending.
-- [ ] Review and publish the resulting GitHub release and its verified assets.
+- [x] Run the package verification workflow and resolve failures. The expanded run for 33310a7 passed source/Python package checks on Linux, Apple Silicon, and Intel, plus Debian and all three Homebrew jobs. The updated 0.3.0 formula also passed routine Linux/macOS verification.
+- [x] Tag the tested commit matching the Python and Debian package versions, then validate remote artifact transfer and draft creation in the release workflow. Tag v0.3.0 points to 33310a7; all package builds, artifact checksums, and draft creation passed.
+- [x] Review and publish the resulting [GitHub release](https://github.com/hayyaun/dwork/releases/tag/v0.3.0) and its verified assets. All five public package downloads match SHA256SUMS.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.
-- [ ] Build and verify Debian/Ubuntu packages and attach them to the matching release; evaluate a signed apt repository or PPA later.
+- [x] Build and verify Debian/Ubuntu packages and attach them to the matching release (0.3.0-1).
+- [ ] Evaluate a signed apt repository or PPA.
 - [ ] When AUR registration reopens, create the account, add an SSH public key, recheck package-name availability, and submit the prepared recipe.
-- [ ] Update installation instructions only after each channel is published and verified.
+- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.3.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
 
 Keep the existing-container-only promise. Builds, deployments, and a large GUI are outside the current roadmap.

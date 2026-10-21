@@ -60,18 +60,30 @@ A marked partial installation can also be removed with `make uninstall`.
 
 ## Python, Homebrew, and Debian packages
 
-These channels are prepared in [packaging/](../../packaging/README.md); they are
-not advertised as published registry packages yet.
+[GitHub release v0.3.0](https://github.com/hayyaun/dwork/releases/tag/v0.3.0)
+provides verified packages. Check downloaded files against its
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.3.0/SHA256SUMS)
+before installing. Public Homebrew tap, PyPI, AUR, and apt repository publication
+remain pending; channel instructions are in [packaging/](../../packaging/README.md).
 
-- Python: install this checkout using `pipx install .` or `uv tool install .`.
+- Python: download the [wheel](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_cli-0.3.0-py3-none-any.whl)
+  or [source distribution](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_cli-0.3.0.tar.gz).
+  Install the local wheel with `pipx install ./dwork_cli-0.3.0-py3-none-any.whl`
+  or `uv tool install ./dwork_cli-0.3.0-py3-none-any.whl`.
   The distribution is named `dwork-cli`, while the command remains `dwork`.
-  Registry installation by name must wait for publication.
+  Checkout installation with `pipx install .` or `uv tool install .` also works;
+  registry installation by name must wait for publication.
 - Homebrew: test the prepared v0.3.0 formula in a local tap using the
   [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.3.0 includes
   macOS support; a public tap is separate and has not been published.
-- Debian/Ubuntu: build with `python3 scripts/build-deb.py`, then install the
-  verified local `.deb` with apt. See the
-  [Debian guide](../../packaging/debian/README.md) for build prerequisites.
+- Debian/Ubuntu: download the [`.deb`](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_0.3.0-1_all.deb)
+  and install the verified local file with apt. To build it yourself, use
+  `python3 scripts/build-deb.py`; see the
+  [Debian guide](../../packaging/debian/README.md) for prerequisites.
+- Fedora 44 and Arch: the release provides an
+  [RPM](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork-0.3.0-1.fc44.noarch.rpm)
+  and [Arch package](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork-0.3.0-1-any.pkg.tar.zst).
+  These target Fedora 44 and the current Arch rolling distribution respectively.
 
 Use one installation method at a time. Remove an old sourced function when
 switching to an executable, as described below. The optional agent skill is

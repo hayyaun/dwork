@@ -23,7 +23,7 @@ containers, wait for healthy dependencies, and open your configured commands in
 new terminals. Only other workspaces you have registered with dwork may be stopped.
 Unregistered projects stay running.
 
-Version 0.3.0 adds macOS support through Apple Terminal and browser launching
+[Version 0.3.0](https://github.com/hayyaun/dwork/releases/tag/v0.3.0) adds macOS support through Apple Terminal and browser launching
 with custom browser selection, optional readiness checks, and confirmation controls.
 See [release publishing and package formats](docs/publishing/README.md).
 
@@ -42,6 +42,8 @@ the line to add `~/.local/bin` to `PATH`.
 [Python, Homebrew, and Debian packaging →](packaging/README.md)
 Build/install instructions are available, including a Homebrew formula pinned to
 0.3.0 for Linux, macOS, and WSL2. Registry and tap publication is pending.
+Verified Python, Debian/Ubuntu, Fedora 44, and Arch packages with checksums are
+available from the [0.3.0 release](https://github.com/hayyaun/dwork/releases/tag/v0.3.0).
 
 <details>
 <summary>Requirements and other installation options</summary>

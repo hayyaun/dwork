@@ -21,6 +21,9 @@ older installation; updating the skill alone does not update dwork.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
+Verified 0.3.0 packages are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0); select the
+appropriate platform package and verify its checksum before installation.
 
 Read [the bundled configuration reference](references/configuration.md) before
 writing YAML. It includes the supported version, fields, and examples and works

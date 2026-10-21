@@ -2,8 +2,13 @@
 
 [Project home](../../README.md) · [Installation](../installation/README.md)
 
-Packaging support is implemented; external publication is a separate step.
-`make install` never publishes to a registry, apt repository, or Homebrew tap.
+[GitHub release v0.3.0](https://github.com/hayyaun/dwork/releases/tag/v0.3.0)
+is published with verified Python wheel/source, Debian/Ubuntu, Fedora 44, and Arch
+packages, plus [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.3.0/SHA256SUMS).
+The public downloads have been checked against those checksums.
+
+Public Homebrew tap, PyPI, AUR, and apt repository publication remain pending.
+`make install` never publishes to any of those channels.
 
 ## Release preparation
 
