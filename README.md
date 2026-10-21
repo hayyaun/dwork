@@ -168,9 +168,23 @@ browsers:
 Each terminal asks `(y/N)`. Set `confirm: false` on a task to explicitly skip its
 prompt. Missing containers and failed health checks block dependent terminals.
 
-Browser entries ask separately, wait for HTTP readiness, then open the OS default
-browser. WSL always uses the Windows browser. The server can already be running
-or be started by a terminal task. [Browser configuration →](docs/browsers/README.md)
+Browser entries ask separately and open the default or selected browser. WSL
+always uses a Windows browser. The server can already be running or be started
+by a terminal task. Set `browser` to a Linux executable, macOS application name,
+or Windows `.exe` name/path on WSL. Set `wait_for: false` to skip readiness and
+`confirm: false` to skip that browser's prompt. Terminal tasks also accept
+`confirm: false`. These options are independent:
+
+```yaml
+browsers:
+  - url: http://localhost:3000
+    browser: default
+    wait_for: false
+    confirm: false
+```
+
+The bundled agent skill writes browser entries without readiness waiting by
+default, unless you explicitly request it. [Browser configuration →](docs/browsers/README.md)
 
 Set `window: none` on a task to run it silently in the background without opening
 a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/README.md#detached-background-tasks)

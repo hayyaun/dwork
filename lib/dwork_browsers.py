@@ -1,4 +1,5 @@
-"""HTTP readiness and OS-default browser launching, including the Windows host on WSL."""
+"""HTTP readiness and selected browser launching, including the Windows host on WSL."""
+from pathlib import PureWindowsPath
 import base64
 import http.client
 import os
@@ -28,20 +29,49 @@ def validate_url(value, where="browser.url"):
     return value
 
 
-def browser_command(url):
+def validate_browser(value):
+    if (not isinstance(value, str) or not value.strip() or value != value.strip()
+            or value.startswith("-") or any(ord(c) < 32 or ord(c) == 127 for c in value)):
+        raise DworkError("browser.browser must be default or a nonempty browser executable/application name or path without control characters or surrounding whitespace.")
+    return value
+
+
+def browser_label(task):
+    return "default browser" if task.browser == "default" else "browser " + repr(task.browser)
+
+
+def browser_command(url, browser="default"):
+    browser = validate_browser(browser)
+    custom = browser != "default"
     # WSL must never fall through to xdg-open, even when Windows interop fails.
     if os.environ.get("WSL_DISTRO_NAME"):
         if not shutil.which("powershell.exe"):
             raise DworkError("Browser launching on WSL requires Windows PowerShell (powershell.exe) and Windows interop; no Linux browser will be opened.")
-        script = "$ErrorActionPreference = 'Stop'; Start-Process -FilePath '" + url.replace("'", "''") + "'"
+        if custom:
+            path = PureWindowsPath(browser)
+            if (not browser.lower().endswith(".exe") or '"' in browser
+                    or (not path.is_absolute() and any(c in browser for c in ("/", "\\", ":")))):
+                raise DworkError("Custom browsers on WSL must be Windows .exe names or absolute Windows .exe paths (for example, C:\\Program Files\\Mozilla Firefox\\firefox.exe); Linux browser paths are not supported.")
+        executable = browser if custom else url
+        script = "$ErrorActionPreference = 'Stop'; Start-Process -FilePath '" + executable.replace("'", "''") + "'"
+        if custom:
+            # Start-Process joins ArgumentList into a Windows command line.
+            # list2cmdline preserves the entire URL as one native argument.
+            arguments = subprocess.list2cmdline([url])
+            script += " -ArgumentList '" + arguments.replace("'", "''") + "'"
         encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
         return ["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
                 "-EncodedCommand", encoded]
     if sys.platform == "darwin":
-        return ["/usr/bin/open", url]
+        return ["/usr/bin/open", "-a", browser, url] if custom else ["/usr/bin/open", url]
     if sys.platform.startswith("linux"):
         if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
             raise DworkError("Browser launching on Linux requires a graphical desktop session.")
+        if custom:
+            executable = shutil.which(browser)
+            if not executable:
+                raise DworkError("Custom browser executable is unavailable: " + browser + ". Specify one executable name or absolute path, without command-line flags.")
+            return [executable, url]
         if not shutil.which("xdg-open"):
             raise DworkError("Browser launching on Linux requires xdg-open (xdg-utils).")
         return ["xdg-open", url]
@@ -50,11 +80,11 @@ def browser_command(url):
 
 def preflight_browsers(tasks):
     for task in tasks:
-        browser_command(task.url)
+        browser_command(task.url, task.browser)
 
 
 def confirm_browser(task):
-    return not task.confirm or confirm_action("Open default browser at " + task.url + "?")
+    return not task.confirm or confirm_action("Open " + browser_label(task) + " at " + task.url + "?")
 
 
 def http_status(url, timeout):
@@ -98,20 +128,20 @@ def wait_ready(task):
 
 
 def open_browser(task):
-    command = browser_command(task.url)
-    if command[0] != "xdg-open":
+    command = browser_command(task.url, task.browser)
+    if sys.platform == "darwin" or os.environ.get("WSL_DISTRO_NAME"):
         # These helpers exit after dispatch. Wait for their real result, rather
         # than assuming slow PowerShell startup means a successful launch.
         try:
             result = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True,
                                     text=True, timeout=15)
         except subprocess.TimeoutExpired:
-            raise DworkError("Default browser dispatch timed out; it may have partially completed. Check the default browser or Windows interop before retrying.")
+            raise DworkError("Browser dispatch timed out; it may have partially completed. Check the selected browser or Windows interop before retrying.")
         if result.returncode:
-            raise DworkError("Default browser opener failed: " + (result.stderr.strip() or "exit " + str(result.returncode))
-                             + ". Check the default browser association or Windows interop; no alternate browser was opened.")
+            raise DworkError("Browser opener failed: " + (result.stderr.strip() or "exit " + str(result.returncode))
+                             + ". Check the selected browser or Windows interop; no alternate browser was opened.")
         return
-    # xdg-open may keep running while the browser lives, so detach as with terminals.
+    # Native Linux browsers and xdg-open can stay alive; detach as with terminals.
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                stderr=subprocess.DEVNULL, start_new_session=True)
     try:
@@ -119,4 +149,4 @@ def open_browser(task):
     except subprocess.TimeoutExpired:
         return
     if code:
-        raise DworkError("Default browser opener failed (exit " + str(code) + "). Check the desktop/browser association or Windows interop; no alternate browser was opened.")
+        raise DworkError("Browser opener failed (exit " + str(code) + "). Check the selected browser and graphical session; no alternate browser was opened.")

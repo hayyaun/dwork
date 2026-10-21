@@ -128,11 +128,25 @@ Each item in `browsers` supports:
 - `url`: required absolute HTTP or HTTPS URL, including its scheme. Credentials,
   backslashes, whitespace, control characters, and literal non-ASCII characters
   are rejected. Percent-encode spaces and non-ASCII path/query characters.
+- `browser`: optional string, default `default` for the OS default browser. On
+  Linux choose an executable name on PATH or an absolute executable path; on
+  macOS choose an application name such as `Firefox`/`Google Chrome` or an `.app`
+  path. On WSL choose a Windows `.exe` name or an absolute Windows path such as
+  `'C:\Program Files\Mozilla Firefox\firefox.exe'`; Linux/WSL `/mnt/c` paths
+  are not accepted. Supply one installed program, without extra flags.
 - `confirm`: boolean, default `true`. Only explicit `false` skips that entry's
   confirmation. Decline or EOF skips its readiness check and browser opening.
 - `wait_for`: optional mapping with `url` (defaults to the browser page URL) and
   `timeout` (defaults to 60 seconds, greater than zero and at most 3600).
   `wait_for: false` skips the HTTP probe and opens immediately after confirmation.
+
+Skill authoring default: explicitly write `wait_for: false` in new browser
+entries unless the user asks to enable HTTP readiness. The runtime's omitted-field
+default is still a 60-second readiness wait, so do not omit the field when following
+this skill preference. Re-enable with `wait_for: {timeout: 60}`, optionally adding
+a separate `url`. Keep confirmation enabled unless the user also asks to skip it.
+Preserve an existing explicitly requested readiness requirement when editing
+unrelated fields.
 
 All terminal tasks dispatch first, then browser entries run in configured order.
 An existing server, a configured terminal/background task, or Compose can serve
@@ -145,15 +159,17 @@ are verified; authentication failures and server errors do not count as ready.
 Use a safe GET endpoint. Short socket timeouts and a monotonic retry deadline
 bound retries; OS DNS resolution can exceed the deadline.
 
-macOS uses its default browser through `open`; graphical Linux uses `xdg-open`
-(`xdg-utils`). WSL always uses the Windows default browser through
+macOS uses its default browser through `open`, or selects an app with `open -a`.
+Graphical Linux uses `xdg-open` (`xdg-utils`) by default or the chosen executable.
+WSL always uses the Windows default or selected Windows browser through
 `powershell.exe` and does not fall back to a Linux browser if interop fails.
 Keep a localhost URL unchanged for a service in WSL. The probe runs in WSL and
 does not verify Windows firewall/localhost forwarding; a Windows-hosted server
 may need an explicit different `wait_for.url` reachable from WSL.
 
-The default browser decides tab/window reuse. No browser executable or window-mode
-field is supported. Repeated activations open the configured URLs again. A failed
+The selected browser decides tab/window reuse; no window-mode field is supported.
+Explicit browser selection never falls back to a different browser on failure.
+Repeated activations open the configured URLs again. A failed
 probe/opener stops further browser entries; completed task/container changes
 remain in place. `down` does not close browser windows.
 
@@ -205,12 +221,12 @@ terminals:
     command: [npm, run, dev]
 browsers:
   - url: http://localhost:3000
-    wait_for:
-      timeout: 60
+    wait_for: false
 ```
 
-The terminal and browser keep separate default confirmation prompts. For a
-different health endpoint, add `wait_for.url` within the browser entry. Terminal
+The terminal and browser keep separate default confirmation prompts. Only when
+the user asks for readiness, replace `false` with `wait_for: {timeout: 60}`;
+for a different health endpoint, add `url` within that mapping. Terminal
 `wait_for.healthy` names Compose services; browser `wait_for.url` names an HTTP
 endpoint. Do not interchange these fields.
 

@@ -59,6 +59,7 @@ class BrowserTask:
     wait_url: str = None
     timeout: float = 60
     confirm: bool = True
+    browser: str = "default"
 
 
 @dataclass

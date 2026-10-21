@@ -271,7 +271,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         print(label + colored_name(task.title) + " -> " + color(shlex.join(task.command), "bold") + " in " + str(task.cwd) + confirmation)
     for browser in browsers:
         confirmation = " [confirmation required]" if browser.confirm else " [confirm: false]"
-        print("Would open default browser: " + browser.url + confirmation)
+        print("Would open " + dwork_browsers.browser_label(browser) + ": " + browser.url + confirmation)
         if browser.wait_url is not None:
             print("Would wait for HTTP readiness: " + browser.wait_url + " (timeout " + str(browser.timeout) + "s)")
     if not stops and not starts and not tasks and not browsers:
@@ -353,7 +353,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             if browser.wait_url is not None:
                 print("Waiting for HTTP readiness: " + browser.wait_url, flush=True)
             dwork_browsers.wait_ready(browser)
-            print("Opening default browser: " + browser.url, flush=True)
+            print("Opening " + dwork_browsers.browser_label(browser) + ": " + browser.url, flush=True)
             dwork_browsers.open_browser(browser)
             completed.append("opened browser " + browser.url)
             pending.pop(0)

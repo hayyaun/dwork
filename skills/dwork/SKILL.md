@@ -9,7 +9,7 @@ Help the user configure **their project**, not the dwork source repository.
 dwork resumes existing Compose containers, stops other registered workspaces on
 the same Docker target unless excluded, checks health prerequisites, and opens
 host commands in terminals or the background, then opens configured browser URLs
-after HTTP readiness. Unregistered projects stay running. Host commands are
+with optional HTTP readiness. Unregistered projects stay running. Host commands are
 tracked for `dwork down`; ordinary workspace switches leave them running.
 It never creates, rebuilds, recreates, or removes containers.
 
@@ -64,11 +64,17 @@ invent service names, commands, health checks, or folders.
 - Add `browsers` only for requested application pages. Keep per-browser
   confirmation enabled unless the user explicitly opts out. Browser entries run
   after all terminal tasks are dispatched; their HTTP wait is separate from
-  terminal Compose health gates. The default probe is the page URL with a
-  60-second timeout. Use a separate `wait_for.url` when the page needs a dedicated
-  readiness endpoint; use `wait_for: false` only when waiting is unnecessary.
-  Open the OS default browser, with Windows routing on WSL. Do not promise a new
-  browser window/tab or add browser-selection fields that the schema lacks.
+  terminal Compose health gates. Write `wait_for: false` explicitly in new browser
+  entries by default. Enable HTTP readiness only when the user explicitly asks
+  for it; then use `wait_for: {timeout: 60}` for the page URL, or add `url` for
+  a requested dedicated health endpoint. Preserve existing explicitly requested
+  readiness requirements when updating other fields. Readiness and `confirm`
+  are independent; disabling waiting does not disable confirmation.
+  Omit `browser` or use `browser: default` unless the user selects another browser.
+  For a custom selection, use a Linux executable, a macOS app name/path, or a
+  Windows `.exe` name/absolute Windows path on WSL. Never launch a Linux browser
+  from WSL. Supply one application without command-line flags. Do not promise
+  browser window/tab behavior that the selected browser controls.
 
 ## Consider keeping workspace configuration private
 

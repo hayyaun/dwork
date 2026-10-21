@@ -23,8 +23,9 @@ import dwork_terminals
 import dwork_workspaces
 
 
-def browser(url="http://localhost:3000/", wait_url="http://localhost:3000/", timeout=60, confirm=True):
-    return SimpleNamespace(url=url, wait_url=wait_url, timeout=timeout, confirm=confirm)
+def browser(url="http://localhost:3000/", wait_url="http://localhost:3000/", timeout=60, confirm=True,
+            browser="default"):
+    return SimpleNamespace(url=url, wait_url=wait_url, timeout=timeout, confirm=confirm, browser=browser)
 
 
 class BrowserConfigTests(unittest.TestCase):
@@ -47,6 +48,22 @@ class BrowserConfigTests(unittest.TestCase):
         self.assertEqual(task.wait_url, task.url)
         self.assertEqual(task.timeout, 60)
         self.assertTrue(task.confirm)
+        self.assertEqual(task.browser, "default")
+
+    def test_custom_browser_combines_with_no_wait_and_no_confirmation(self):
+        task = self.load({"url": "http://localhost:3000", "browser": "Firefox",
+                          "wait_for": False, "confirm": False}).browsers[0]
+        self.assertEqual(task.browser, "Firefox")
+        with patch("builtins.input", side_effect=AssertionError("must not prompt")), \
+                patch.object(dwork_browsers, "http_status", side_effect=AssertionError("must not probe")):
+            self.assertTrue(dwork_browsers.confirm_browser(task))
+            dwork_browsers.wait_ready(task)
+
+    def test_invalid_browser_names_fail_schema_validation(self):
+        for value in (None, False, 10, [], {}, "", " ", " firefox", "firefox ", "-a",
+                      "firefox\n", "firefox\x00", "firefox\x7f"):
+            with self.subTest(browser=value), self.assertRaisesRegex(dwork_common.DworkError, "browser.browser"):
+                self.load({"url": "http://localhost:3000", "browser": value})
 
     def test_separate_health_endpoint_and_explicit_no_wait(self):
         task = self.load({"url": "http://localhost:3000/app?mode=dev#home", "confirm": False,
@@ -185,6 +202,63 @@ class BrowserOpenerTests(unittest.TestCase):
         with patch.object(sys, "platform", "linux"), patch("shutil.which", return_value="/usr/bin/xdg-open"):
             self.assertEqual(dwork_browsers.browser_command(url), ["xdg-open", url])
 
+    def test_custom_macos_application_is_one_argument(self):
+        url = "https://example.com/?q=one&other='two'"
+        with patch.object(sys, "platform", "darwin"):
+            for application in ("Firefox", "Google Chrome", "/Applications/Firefox.app"):
+                self.assertEqual(dwork_browsers.browser_command(url, application),
+                                 ["/usr/bin/open", "-a", application, url])
+
+    def test_custom_linux_browser_resolves_executable_and_detaches(self):
+        url = "http://localhost:3000/?q=$(touch%20injected)&other='two'"
+        process = Mock()
+        process.wait.side_effect = subprocess.TimeoutExpired("firefox", 0.2)
+        with patch.object(sys, "platform", "linux"), \
+                patch("shutil.which", return_value="/opt/Browser With Spaces/firefox") as which, \
+                patch.object(subprocess, "Popen", return_value=process) as popen, \
+                patch.object(subprocess, "run") as run:
+            dwork_browsers.open_browser(browser(url=url, browser="firefox"))
+        which.assert_called_once_with("firefox")
+        self.assertEqual(popen.call_args.args[0], ["/opt/Browser With Spaces/firefox", url])
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+        self.assertNotIn("shell", popen.call_args.kwargs)
+        run.assert_not_called()
+
+    def test_missing_custom_linux_browser_does_not_fall_back(self):
+        with patch.object(sys, "platform", "linux"), patch("shutil.which", return_value=None) as which:
+            with self.assertRaisesRegex(dwork_common.DworkError, "Custom browser executable"):
+                dwork_browsers.preflight_browsers([browser(browser="missing-browser")])
+        which.assert_called_once_with("missing-browser")
+
+    def test_wsl_custom_browser_and_url_are_literal_windows_arguments(self):
+        executable = r"C:\Program Files\Browser's Folder\firefox.exe"
+        url = 'http://localhost:3000/?q="hello"&other=\'$(Get-Process);ok'
+        with patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu"}), \
+                patch("shutil.which", return_value="/Windows/powershell.exe") as which:
+            command = dwork_browsers.browser_command(url, executable)
+        script = base64.b64decode(command[-1]).decode("utf-16le")
+        self.assertIn("Start-Process -FilePath 'C:\\Program Files\\Browser''s Folder\\firefox.exe'", script)
+        self.assertIn('http://localhost:3000/?q=\\"hello\\"&other=\'\'$(Get-Process);ok', script)
+        self.assertIn("-ArgumentList '", script)
+        which.assert_called_once_with("powershell.exe")
+        self.assertNotIn("xdg-open", command)
+
+    def test_wsl_rejects_linux_and_relative_paths_before_launch(self):
+        for executable in ("firefox", "/usr/bin/firefox", "/mnt/c/Firefox/firefox.exe",
+                           r"relative\firefox.exe", r"C:firefox.exe", "firefox.exe --private"):
+            with self.subTest(executable=executable), \
+                    patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu"}), \
+                    patch("shutil.which", return_value="/Windows/powershell.exe"), \
+                    patch.object(subprocess, "run") as run:
+                with self.assertRaisesRegex(dwork_common.DworkError, "Windows .exe"):
+                    dwork_browsers.preflight_browsers([browser(browser=executable)])
+                run.assert_not_called()
+
+    def test_confirmation_names_selected_browser(self):
+        with patch("builtins.input", return_value="y") as prompt:
+            self.assertTrue(dwork_browsers.confirm_browser(browser(browser="Firefox")))
+        self.assertIn("browser 'Firefox'", prompt.call_args.args[0])
+
     def test_headless_linux_and_missing_opener_fail_preflight(self):
         with patch.object(sys, "platform", "linux"):
             with patch.dict(os.environ, {"DISPLAY": "", "WAYLAND_DISPLAY": ""}):
@@ -319,7 +393,7 @@ class BrowserLifecycleTests(unittest.TestCase):
         self.mocks[5].assert_called_once_with([self.browser])
         for operation in self.mocks[7:11]:
             operation.assert_not_called()
-        self.assertIn("Default browser opener", self.mocks[11].getvalue())
+        self.assertIn("Browser opener", self.mocks[11].getvalue())
 
     def test_doctor_reports_actionable_opener_failure_without_requesting_url(self):
         self.mocks[5].side_effect = dwork_common.DworkError("no Windows interop")

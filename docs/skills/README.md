@@ -8,6 +8,11 @@ Compose services and development commands, then create or update `dwork.yml`
 with terminal/background tasks and optional browser pages that wait for HTTP
 readiness. It accounts for macOS Apple Terminal, Linux desktops, and WSL's
 Windows terminal/browser routing.
+
+When writing new browser entries, the skill explicitly uses `wait_for: false`
+unless you request HTTP readiness checks. Browser choice and confirmation are
+independent: it can configure a custom browser, and uses `confirm: false` for
+browser or terminal entries only when you ask to skip those prompts.
 The skill includes configuration rules and examples; your agent does not need
 to work inside the dwork source repository or download its docs on each use.
 

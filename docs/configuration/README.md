@@ -262,6 +262,13 @@ browsers:
 - `url`: a required absolute HTTP or HTTPS URL. Credentials, whitespace,
   backslashes, and control characters are rejected. Percent-encode spaces and
   non-ASCII characters in paths and queries.
+- `browser`: defaults to `default` (the OS default). On Linux, use an executable
+  name on `PATH` or an absolute executable path, such as `firefox`. On macOS, use
+  an application name or `.app` path, such as `Firefox`, `Google Chrome`, or
+  `/Applications/Firefox.app`. On WSL, use a Windows `.exe` name or absolute
+  Windows path, such as `firefox.exe` or
+  `'C:\Program Files\Mozilla Firefox\firefox.exe'`. The browser must already
+  be installed. This is one program/application, without command-line flags.
 - `confirm`: a boolean, defaulting to `true`. Ask before waiting or opening.
   Only `y`/`Y` approves; declining or EOF skips that URL. Explicit `false`
   skips this entry's confirmation.
@@ -269,6 +276,21 @@ browsers:
   Set `url` inside this mapping to probe a separate health endpoint, and
   `timeout` to a number greater than zero and at most 3600 seconds. Use
   `wait_for: false` to open immediately without making an HTTP request.
+
+To choose a browser and skip both readiness and confirmation on Linux:
+
+```yaml
+browsers:
+  - url: http://localhost:3000
+    browser: firefox
+    wait_for: false
+    confirm: false
+```
+
+On macOS use `browser: Firefox`; on WSL use a Windows executable/path as above.
+Omit `browser` to keep the default. `wait_for: false` and `confirm: false` are
+independent. A terminal's `confirm: false` skips its session prompt as well;
+workspace registration and `up`/group confirmations still apply.
 
 Readiness uses a direct HTTP GET and accepts statuses 200–399. It does not
 follow redirects, download the response body, or use HTTP proxy environment
@@ -284,14 +306,18 @@ On timeout or opener failure, remaining browser entries are not opened;
 already-started tasks and containers remain running. Ctrl+C stops the remaining
 waits. Repeated activations open the configured URLs again.
 
-URLs open in the OS default browser: `open` on macOS, `xdg-open` in a Linux
-desktop session, and Windows PowerShell `Start-Process` on WSL. WSL never falls
+Default URLs use `open` on macOS, `xdg-open` in a Linux desktop session, and
+Windows PowerShell `Start-Process` on WSL. A custom selection uses `open -a` on
+macOS, the selected executable on Linux, or a Windows executable through
+PowerShell on WSL. WSL never falls
 back to a Linux browser when Windows interop is unavailable. The browser decides
 whether to reuse a tab or window; dwork does not force a new window or close
 browser windows during `down`. See [browser launching](../browsers/README.md).
 
 `--dry-run`, `register`, `status`, and `doctor` never poll readiness or open a
-browser. `doctor` checks the opener's availability only.
+browser. `doctor` checks Linux executable availability and the platform opener
+or Windows interop requirement. macOS application lookup and Windows executable
+resolution are reported during dispatch; doctor does not launch them to test.
 
 ## Implementation references
 

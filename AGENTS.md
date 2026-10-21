@@ -1,3 +1,12 @@
+## Keep user and agent documentation current
+
+- After every change made by an agent, update `README.md`, the relevant pages in
+  `docs/`, and the bundled agent guidance in `skills/` in the same change before
+  considering the work complete.
+- Keep configuration fields, defaults, examples, platform requirements, command
+  behavior, and the bundled agent skill/reference aligned with the implementation.
+  Check that examples and local documentation links remain valid.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.

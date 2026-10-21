@@ -164,8 +164,9 @@ def load_workspace(directory, options=()):
         raise DworkError("browsers must be a list.")
     for index, raw in enumerate(raw_browsers):
         where = "browsers[" + str(index) + "]"
-        browser = mapping(raw, ("url", "wait_for", "confirm"), where)
+        browser = mapping(raw, ("url", "browser", "wait_for", "confirm"), where)
         url = dwork_browsers.validate_url(browser.get("url"), where + ".url")
+        selected_browser = dwork_browsers.validate_browser(browser.get("browser", "default"))
         confirm = browser.get("confirm", True)
         if type(confirm) is not bool:
             raise DworkError("browser.confirm must be true or false.")
@@ -177,7 +178,7 @@ def load_workspace(directory, options=()):
             timeout = wait.get("timeout", 60)
             if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 3600:
                 raise DworkError("browser.wait_for.timeout must be greater than 0 and at most 3600 seconds.")
-        browsers.append(BrowserTask(url, wait_url, timeout, confirm))
+        browsers.append(BrowserTask(url, wait_url, timeout, confirm, selected_browser))
     return Workspace(name, directory, services, enabled, selected, terminals, True, locked, browsers)
 
 

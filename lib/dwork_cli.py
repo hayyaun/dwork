@@ -145,9 +145,9 @@ def doctor(directory, options):
                   lambda task=task: dwork_terminals.preflight_terminals([task]),
                   "Check SHELL (Bash/Zsh), command PATH, graphical session, and configured launcher or DWORK_TERMINAL.")
         for browser in workspace.browsers:
-            check("Default browser opener for " + browser.url,
+            check("Browser opener for " + browser.url,
                   lambda browser=browser: dwork_browsers.preflight_browsers([browser]),
-                  "Check the desktop session and xdg-open on Linux, or Windows PowerShell interop on WSL.")
+                  "Check the selected browser, graphical session, and xdg-open on Linux, or Windows PowerShell interop on WSL.")
     print("Doctor: " + (str(len(failures)) + " check(s) failed." if failures else "all checks passed.")
           + " No containers, terminals, or browser URLs changed.")
     return 1 if failures else 0
@@ -181,7 +181,7 @@ def main():
         print("Child-project switching requires confirmation (y/N).")
         print("up and down show their plans and require confirmation (y/N); --dry-run never prompts.")
         print("Each terminal and browser URL asks (y/N) unless that task sets confirm: false in dwork.yml.")
-        print("Browser URLs open in the OS default browser after HTTP readiness; WSL uses the Windows browser.")
+        print("Browser URLs use the default or configured browser; WSL uses Windows browsers. Set wait_for: false to skip readiness.")
         print("Dry-run previews containers, health prerequisites, terminals, and browser URLs without mutation.")
         print("Only other registered workspaces on this Docker target may be stopped.")
         print("Workspaces with locked: true never stop during a switch or down.")
