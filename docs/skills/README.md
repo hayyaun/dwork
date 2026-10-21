@@ -4,7 +4,10 @@
 [Configuration](../configuration/README.md)
 
 Install the **dwork** skill so your coding agent can inspect your project's
-Compose services and development commands, then create or update `dwork.yml`.
+Compose services and development commands, then create or update `dwork.yml`
+with terminal/background tasks and optional browser pages that wait for HTTP
+readiness. It accounts for macOS Apple Terminal, Linux desktops, and WSL's
+Windows terminal/browser routing.
 The skill includes configuration rules and examples; your agent does not need
 to work inside the dwork source repository or download its docs on each use.
 
@@ -102,13 +105,27 @@ For other agents, use their skill picker or mention the skill by name. If a
 newly installed skill is missing, start a new session or reload the agent as
 its documentation recommends.
 
-The agent checks commands, directories, services, and health prerequisites and,
-when dwork is available, runs `dwork --dry-run`. It reports missing prerequisites
+The agent checks commands, directories, services, health prerequisites, and any
+requested browser URLs. When dwork is available, it runs `dwork --dry-run` and
+reports missing prerequisites
 instead of installing dependencies or starting the workspace. Review its YAML
 and dry-run warnings, then run `dwork` yourself when ready. A normal invocation
 asks before registering a new directory and can stop other registered workspaces
-on the same Docker target before asking about terminal launches. Unregistered
-projects stay running; use `DWORK_KEEP_PROJECTS` to protect registered shared projects.
+on the same Docker target before asking about terminal launches. Browser entries
+ask separately after terminal tasks dispatch. Unregistered projects stay running;
+use `DWORK_KEEP_PROJECTS` or `locked: true` for workspaces you want to keep running.
+
+The skill also considers whether `dwork.yml` is personal workspace configuration.
+It suggests ignoring personal configs with a scoped `.gitignore` entry and asks
+before changing ignore rules unless that change was already authorized. Shared
+team configs and tracked examples stay tracked. `.git/info/exclude` is an option
+for an ignore preference local to one clone; adding an ignore rule never untracks
+an existing file.
+
+Use a runtime containing these features: macOS tracked tasks need Python 3.13+
+(Linux/WSL need 3.10+). Older dwork releases may reject newer fields; update the
+runtime rather than bypassing schema validation. See the
+[Homebrew version notes](../../packaging/homebrew/README.md) for stable versus HEAD.
 
 ## Update or remove
 

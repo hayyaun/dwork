@@ -1,6 +1,6 @@
 ---
 name: dwork
-description: Create, review, or update dwork.yml for a project's development workspace. Use when the user asks to configure dwork, connect existing Compose services with host terminal commands, or troubleshoot a dwork configuration.
+description: Create, review, or update dwork.yml for a project's development workspace. Use when configuring dwork with existing Compose services, terminal or background commands, browser readiness, or troubleshooting workspace configuration.
 ---
 
 # Configure a dwork workspace
@@ -8,7 +8,9 @@ description: Create, review, or update dwork.yml for a project's development wor
 Help the user configure **their project**, not the dwork source repository.
 dwork resumes existing Compose containers, stops other registered workspaces on
 the same Docker target unless excluded, checks health prerequisites, and opens
-host commands in terminals. Unregistered projects stay running.
+host commands in terminals or the background, then opens configured browser URLs
+after HTTP readiness. Unregistered projects stay running. Host commands are
+tracked for `dwork down`; ordinary workspace switches leave them running.
 It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
@@ -27,7 +29,10 @@ working directories before choosing where to put the file.
 Use the project's documented development commands and actual Compose **service
 names**, not container names. Determine which services run in containers and
 which commands run on the host; avoid launching a second copy of an application
-already running in Compose. Ask a focused question if multiple development modes
+already running in Compose. Identify the user's platform and shell: Linux,
+macOS, and WSL have different terminal launchers; WSL browser URLs must open on
+Windows. Derive browser URLs, ports, and any health endpoint from project scripts,
+Compose port mappings, documentation, or the user's choices. Ask a focused question if multiple development modes
 are plausible or commands/dependency requirements cannot be established. Do not
 invent service names, commands, health checks, or folders.
 
@@ -50,7 +55,32 @@ invent service names, commands, health checks, or folders.
   A startup dependency alone does not prove a service has a health check.
 - Keep the default per-terminal confirmation. Set `confirm: false` only when the
   user explicitly requests it. Prefer portable `launcher: auto` and `window: new`
-  defaults unless the user requests a particular terminal setup.
+  defaults unless the user requests a particular terminal setup. Apple Terminal
+  and xterm support new windows only; do not emulate tabs with UI keystrokes.
+- Use `window: none` only for commands the user wants detached with output
+  discarded. Tracked terminal/background commands need Python 3.13+ on macOS;
+  Linux/WSL require Python 3.10+. `down` stops their process groups and leaves
+  visible terminal windows at a shell prompt.
+- Add `browsers` only for requested application pages. Keep per-browser
+  confirmation enabled unless the user explicitly opts out. Browser entries run
+  after all terminal tasks are dispatched; their HTTP wait is separate from
+  terminal Compose health gates. The default probe is the page URL with a
+  60-second timeout. Use a separate `wait_for.url` when the page needs a dedicated
+  readiness endpoint; use `wait_for: false` only when waiting is unnecessary.
+  Open the OS default browser, with Windows routing on WSL. Do not promise a new
+  browser window/tab or add browser-selection fields that the schema lacks.
+
+## Consider keeping workspace configuration private
+
+`dwork.yml` can contain personal workspace choices and does not have to be shared.
+When creating or updating it, inspect the project's ignore rules and whether the
+file is already tracked. Consider adding `/dwork.yml` to the repository-root
+`.gitignore` for a personal root workspace (or the matching path for a nested
+workspace). Explain the suggestion and obtain approval for changing ignore rules
+unless the user already authorized it. Preserve intentionally shared/team configs
+and tracked examples. An ignore rule does not untrack an existing file; do not
+remove it from Git's index without an explicit request. If only this user's clone
+should ignore the file, offer `.git/info/exclude` instead of a shared ignore rule.
 
 Configure only what the user requested. Generating YAML does not authorize
 installing dependencies, creating containers, changing Compose health checks,
@@ -62,7 +92,7 @@ Check the YAML against the reference, command definitions, existing directories,
 Compose service names, and health checks. If dwork is available, run
 `dwork --dry-run` **from the directory containing the generated file**. This
 previews operations without switching containers, waiting, prompting, or opening
-terminals. Compose-enabled previews still need Docker/Compose and access to the
+terminals or browsers. Compose-enabled previews still need Docker/Compose and access to the
 Docker daemon. Host-only previews do not need Docker.
 
 Inspect warnings as well as the exit status: a successful dry run can still warn
@@ -70,6 +100,9 @@ about missing containers or blocked terminal launches. If dwork or a dependency
 is unavailable, report what was checked statically and what remains unverified;
 do not install anything or claim runtime validation. If the installed dwork
 rejects a field, check its version/docs rather than bypassing validation.
+Use `dwork doctor` for dependency diagnostics when needed; it checks opener
+availability without probing HTTP or launching applications. A dry run or doctor
+success does not prove that a server will become ready or a GUI will render.
 
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new
@@ -78,5 +111,12 @@ directory and can stop other registered workspaces before terminal confirmation;
 remembers without activating, `dwork list` shows remembered directories,
 `dwork switch NAME` activates from anywhere, and `dwork forget NAME` removes only
 the registration. Changed Compose identity or service selection requires explicit
-re-registration. Generating config does not authorize changing the user's registry.
-Leave running `dwork` to the user unless they explicitly ask you to switch.
+re-registration. Each browser asks separately after terminals; a declined terminal
+does not cancel browser entries. Readiness timeouts stop further browser openings
+without undoing completed task/container actions. `down` leaves browser windows
+open. Generating config does not authorize changing the user's registry.
+Leave live activation to the user unless they request it. For an explicit
+request to open a page or run a workspace, inspect the dry-run plan and proceed
+only with effects within that request's authorized scope. A browser-opening
+request alone does not authorize unrelated container switches, command launches,
+or a new registration; explain and ask about any additional effects first.

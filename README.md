@@ -175,6 +175,11 @@ or be started by a terminal task. [Browser configuration →](docs/browsers/READ
 Set `window: none` on a task to run it silently in the background without opening
 a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/README.md#detached-background-tasks)
 
+`dwork.yml` can be personal workspace configuration. Consider adding `/dwork.yml`
+to the project's `.gitignore` when its commands, ports, terminal choices, or lock
+policy are specific to your setup. Keep it tracked when the team intentionally
+shares that configuration; an ignore rule does not untrack an existing file.
+
 [Copy an example →](examples/README.md) Backend, full-stack, Compose-only, or host-only.
 
 ## A few useful controls
