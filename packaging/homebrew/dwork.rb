@@ -8,8 +8,8 @@ class Dwork < Formula
   license "MIT"
 
   depends_on "make" => :build
-  depends_on :linux
   depends_on "libyaml"
+  depends_on :linux
   depends_on "python@3.14"
 
   resource "pyyaml" do
