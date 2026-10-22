@@ -2,7 +2,7 @@ Source: dwork
 Section: devel
 Priority: optional
 Maintainer: Hayyan Hami <hayyaun@users.noreply.github.com>
-Build-Depends: debhelper-compat (= 13), python3 (>= 3.10), python3-yaml, python3-jsonschema, make, zsh, bash-completion
+Build-Depends: debhelper-compat (= 13), python3 (>= 3.10), python3-yaml, python3-jsonschema, make, git, zsh, bash-completion
 Standards-Version: 4.7.0
 Homepage: https://github.com/hayyaun/dwork
 Rules-Requires-Root: no

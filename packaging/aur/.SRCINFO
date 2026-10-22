@@ -5,6 +5,7 @@ pkgbase = dwork
 	url = https://github.com/hayyaun/dwork
 	arch = any
 	license = MIT
+	checkdepends = git
 	checkdepends = zsh
 	checkdepends = python-jsonschema
 	checkdepends = bash-completion

@@ -64,6 +64,9 @@ see the bundled reference before suggesting a shell change.
 Verified 0.3.0 packages are available from
 [GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0); select the
 appropriate platform package and verify its checksum before installation.
+Source build/test prerequisites differ from installed runtime dependencies:
+Git is required by the source installer and package regression tests, but the
+CLI wheel and native packages do not require it at runtime.
 
 Read [the bundled configuration reference](references/configuration.md) before
 writing YAML. It includes the supported version, fields, and examples and works

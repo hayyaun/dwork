@@ -1,3 +1,10 @@
+dwork (0.4.1-1) unstable; urgency=medium
+
+  * Declare Git as a build/test dependency for package regression checks.
+  * Keep Git out of installed runtime dependencies.
+
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Thu, 22 Oct 2026 07:48:45 +0330
+
 dwork (0.4.0-1) unstable; urgency=medium
 
   * Add the optional tray companion and read-only workspace JSON interface.

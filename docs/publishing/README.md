@@ -12,10 +12,15 @@ Public Homebrew tap, PyPI, AUR, and apt repository publication remain pending.
 
 ## Release preparation
 
-Version 0.4.0 prepares the optional companion, version-1 JSON observations,
+Version 0.4.1 prepares the optional companion, version-1 JSON observations,
 confirmation and shutdown hardening, and internal boundary refactors. Companion
 0.2.0 declares native compatibility with `dwork-cli` 0.4.x. Keep this dependency
 range aligned when advancing the CLI release, and verify both wheels together.
+
+The v0.4.0 tag remains unchanged after its Fedora/Arch build tests exposed a
+missing Git build dependency; no v0.4.0 release assets were published. Version
+0.4.1 declares Git for source regression tests in native build environments.
+Git is not an installed CLI runtime dependency.
 
 Platform unit tests fake tool discovery as well as process dispatch; source tests
 must pass without Windows tools on Linux/macOS. Homebrew keeps strict stable audit
@@ -45,12 +50,12 @@ the full suite; `make test` locally reports all failures in one run.
 `.github/workflows/release.yml` runs when a stable `vMAJOR.MINOR.PATCH` tag is
 pushed. The tag must match `__version__` in `lib/dwork_version.py` (also used by
 the CLI and setuptools' dynamic package version) and the upstream
-version in `packaging/debian/changelog` (for example, `v0.4.0`, `0.4.0`, and
-`0.4.0-1`). Commit the version changes and workflow before tagging that commit:
+version in `packaging/debian/changelog` (for example, `v0.4.1`, `0.4.1`, and
+`0.4.1-1`). Commit the version changes and workflow before tagging that commit:
 
 ```sh
-git tag -a v0.4.0 -m "Release 0.4.0"
-git push origin v0.4.0
+git tag -a v0.4.1 -m "Release 0.4.1"
+git push origin v0.4.1
 ```
 
 The workflow runs the pinned quality baseline and source tests, builds and smoke-tests the Python wheel and

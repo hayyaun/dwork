@@ -8,6 +8,7 @@ URL:            https://github.com/hayyaun/dwork
 Source0:        dwork-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  make
+BuildRequires:  git-core
 BuildRequires:  python3-devel >= 3.10
 BuildRequires:  python3-pyyaml
 BuildRequires:  python3-jsonschema

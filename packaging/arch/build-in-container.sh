@@ -4,7 +4,7 @@ set -euo pipefail
 version=${1:?Usage: build-in-container.sh VERSION}
 [[ $version =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
 
-pacman -Syu --noconfirm --needed python python-yaml python-jsonschema bash-completion zsh docker
+pacman -Syu --noconfirm --needed git python python-yaml python-jsonschema bash-completion zsh docker
 useradd --create-home builder
 install -d -o builder -g builder /home/builder/package
 install -m644 /checkout/packaging/arch/PKGBUILD \

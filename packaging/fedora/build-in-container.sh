@@ -5,7 +5,7 @@ version=${1:?Usage: build-in-container.sh VERSION}
 [[ $version =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
 
 dnf install -y --setopt=install_weak_deps=False \
-  rpm-build redhat-rpm-config make python3-devel python3-pyyaml python3-jsonschema bash-completion zsh docker-cli \
+  rpm-build redhat-rpm-config make git-core python3-devel python3-pyyaml python3-jsonschema bash-completion zsh docker-cli \
   tar gzip shadow-utils util-linux
 useradd --create-home builder
 install -d -o builder -g builder /home/builder/rpmbuild /home/builder/rpmbuild/SOURCES

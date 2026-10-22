@@ -455,6 +455,11 @@ build and twine. Debian builds use `python3 scripts/build-deb.py`; Homebrew has
 its own installed-behavior test. Packaging verification must not run real
 project containers, development servers, or GUI tasks.
 
+The source package regression tests create temporary Git repositories and need
+Git even when building from a source archive. Declare it in Debian Build-Depends,
+Fedora BuildRequires, and Arch/AUR checkdepends, and install it in release build
+containers. It is a build/test tool, not a dependency of the installed CLI.
+
 
 Portable Windows packaging uses the documented PyInstaller multi-program spec in
 [`packaging/windows/`](../../packaging/windows/). Official ZIPs build on Windows CI;

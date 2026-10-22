@@ -84,7 +84,7 @@
 ## Packaging publication
 
 - [x] Fix platform-independent transport/bootstrap/completion/installer fixtures, secure noninteractive Zsh verification, and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
-- [ ] Verify and publish 0.4.0 with companion 0.2.0, then update pinned channel recipes to the immutable release archive. Routine Linux/macOS Python, companion, and Homebrew checks pass; Debian runner permissions are corrected and awaiting hosted verification before tagging.
+- [ ] Verify and publish 0.4.1 with companion 0.2.0, then update pinned channel recipes to the immutable release archive. Routine checks for v0.4.0 passed; its tag remains unchanged after Fedora/Arch release tests identified a missing Git build/test dependency. Declare that dependency and verify the corrected release builds before publication.
 
 - [x] Prepare and commit Homebrew, PyPI, and Debian packaging support.
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
