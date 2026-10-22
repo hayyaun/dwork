@@ -25,12 +25,12 @@ $source_version_line  sha256 $source_sha256
            "BASH_COMPLETION_DIR=#{bash_completion}", "ZSH_COMPLETION_DIR=#{zsh_completion}"
     # Also supports tagged releases whose Make installer only provides sourceable scripts.
     bash_completion.mkpath
-    cp share/"dwork/completions/dwork.bash", bash_completion/"dwork" unless (bash_completion/"dwork").exist?
+    cp pkgshare/"completions/dwork.bash", bash_completion/"dwork" unless (bash_completion/"dwork").exist?
     zsh_completion.mkpath
     unless (zsh_completion/"_dwork").exist?
       (zsh_completion/"_dwork").write <<~ZSH
         #compdef dwork
-        source #{(share/"dwork/completions/_dwork").to_s.shellescape}
+        source #{(pkgshare/"completions/_dwork").to_s.shellescape}
         _dwork "$$@"
       ZSH
     end

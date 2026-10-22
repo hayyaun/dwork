@@ -224,6 +224,11 @@ mypy; core modules retain normal checking.
 
 ## Tests
 
+Windows transport unit tests supply fake tool discovery and dispatch explicitly,
+so they run on headless Linux and macOS as well as WSL. A separate missing-tool
+regression verifies that unavailable PowerShell still blocks dispatch; no runtime
+prerequisite is relaxed to make tests pass.
+
 `test_bootstrap.py` runs the shell installer with isolated fake Git/Make commands
 and temporary directories. It checks prerequisite failures, literal paths and
 arguments, and cleanup after success or failure without downloading or installing

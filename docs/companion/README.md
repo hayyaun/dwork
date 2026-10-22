@@ -22,8 +22,9 @@ launch another copy of configured commands, as it does from the CLI.
 
 The companion is a **separate distribution** under [`companion/`](../../companion/).
 Ordinary CLI installs retain only their existing dependencies; they do not install
-pystray, Pillow, PyObjC, PyGObject, or a login entry. Use matching development sources
-until releases containing the version-1 JSON interface and companion are published.
+pystray, Pillow, PyObjC, PyGObject, or a login entry. Companion 0.2.0 pairs with
+`dwork-cli` 0.4.x on native Linux/macOS; the Windows app connects to a matching CLI
+inside WSL. Version 0.4.0 includes the version-1 JSON interface.
 The source installer can include this separate package on native Linux/macOS:
 
 ```sh

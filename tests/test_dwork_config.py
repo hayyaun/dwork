@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import dwork_common
 import dwork_docker
 import dwork_terminals
+import dwork_terminal_launch
 
 
 class ConfigTests(unittest.TestCase):
@@ -223,10 +224,20 @@ terminals:
             ["echo", "hello world", 'a"$b&c'],
             Path("/home/user/repo with spaces"),
         )
-        with patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu", "SHELL": "/bin/bash"}):
+        # Tool discovery is part of launch preparation. Supply fake Windows
+        # tools so this transport test also runs on headless Linux and macOS.
+        tools = {"/bin/bash": "/fixture/bin/bash", "powershell.exe": "/fixture/powershell.exe"}
+        with (
+            patch.dict(
+                os.environ,
+                {"WSL_DISTRO_NAME": "Ubuntu", "SHELL": "/bin/bash", "DWORK_TERMINAL": "auto"},
+            ),
+            patch.object(dwork_terminal_launch.shutil, "which", side_effect=tools.get),
+        ):
             args = dwork_terminals.terminal_arguments(task)
             self.assertEqual(args[-1], "exec echo 'hello world' 'a\"$b&c'")
             self.assertIn(str(task.cwd), args)
+            self.assertIn("/fixture/bin/bash", args)
             with patch.object(dwork_terminals, "run_command") as command:
                 dwork_terminals.open_terminal(task)
                 call = command.call_args.args[0]
@@ -234,6 +245,24 @@ terminals:
                 decoded = base64.b64decode(call[-1]).decode("utf-16le")
                 self.assertEqual(decoded, dwork_terminals.powershell_script(task))
                 self.assertIn("Title '' & space", decoded)
+
+    def test_windows_terminal_without_powershell_never_dispatches(self):
+        task = dwork_common.TerminalTask("Example", ["echo", "hello"], self.root)
+        with (
+            patch.dict(
+                os.environ,
+                {"WSL_DISTRO_NAME": "Ubuntu", "SHELL": "/bin/bash", "DWORK_TERMINAL": "auto"},
+            ),
+            patch.object(
+                dwork_terminal_launch.shutil,
+                "which",
+                side_effect={"/bin/bash": "/fixture/bin/bash"}.get,
+            ),
+            patch.object(dwork_terminals, "run_command") as command,
+            self.assertRaisesRegex(dwork_common.DworkError, "Windows PowerShell"),
+        ):
+            dwork_terminals.open_terminal(task)
+        command.assert_not_called()
 
     def test_all_health_gates_pass_before_any_launch(self):
         self.health_config()

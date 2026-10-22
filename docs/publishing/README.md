@@ -12,6 +12,15 @@ Public Homebrew tap, PyPI, AUR, and apt repository publication remain pending.
 
 ## Release preparation
 
+Version 0.4.0 prepares the optional companion, version-1 JSON observations,
+confirmation and shutdown hardening, and internal boundary refactors. Companion
+0.2.0 declares native compatibility with `dwork-cli` 0.4.x. Keep this dependency
+range aligned when advancing the CLI release, and verify both wheels together.
+
+Platform unit tests fake tool discovery as well as process dispatch; source tests
+must pass without Windows tools on Linux/macOS. Homebrew keeps strict stable audit
+and uses `pkgshare` for formula-owned completion sources.
+
 The source-test CI step runs each test file with unittest's `--failfast` option,
 then fails if any file failed. This reports each file's first traceback before
 later interactive tests can block diagnostics. A successful run still executes
@@ -34,12 +43,12 @@ the full suite; `make test` locally reports all failures in one run.
 `.github/workflows/release.yml` runs when a stable `vMAJOR.MINOR.PATCH` tag is
 pushed. The tag must match `__version__` in `lib/dwork_version.py` (also used by
 the CLI and setuptools' dynamic package version) and the upstream
-version in `packaging/debian/changelog` (for example, `v0.3.0`, `0.3.0`, and
-`0.3.0-1`). Commit the version changes and workflow before tagging that commit:
+version in `packaging/debian/changelog` (for example, `v0.4.0`, `0.4.0`, and
+`0.4.0-1`). Commit the version changes and workflow before tagging that commit:
 
 ```sh
-git tag -a v0.3.0 -m "Release 0.3.0"
-git push origin v0.3.0
+git tag -a v0.4.0 -m "Release 0.4.0"
+git push origin v0.4.0
 ```
 
 The workflow runs the pinned quality baseline and source tests, builds and smoke-tests the Python wheel and
@@ -51,12 +60,12 @@ the distro package manager, verify its installed files, and smoke-test `--help`
 and a host-only `--dry-run` as that user outside the source tree. Arch performs
 a full system upgrade before building, as required for its rolling packages.
 
-All three package jobs must pass before the release job can run. Each records
-checksums after verification; the release job checks these again after downloading
-the artifacts. It collects the exact verified `.whl`, `.tar.gz`, `.deb`, `.rpm`,
-and `.pkg.tar.zst` files,
-creates `SHA256SUMS` covering all five packages, and attaches all six files to
-a draft GitHub Release with generated notes.
+The Python/Debian, Fedora, Arch, and portable Windows jobs must all pass before
+the draft-release job can run. Each records checksums after verification; the release job checks these again after downloading
+the artifacts. It collects the exact verified CLI `.whl`, `.tar.gz`, `.deb`, `.rpm`,
+`.pkg.tar.zst`, and portable Windows tray `.zip` files, creates `SHA256SUMS` covering
+all six packages, and attaches all seven files to a draft GitHub Release with
+generated notes.
 Only the final draft job receives repository write permission; it uses
 the built-in `GITHUB_TOKEN`, so no extra release secret is needed.
 
@@ -74,6 +83,9 @@ the local tagged Git archive and verified by makepkg. The existing
 `packaging/aur` recipe is separate and is not changed or published by this flow.
 The packages are unsigned; SHA-256 checksums verify file integrity, not publisher
 identity. Package signing and repository publication need separate setup.
+The native companion wheel/sdist is verified separately by Package verification;
+it is not attached by this release workflow. Native source installation supports
+`TRAY=1`, and the release ZIP supplies the self-contained Windows companion.
 
 The workflow does not overwrite existing releases. If an upload fails after a
 draft is created, delete that incomplete draft in GitHub (keep its tag) before

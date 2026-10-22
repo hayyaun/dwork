@@ -1,3 +1,13 @@
+dwork (0.4.0-1) unstable; urgency=medium
+
+  * Add the optional tray companion and read-only workspace JSON interface.
+  * Add opt-in native tray installation and startup documentation.
+  * Preserve confirmations and ownership through configuration/lifecycle refactors.
+  * Make Windows transport tests independent of host tool availability.
+  * Correct Homebrew shared-data paths for strict formula auditing.
+
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Thu, 22 Oct 2026 06:42:08 +0330
+
 dwork (0.3.0-1) unstable; urgency=medium
 
   * Add macOS support using Apple Terminal and native browser launching.

@@ -51,8 +51,8 @@ Only these top-level fields are supported:
   to skip that activation prompt only.
   Registration, discovered-group, terminal/browser, and `down` confirmations are
   separate. Child opt-outs do not approve a parent group. Explicit
-  `dwork switch NAME` keeps its existing confirmation behavior. This field was
-  added after 0.3.0; check installed-runtime support before generating it.
+  `dwork switch NAME` keeps its existing confirmation behavior. This field requires
+  0.4.0 or newer; check installed-runtime support before generating it.
 - `locked`: optional boolean, default `false`; keep this workspace's containers
   and tracked host commands running during switches and `dwork down`, while still
   listing and allowing activation. Both operations apply the same protection rules.
@@ -368,7 +368,8 @@ or real GUI verification.
 
 ## Optional tray and JSON observations
 
-The separate development `dwork-tray` package targets native Linux/macOS and a
+The separate `dwork-tray` package (0.2.0 paired with native CLI 0.4.x) targets
+native Linux/macOS and a
 Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
@@ -432,7 +433,7 @@ bootstrap's temporary checkout. Edited or linked entries require deliberate insp
 close operation terminals, or disable next-login startup. Stop remains a separate
 explicit CLI action, preserving registration/locking/ownership/confirmation rules.
 
-Builds containing this feature offer `dwork list --json` and `dwork status --json`
+CLI 0.4.0 and newer offer `dwork list --json` and `dwork status --json`
 (with Compose global options for current status). Successful stdout is one version-1
 JSON document. Diagnostics remain on stderr, and 0/1/130 exit codes remain. Docker
 unavailable/different-target counts are unknown (`null`), not zero. Task credentials,

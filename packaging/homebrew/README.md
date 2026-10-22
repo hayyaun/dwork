@@ -35,8 +35,10 @@ The formula provides Python 3.14, meeting macOS's Python 3.13 minimum for tracke
 tasks. Docker/Compose and any optional graphical terminal are still installed
 separately.
 
-The formula installs completions through Homebrew's `bash_completion` and
-`zsh_completion` directories for both the tagged source and HEAD. The Zsh entry
+The shared formula uses Homebrew's documented `pkgshare` path for fallback
+completion sources, preserving the same installed paths while passing strict
+formula auditing. The formula installs completions through Homebrew's
+`bash_completion` and `zsh_completion` directories for both the tagged source and HEAD. The Zsh entry
 autoloads the sourceable completion script and delegates the first Tab request.
 No dwork-specific sourcing line is needed once Homebrew's shell completion
 integration is enabled. Evaluate `brew shellenv` before Oh My Zsh/`compinit`;

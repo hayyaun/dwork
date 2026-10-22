@@ -37,7 +37,8 @@ terminal tasks need a [supported terminal](docs/terminals/README.md).
 
 [Inspect the installer](install.sh) ·
 [Install from a checkout, update, or uninstall](docs/installation/README.md) ·
-[Release packages](packaging/README.md)
+[Release packages](packaging/README.md) ·
+[Release preparation and verification](docs/publishing/README.md)
 
 ### Optional tray companion
 

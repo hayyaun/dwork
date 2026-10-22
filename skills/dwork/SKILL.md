@@ -18,7 +18,7 @@ It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
 
-Use `dwork --version` when supported (added after 0.3.0); older releases may
+Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
 creates only a deterministic minimal config, detects standard local Compose
 filenames, and refuses overwrites. It does not infer project commands. Use
@@ -30,7 +30,7 @@ it does not check running containers or desktop prerequisites.
 The macOS and browser options in this skill require dwork 0.3.0 or newer.
 Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
-Stopping outgoing tracked commands during switches was added after 0.3.0;
+Stopping outgoing tracked commands during switches is available in 0.4.0+;
 verify the installed runtime includes this behavior before promising it.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
@@ -42,7 +42,8 @@ and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
 confuse this source installation with the older published release packages.
-The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
+Companion 0.2.0 pairs with CLI 0.4.x on native Linux/macOS; updating the skill
+alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
 `dwork-tray` as a separate package/environment. This is an explicit installation
 choice, not implied by YAML work. It neither launches the tray nor enables login
 startup. Native Linux requires matching system desktop bindings; WSL instead has
@@ -99,11 +100,11 @@ invent service names, commands, health checks, or folders.
 - For temporary local protection, use `dwork lock NAME...` with registered names
   instead of editing YAML. It lasts until `dwork unlock NAME...`, survives shell
   restarts, and protects every member of a registered group. Unlocking preserves
-  YAML locks and `DWORK_KEEP_PROJECTS`. Check runtime support (added after 0.3.0),
+  YAML locks and `DWORK_KEEP_PROJECTS`. Check runtime support (0.4.0+),
   preview with `--dry-run`, and obtain authorization before changing local locks.
 - Keep workspace activation confirmation enabled by default. Use root-level
   `confirm: false` only when the user explicitly opts out and the installed
-  runtime supports it (added after 0.3.0). It skips the plain `dwork`/`up` plan
+  runtime supports it (0.4.0+). It skips the plain `dwork`/`up` plan
   prompt only; registration, discovered groups, tasks, browsers, and `down` keep
   their separate consent controls.
 - For host-only work, set `compose.enabled: false` and omit Compose files,
@@ -213,8 +214,8 @@ terminal/browser timeouts must be numeric, greater than zero, and at most 3600.
 For an interrupted Make upgrade, use the current installer with the same prefix
 and completion directories to retry, or uninstall the marked partial installation.
 Do not bypass ownership hashes or linked-path rejection to force recovery; genuine
-launcher/completion edits remain protected. These fixes require a build containing
-the hardening changes and are not implied by the unchanged release version alone.
+launcher/completion edits remain protected. These hardening changes are included in 0.4.0; verify the actual installed
+runtime before recommending recovery for older versions.
 
 For the optional tray companion, keep it separate from workspace configuration.
 The native Linux/macOS and Windows-to-WSL companion needs GUI dependencies; ordinary CLI
@@ -226,7 +227,8 @@ without a separate Windows Python setup. It accepts explicit `--wsl-distribution
 Linux `--wsl-python` arguments; `--wsl-user` selects an account or omission uses
 the distribution default. Install the core CLI only in the selected WSL interpreter.
 Do not bypass stopped-distribution checks, scrape tables, or manage native Windows
-workspaces. Windows `--check` also reads WSL status; Windows login startup is absent.
+workspaces. Windows `--check` also reads WSL status; Windows app-managed login startup is absent; an explicitly requested manual
+Startup-folder shortcut remains available.
 Tray actions use the existing CLI in terminals and keep its confirmation semantics;
 Quit closes only the tray. Native Linux/macOS login startup is opt-in and edited/linked entries remain
 protected. Version-1 `list --json`/`status --json` are read-only observations, not

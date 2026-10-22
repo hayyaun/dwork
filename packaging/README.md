@@ -2,8 +2,8 @@
 
 - [AUR](aur/README.md): v0.3.0 recipe with native completion entries; submission pending.
 - [Homebrew](homebrew/README.md): v0.3.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
-- [Python / PyPI](python/README.md): v0.3.0 wheel/sdist and console entry point; TestPyPI/PyPI publication pending.
-- [Debian / Ubuntu](debian/README.md): v0.3.0-1 debhelper packaging; no signed apt repository.
+- [Python / PyPI](python/README.md): v0.4.0 wheel/sdist and console entry point; TestPyPI/PyPI publication pending.
+- [Debian / Ubuntu](debian/README.md): v0.4.0-1 debhelper packaging; no signed apt repository.
 - [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
 Verified v0.3.0 Python, Debian/Ubuntu, Fedora 44, and Arch packages are published in
@@ -15,6 +15,11 @@ prove that later checkout changes pass. Existing tags and downloads remain immut
 to PyPI, a Homebrew tap, AUR, or an apt repository.
 
 ## Current verification paths
+
+The current source prepares CLI 0.4.0 and separate companion 0.2.0. Native
+companion dependencies target CLI 0.4.x; the portable Windows package embeds its
+own runtime and uses the matching CLI in WSL. Published assets and pinned channel
+recipes are updated only after the tagged release is built and verified.
 
 `make quality` checks pinned Ruff lint/format rules, gradual mypy types, and stable
 formula/template parity. Install the development-only `quality` extra first; see

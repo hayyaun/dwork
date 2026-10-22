@@ -83,6 +83,9 @@
 
 ## Packaging publication
 
+- [x] Fix headless Windows-transport source tests and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
+- [ ] Verify and publish 0.4.0 with companion 0.2.0, then update pinned channel recipes to the immutable release archive.
+
 - [x] Prepare and commit Homebrew, PyPI, and Debian packaging support.
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
 - [x] Build and verify Fedora 44 RPM and Arch packages locally, including installation, file integrity, and installed CLI checks outside the source tree.

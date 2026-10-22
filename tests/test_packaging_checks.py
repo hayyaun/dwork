@@ -178,6 +178,19 @@ class CheckoutPackagingTests(unittest.TestCase):
         self.assertIn('_dwork "$@"', stable)
         self.assertNotIn("$$@", stable)
 
+    def test_completion_sources_use_homebrew_formula_scoped_shared_directory(self):
+        template = (ROOT / checkout.TEMPLATE).read_text()
+        formulas = (
+            checkout.stable_formula(ROOT),
+            checkout.render_formula(template, "file:///tmp/source.tar.gz", "7.8.9", "a" * 64),
+        )
+        for formula in formulas:
+            with self.subTest(source=formula.splitlines()[5]):
+                self.assertIn('cp pkgshare/"completions/dwork.bash"', formula)
+                self.assertIn('(pkgshare/"completions/_dwork").to_s.shellescape', formula)
+                # Homebrew's strict audit rejects an explicitly repeated formula name.
+                self.assertNotIn('share/"dwork/', formula)
+
     def test_rendering_requires_version_checksum_and_noninterpolated_url(self):
         template = (ROOT / checkout.TEMPLATE).read_text()
         for url, version, digest in (
