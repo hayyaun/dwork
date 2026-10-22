@@ -17,7 +17,8 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "companion/src"))
-from dwork_tray import app, client, command, platforms, startup
+from dwork_tray import app, command, observer, platforms, startup
+from dwork_tray import native as client
 from dwork_tray.model import workspace_items
 from dwork_tray.platforms import CompanionError
 import dwork_terminals
@@ -92,11 +93,11 @@ class TrayTests(unittest.TestCase):
         process.communicate.side_effect = [subprocess.TimeoutExpired("observer", 15), ("", "")]
         with (
             patch.object(subprocess, "Popen", return_value=context),
-            patch.object(os, "killpg") as stop,
+            patch.object(os, "killpg", create=True) as stop,
             self.assertRaisesRegex(CompanionError, "timed out"),
         ):
             client.capture_status()
-        stop.assert_called_once_with(42, client.signal.SIGKILL)
+        stop.assert_called_once_with(42, observer.signal.SIGKILL)
 
     def test_menu_data_shows_protection_and_unresolved_tasks_without_mutation(self):
         data = snapshot()
@@ -223,15 +224,14 @@ class TrayTests(unittest.TestCase):
     def test_platform_limits_and_main_thread_requirement_are_explicit(self):
         with (
             patch.dict(os.environ, {"WSL_DISTRO_NAME": "Ubuntu"}),
-            self.assertRaisesRegex(CompanionError, "WSL distribution"),
+            self.assertRaisesRegex(CompanionError, "Windows-host"),
         ):
             platforms.native_platform()
         with (
             patch.dict(os.environ, {"WSL_DISTRO_NAME": ""}),
             patch.object(sys, "platform", "win32"),
-            self.assertRaisesRegex(CompanionError, "Windows-host"),
         ):
-            platforms.native_platform()
+            self.assertEqual(platforms.native_platform(), "win32")
         with (
             patch.object(threading, "current_thread", return_value=object()),
             self.assertRaisesRegex(CompanionError, "main thread"),
@@ -258,6 +258,7 @@ class TrayTests(unittest.TestCase):
         ):
             platforms.load_ui()
         with (
+            patch.object(app, "select_transport", return_value=client.NativeTransport()),
             patch.object(app, "load_ui", side_effect=CompanionError("missing indicator host")),
             patch.object(client, "open_operation") as operation,
             redirect_stderr(io.StringIO()) as errors,

@@ -10,9 +10,11 @@ class CompanionError(Exception):
 
 
 def native_platform():
-    if os.environ.get("WSL_DISTRO_NAME") or sys.platform == "win32":
+    if sys.platform == "win32":
+        return "win32"
+    if os.environ.get("WSL_DISTRO_NAME"):
         raise CompanionError(
-            "This companion currently supports native Linux and macOS. Windows-host support for a selected WSL distribution is planned; use dwork in WSL meanwhile."
+            "Run the Windows-host companion from PowerShell with --wsl-distribution and --wsl-python. A Linux tray inside WSL is unsupported; the dwork CLI remains usable here."
         )
     if sys.platform == "darwin":
         if sys.version_info < (3, 13):
@@ -42,6 +44,10 @@ def load_ui():
                 "The Linux companion requires PYSTRAY_BACKEND=appindicator (AppIndicator or Ayatana); GTK legacy/Xorg fallback cannot guarantee the required menu."
             )
         os.environ.setdefault("PYSTRAY_BACKEND", "appindicator")
+    if platform == "win32":
+        if os.environ.get("PYSTRAY_BACKEND", "win32") != "win32":
+            raise CompanionError("The Windows companion requires PYSTRAY_BACKEND=win32.")
+        os.environ.setdefault("PYSTRAY_BACKEND", "win32")
     try:
         import pystray
         from PIL import Image, ImageDraw
@@ -50,6 +56,12 @@ def load_ui():
             from PyObjCTools import AppHelper
 
             schedule = AppHelper.callAfter
+        elif platform == "win32":
+            # pystray supports its Windows loop on any thread. Public icon/menu
+            # operations can run in the setup/worker thread; no private messages.
+            def schedule(callback):
+                callback()
+
         else:
             from gi.repository import Gio, GLib
 
@@ -107,7 +119,7 @@ def load_ui():
 
         if not pystray.Icon.HAS_MENU:
             raise CompanionError(
-                "This tray backend does not support menus; use AppIndicator/Ayatana on Linux or Cocoa on macOS."
+                "This tray backend does not support menus; use AppIndicator/Ayatana on Linux, Cocoa on macOS, or Win32 on Windows."
             )
     except (ImportError, ValueError, RuntimeError) as error:
         raise CompanionError(

@@ -69,7 +69,9 @@
 
 - [x] Add a separate experimental native Linux/macOS companion package, read-only JSON protocol/schema, shared menu/worker logic, supported native UI dispatch, operation-terminal CLI handoff, periodic/completion refresh, opt-in protected login entries, Quit-only semantics, and regression/package checks.
 - [ ] Verify actual indicator display/menu/operation terminals/login startup on native GNOME/KDE and Cocoa hosts; headless/menu/unit checks are not full desktop validation.
-- [ ] Add a Windows-host companion adapter for an explicitly selected WSL distribution using `wsl.exe` and Windows Terminal; do not execute native Windows workspaces.
+- [x] Add a separate Windows-host transport for one explicitly selected WSL distribution/user/interpreter, running-state checks, bounded read observer, Windows Terminal handoff, preserved CLI confirmations/ownership, regression tests, and Windows package CI; no native Windows workspace execution.
+- [ ] Verify Windows tray rendering, real interactive Windows Terminal confirmations/completion, and Windows/WSL suspend/resume manually; transport/quoting/package tests do not prove GUI behavior.
+- [ ] Consider opt-in Windows login startup after native tray/terminal verification, with explicit target preferences and protected ownership of startup entries.
 
 ## Packaging publication
 

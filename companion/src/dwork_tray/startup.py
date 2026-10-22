@@ -10,6 +10,8 @@ from dwork_tray.platforms import CompanionError, native_platform
 
 def entry():
     platform = native_platform()
+    if platform == "win32":
+        raise CompanionError("Windows login startup is not implemented; no settings were changed.")
     command = [str(Path(sys.executable).absolute()), "-m", "dwork_tray"]
     if platform == "darwin":
         path = Path.home() / "Library/LaunchAgents/org.dwork.tray.plist"

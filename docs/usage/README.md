@@ -358,4 +358,6 @@ Use `dwork list --json` for saved workspace observations or `dwork status --json
 for the current resolved workspace/group. Both are read-only; see the
 [versioned JSON contract](../json/README.md). The optional, separately installed
 [tray companion](../companion/README.md) uses that interface and opens the existing
-CLI in operation terminals. It does not add unattended approvals or own shutdown.
+CLI in operation terminals. Windows users run the companion on the host with an
+explicit WSL distribution and Linux CLI interpreter; the CLI remains inside WSL.
+The companion does not add unattended approvals or own shutdown.

@@ -185,21 +185,39 @@ The [schema](../../schemas/status.schema.json) and [contract](../json/README.md)
 are independent of human table rendering and mutation planning.
 
 [`companion/`](../../companion/) is a separate distribution with GUI dependencies.
-Shared menu/state/worker logic consumes JSON through the CLI; mutating actions run
-that CLI in unowned operation terminals through the existing native adapters.
-Completion markers request a fresh observation only. Main-thread UI dispatch uses
-public GLib/AppHelper calls. User login entries are opt-in and exact-content ownership
-checks preserve edited, linked, and other-installation entries. Native Windows/WSL
-host transport is not implemented in this phase. See the [companion guide](../companion/README.md).
+Shared menu/state/worker logic depends on a transport with `read_status` and
+`open_operation`; `client.py` validates the JSON protocol only. `native.py` owns
+Linux/macOS process execution and lazy imports of existing native terminal adapters.
+`wsl.py` owns Windows host-tool discovery, explicit distribution/user/interpreter
+selection, running checks, bounded observation, and Windows Terminal handoff.
+`wsl_terminal.py` inherits terminal input for the selected Linux CLI; the Windows
+installation has no core CLI dependency or registry/Docker/lifecycle implementation.
+The standard-library-only `observer.py` runs locally on POSIX or from its packaged
+source inside WSL, cleaning only its owned read session on timeout.
+
+Completion markers request a fresh observation only. Linux/macOS UI dispatch uses
+public GLib/AppHelper calls; Windows uses public pystray icon/menu operations from
+its worker (its backend supports running outside the main thread). The shared icon
+loop still starts on the main thread. Native login entries remain opt-in with
+exact-content ownership checks; Windows omits login management. See the
+[companion guide](../companion/README.md) for running-state races, timeout limits,
+and platform setup. No automatic WSL startup/termination or native Windows workspace
+execution is added; selection is supplied explicitly at each Windows launch.
 
 `test_status_json.py` covers privacy, read-only routing, unknown/target/service states,
-and live lock observation. `test_tray.py` uses fake UI and subprocesses for worker/UI
-separation, callbacks, refresh, terminal handoff, opt-in login ownership, unsupported
-platforms/backends, protocol failure, and Quit semantics. The separate companion
-package CI installs matching wheels and checks non-GUI entry points; macOS checks
-real pystray menu descriptors without starting an icon. Desktop rendering and native
-login/Automation behavior still need manual native-host verification. Optional UI
-framework stubs are excluded narrowly from mypy; core modules retain normal checking.
+and live lock observation. `test_tray.py` covers existing worker/UI separation,
+callbacks, refresh, native terminal handoff, login ownership, and Quit semantics.
+`test_wsl_tray.py` covers explicit target selection, stopped distributions, UTF-16/
+UTF-8 list decoding, observer transport, timeouts, literal terminal arguments,
+normal CLI input/exit handling, missing tools, and absent Windows autostart. A
+Windows-only PowerShell integration runs a harmless argument recorder without
+opening an icon/terminal or invoking workspace operations.
+
+Companion package CI checks matching CLI/companion wheels on native hosts and a
+standalone companion wheel on Windows with no core CLI installed. Native desktop
+rendering, Windows Terminal interaction, and login/Automation behavior still need
+manual host verification. Optional GUI-framework stubs are excluded narrowly from
+mypy; core modules retain normal checking.
 
 ## Tests
 

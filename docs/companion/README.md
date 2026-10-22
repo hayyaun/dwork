@@ -3,7 +3,8 @@
 [Project home](../../README.md) · [JSON interface](../json/README.md) · [Terminal launchers](../terminals/README.md)
 
 `dwork-tray` is an optional, experimental Python companion for native Linux and
-macOS. It lists registered workspaces, observed container/command counts, and lock
+macOS, or a Windows host connected to one explicitly selected WSL distribution.
+It lists registered workspaces, observed container/command counts, and lock
 protection (including partially protected groups). Selecting a workspace opens an operation terminal running the existing
 `dwork switch NAME`. **Stop eligible workspaces…** opens `dwork down` separately.
 **Quit tray** closes only the companion: commands, containers, browsers, operation
@@ -25,17 +26,18 @@ pystray, Pillow, PyObjC, PyGObject, or a login entry. Use matching development s
 until releases containing the version-1 JSON interface and companion are published:
 
 ```sh
-# From the checkout, in a virtual environment chosen for your platform:
+# Native Linux/macOS: from the checkout, in a virtual environment:
 python -m pip install -e . -e ./companion
 dwork-tray --check
 dwork-tray
 ```
 
 Do not install, launch, or enable login startup merely to generate `dwork.yml`.
-`--help` works without a GUI backend. `--check` checks the supported native backend
-and tray host without running the icon event loop, probing workspaces, or opening
-applications. It cannot prove that a desktop will render the icon correctly. Source
-and fake-UI tests pass without GUI dependencies.
+`--help` works without a GUI backend. Native `--check` checks the backend and tray
+host without running an icon, probing workspaces, or opening applications.
+Windows `--check` also reads JSON status in the selected running WSL distribution;
+it performs no workspace mutations. Neither proves desktop rendering. Source and
+fake-UI tests pass without GUI dependencies.
 
 ### Linux
 
@@ -70,11 +72,62 @@ No UI keystroke automation or private native API is used.
 
 ### Windows and WSL
 
-Windows-host support is a later phase. This first companion refuses native Windows
-and WSL sessions with guidance to continue using the CLI in WSL. It does not execute
-native Windows workspaces or manage Windows processes. The future host adapter must
-call the same JSON/CLI interface in an explicitly selected WSL distribution through
-`wsl.exe`, using Windows Terminal for interactive operations.
+Run the companion **on Windows from PowerShell**, using Windows Python 3.10+.
+The Linux CLI remains inside WSL. No native Windows workspace execution, direct
+registry/Docker access from Windows, or Windows workload ownership is added.
+Launching the Linux companion inside WSL/WSLg still produces guidance to use the
+Windows host. Use a build of the WSL CLI containing the version-1 JSON interface;
+older published 0.3.0 builds do not include it.
+
+1. Choose the Linux interpreter where the matching CLI is installed. In WSL, verify
+   `/absolute/path/to/python -m dwork list --json`. This may be a dedicated CLI venv;
+   a shell alias or an activated shell's `PATH` is not used by the host adapter.
+   A fresh CLI venv can be created with `python3 -m venv /your/chosen/dwork-env`, then
+   `/your/chosen/dwork-env/bin/python -m pip install .` from the matching checkout.
+2. Start the selected distribution deliberately in Windows Terminal. In PowerShell,
+   `wsl.exe --list --running --quiet` lists running names; choose one explicitly.
+3. From the checkout root in **Windows PowerShell**, create a Windows venv and
+   install the companion only. Substitute the actual distribution and Linux path:
+
+```powershell
+$trayVenv = Join-Path $env:LOCALAPPDATA 'dwork-tray\venv'
+py -3 -m venv $trayVenv
+$trayPython = Join-Path $trayVenv 'Scripts\python.exe'
+& $trayPython -m pip install ./companion
+& $trayPython -m dwork_tray --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --check
+& $trayPython -m dwork_tray --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python
+```
+
+The example keeps the Windows venv on a Windows drive even if the checkout lives
+on a WSL UNC share; choose a different `$trayVenv` if desired. The Windows package installs pystray/Pillow and does **not** depend on a Windows `dwork-cli`
+installation. GUI dependencies are not needed inside WSL. Restarting the tray
+requires the same explicit selection arguments; this version saves no preferences.
+
+`--wsl-distribution NAME` and `--wsl-python /ABSOLUTE/LINUX/PATH` are required on
+Windows. `--wsl-user USER` optionally chooses a Linux user; omission uses the
+selected distribution's default user, including that user's registry/environment.
+Use it explicitly if you need a fixed account. These options are rejected on native
+Linux/macOS. The Windows host also requires `wsl.exe`, Windows Terminal (`wt.exe`),
+and Windows PowerShell (`powershell.exe`). Missing tools produce guidance.
+
+Status polling first lists running distribution names using `wsl.exe --list
+--running --quiet`. A stopped/missing selected distribution clears stale actions
+and reports an error; start it manually and choose **Refresh**. Operation handoff
+also rechecks running state. A distribution can stop between the check and command
+launch; WSL may start it in that race. Polling a running distribution performs real
+commands and can keep it active; quit the tray to stop these observations. No WSL
+shutdown/terminate command is used.
+
+Workspace actions open a new Windows Terminal window. A Windows-side wrapper
+invokes the existing Linux `python -m dwork switch NAME` or `down` with normal
+terminal input/output, then records completion only for refresh. Windows Terminal
+receives a documented PowerShell `-EncodedCommand`; variable arguments are literal
+quoted data encoded into that command, preserving spaces, quotes, Unicode, and
+semicolons without interpreting workspace names as shell code. No profiles,
+execution-policy bypass, approval flags, or automated prompt responses are used.
+The tray observes completion but never supervises/stops the operation terminal.
+Windows login startup is not implemented: the menu item is absent and `--autostart`
+returns guidance without writing settings.
 
 ## Refresh and failures
 
@@ -89,7 +142,15 @@ Status subprocesses use no stdin and have a 15-second timeout. Their separate
 owned process session is cleaned up on timeout before the observer is reaped; this
 never targets application task PIDs or interprets saved controller records. Quit
 removes the icon immediately; an in-flight observation may take up to its timeout
-to drain before the companion process exits. Docker unavailable,
+to drain before the companion process exits. On Windows, this bounded POSIX helper
+runs inside WSL from its packaged standard-library-only source; no companion install
+is required there. The Windows bridge has a 25-second timeout and the running-list
+query has a 5-second timeout. A bridge timeout stops only its owned Windows helper;
+the Linux helper enforces its own 15-second cleanup deadline. If the WSL subsystem
+itself is hung, remote cleanup cannot be guaranteed until it resumes. Terminal
+handoff has a 10-second timeout; a timed-out handoff may already have opened the
+requested terminal, so inspect it before retrying. Quit cannot undo a handoff already
+in progress. Docker unavailable,
 different-target, missing-directory, and unresolved-controller states are shown
 without pretending unknown counts are zero. A failed protocol read clears stale menu
 rows and shows the error. The CLI still performs its live validation before acting;
@@ -97,7 +158,8 @@ a changed/forgotten name cannot be activated through a stale ownership snapshot.
 
 ## Startup at login is opt-in
 
-The menu checkbox or these explicit commands manage only this installation's entry:
+On native Linux/macOS, the menu checkbox or these explicit commands manage only
+this installation's entry. Windows does not offer login-startup management:
 
 ```sh
 dwork-tray --autostart status
@@ -130,9 +192,14 @@ callbacks, disabled states, and login/quit items without displaying an icon. Tes
 exercise protocol privacy, target/service scoping, UI scheduling, operation handoff,
 refresh, Quit behavior, login opt-in, and preservation of edited/linked entries.
 Package CI builds the separate distribution, installs matching CLI/companion wheels
-outside the checkout, and checks non-GUI entry points. macOS also checks the actual
+outside the checkout, and checks non-GUI entry points. The Windows lane installs
+the companion independently, proves the core CLI is absent, and exercises transport,
+no-autostart behavior, and a real harmless PowerShell argument round trip. A real
+Windows-to-WSL status probe also verified a Linux interpreter path containing spaces
+and Unicode JSON with a temporary harmless CLI fixture. macOS also checks the actual
 pystray menu API without running an icon. None of these replaces manual GNOME/KDE
-and Cocoa display/Automation/login verification. This WSL environment has GTK but
+Cocoa display/Automation/login verification, or Windows tray/interactive terminal
+verification on a real desktop. This WSL environment has GTK but
 no AppIndicator/Ayatana namespaces, so it cannot verify a native tray display.
 
 Supported interfaces: [pystray usage](https://pystray.readthedocs.io/en/latest/usage.html),
@@ -140,4 +207,7 @@ Supported interfaces: [pystray usage](https://pystray.readthedocs.io/en/latest/u
 [GLib idle dispatch](https://docs.gtk.org/glib/func.idle_add.html),
 [Desktop autostart](https://specifications.freedesktop.org/autostart/latest/),
 [Desktop Exec quoting](https://specifications.freedesktop.org/desktop-entry/1.0/exec-variables.html),
-[Apple user agents](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html).
+[Apple user agents](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html),
+[WSL commands](https://learn.microsoft.com/en-us/windows/wsl/basic-commands),
+[Windows Terminal arguments](https://learn.microsoft.com/en-us/windows/terminal/command-line-arguments),
+and [PowerShell EncodedCommand](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_powershell_exe).

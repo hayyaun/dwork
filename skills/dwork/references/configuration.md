@@ -368,18 +368,34 @@ or real GUI verification.
 
 ## Optional tray and JSON observations
 
-The separate development `dwork-tray` package targets native Linux/macOS first.
+The separate development `dwork-tray` package targets native Linux/macOS and a
+Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
 Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
-A dependency/menu test is not proof of desktop rendering. Windows-host support is
-planned only as transport to dwork in a selected WSL distribution, never as native
-Windows workspace execution.
+A dependency/menu test is not proof of desktop rendering. On Windows install only
+the companion in Windows Python; the selected absolute Linux interpreter must have
+the matching CLI installed. Launch from PowerShell with `--wsl-distribution NAME`
+and `--wsl-python /ABS/PATH`, optionally `--wsl-user USER`; omission uses the
+selected distribution's default user and registry. `wsl.exe`, Windows Terminal,
+and Windows PowerShell are required. No native Windows workspace execution occurs.
+The Linux tray itself remains unsupported inside WSL/WSLg.
+
+Windows `--check` validates the backend and reads selected WSL JSON status without
+an icon or mutations. Polling checks running names first and reports stopped/missing
+distributions; start one deliberately and Refresh. Do not silently start it or
+change the selected/default distribution. A check/launch race can still start one
+that stopped in between, and polling can keep a running distribution active.
+Quit stops observations; it never terminates a distribution. The Linux observer
+bounds its own read session; a hung WSL subsystem can delay remote cleanup. A
+terminal-handoff timeout may occur after opening, so inspect before retrying.
 
 The default CLI install includes no GUI dependencies. Companion installation,
 launch, and login startup are separate choices, not implied by generating YAML.
-Login startup is disabled until an explicit menu toggle or `dwork-tray --autostart
-enable`; disable removes only an exact entry owned by that installation. Edited or
+Login startup is offered only on native Linux/macOS, disabled until an explicit
+menu toggle or `dwork-tray --autostart enable`; disable removes only an exact entry
+owned by that installation. Windows omits the menu item and refuses `--autostart`
+without writes. Edited or
 linked entries require deliberate inspection. Quit tray does not stop workloads,
 close operation terminals, or disable next-login startup. Stop remains a separate
 explicit CLI action, preserving registration/locking/ownership/confirmation rules.

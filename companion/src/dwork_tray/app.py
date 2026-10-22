@@ -8,13 +8,14 @@ import tempfile
 import threading
 import time
 
-from dwork_tray import client, startup
+from dwork_tray import native, startup
 from dwork_tray.model import plain, workspace_items
-from dwork_tray.platforms import CompanionError, load_ui
+from dwork_tray.platforms import CompanionError, load_ui, native_platform
 
 
 class Companion:
-    def __init__(self, ui, image, schedule, completion_directory, interval=15):
+    def __init__(self, ui, image, schedule, completion_directory, interval=15, transport=None):
+        self.transport = transport if transport is not None else native.NativeTransport()
         self.ui, self.schedule = ui, schedule
         self.directory, self.interval = Path(completion_directory), interval
         self.rows = ()
@@ -39,12 +40,13 @@ class Companion:
         yield self.ui.Menu.SEPARATOR
         yield item("Refresh", lambda icon, entry: self.enqueue("refresh"))
         yield item("Stop eligible workspaces…", lambda icon, entry: self.enqueue("down"))
-        yield item(
-            "Start at login",
-            lambda icon, entry: self.enqueue("startup"),
-            checked=lambda entry: bool(self.startup_enabled),
-            enabled=self.startup_enabled is not None,
-        )
+        if self.transport.supports_startup:
+            yield item(
+                "Start at login",
+                lambda icon, entry: self.enqueue("startup"),
+                checked=lambda entry: bool(self.startup_enabled),
+                enabled=self.startup_enabled is not None,
+            )
         yield item("Quit tray", lambda icon, entry: self.quit())
 
     def activation(self, name):
@@ -69,19 +71,23 @@ class Companion:
 
     def refresh(self):
         try:
-            rows = workspace_items(client.read_status())
+            rows = workspace_items(self.transport.read_status())
             self.publish(
-                rows=rows, message="Registered workspaces — select to activate" + self.startup_error
+                rows=rows,
+                message="Registered workspaces — select to activate"
+                + (" (" + self.transport.label + ")" if self.transport.label else "")
+                + self.startup_error,
             )
         except (CompanionError, OSError, ValueError, KeyError, TypeError) as error:
             self.publish(rows=(), message="Status unavailable: " + str(error))
 
     def work(self):
-        try:
-            self.publish(enabled=startup.state())
-        except (CompanionError, OSError) as error:
-            self.startup_error = "; login entry: " + str(error)
-            self.publish(message=str(error))
+        if self.transport.supports_startup:
+            try:
+                self.publish(enabled=startup.state())
+            except (CompanionError, OSError) as error:
+                self.startup_error = "; login entry: " + str(error)
+                self.publish(message=str(error))
         next_refresh = 0
         while not self.closed.is_set():
             try:
@@ -92,9 +98,11 @@ class Companion:
                 break
             try:
                 if action in ("switch", "down"):
-                    self.pending.append(client.open_operation(action, name, self.directory))
+                    self.pending.append(self.transport.open_operation(action, name, self.directory))
                     next_refresh = 0
                 elif action == "startup":
+                    if not self.transport.supports_startup:
+                        raise CompanionError("Windows login startup is not implemented.")
                     enabled = not startup.state()
                     startup.set_enabled(enabled)
                     self.publish(
@@ -133,14 +141,30 @@ class Companion:
             self.jobs.put(("quit", None))
 
 
+def select_transport(args):
+    platform = native_platform()
+    values = (args.wsl_distribution, args.wsl_python, args.wsl_user)
+    if platform == "win32":
+        if args.autostart:
+            raise CompanionError(
+                "Windows login startup is not implemented; no settings were changed."
+            )
+        from dwork_tray.wsl import WslTransport
+
+        return WslTransport(*values)
+    if any(value is not None for value in values):
+        raise CompanionError("--wsl-* options apply only to the Windows host companion.")
+    return native.NativeTransport()
+
+
 def cli(argv=None):
     parser = argparse.ArgumentParser(
-        description="Optional dwork tray companion for native Linux and macOS"
+        description="Optional dwork tray for native Linux/macOS or a Windows host with selected WSL"
     )
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Check tray dependencies/host without starting the icon or CLI operations",
+        help="Check the tray backend; Windows also reads selected WSL status (no icon or mutations)",
     )
     parser.add_argument(
         "--interval",
@@ -153,12 +177,28 @@ def cli(argv=None):
         choices=("enable", "disable", "status"),
         help="Explicitly manage this installation's user login entry (never starts it now)",
     )
+    parser.add_argument(
+        "--wsl-distribution",
+        metavar="NAME",
+        help="Windows: explicitly selected running WSL distribution",
+    )
+    parser.add_argument(
+        "--wsl-python",
+        metavar="/ABS/PATH",
+        help="Windows: absolute Linux Python path with dwork installed",
+    )
+    parser.add_argument(
+        "--wsl-user",
+        metavar="USER",
+        help="Windows: Linux user (otherwise the distribution default)",
+    )
     args = parser.parse_args(argv)
     if not 5 <= args.interval <= 3600:
         parser.error("--interval must be between 5 and 3600 seconds")
     if args.check and args.autostart:
         parser.error("--check and --autostart are separate operations")
     try:
+        transport = select_transport(args)
         if args.autostart:
             if args.autostart == "status":
                 print("enabled" if startup.state() else "disabled")
@@ -174,12 +214,14 @@ def cli(argv=None):
             return 0
         ui, image, schedule = load_ui()
         if args.check:
+            if not transport.supports_startup:
+                workspace_items(transport.read_status())
             print(
                 "Supported tray backend and host available; no applications or workspaces launched."
             )
             return 0
         with tempfile.TemporaryDirectory(prefix="dwork-tray-") as temporary:
-            Companion(ui, image, schedule, temporary, args.interval).run()
+            Companion(ui, image, schedule, temporary, args.interval, transport=transport).run()
         return 0
     except (CompanionError, OSError, ValueError, RuntimeError) as error:
         print("dwork-tray: " + str(error), file=sys.stderr)

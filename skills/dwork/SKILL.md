@@ -199,14 +199,18 @@ launcher/completion edits remain protected. These fixes require a build containi
 the hardening changes and are not implied by the unchanged release version alone.
 
 For the optional tray companion, keep it separate from workspace configuration.
-The initial native Linux/macOS companion needs GUI dependencies; ordinary CLI
+The native Linux/macOS and Windows-to-WSL companion needs GUI dependencies; ordinary CLI
 installs remain lightweight. Never install/launch it or enable login startup merely
 to generate YAML. Use its explicit `--check` diagnostic for backend guidance when
 requested. Linux needs AppIndicator/Ayatana and compatible indicator host support;
-GNOME extensions and system dependencies require their own authorization. Windows-host
-support is planned only for WSL, with no native Windows workspace execution.
+GNOME extensions and system dependencies require their own authorization. Windows
+runs the companion on the host with explicit `--wsl-distribution` and absolute
+Linux `--wsl-python` arguments; `--wsl-user` selects an account or omission uses
+the distribution default. Install the core CLI only in the selected WSL interpreter.
+Do not bypass stopped-distribution checks, scrape tables, or manage native Windows
+workspaces. Windows `--check` also reads WSL status; Windows login startup is absent.
 Tray actions use the existing CLI in terminals and keep its confirmation semantics;
-Quit closes only the tray. Login startup is opt-in and edited/linked entries remain
+Quit closes only the tray. Native Linux/macOS login startup is opt-in and edited/linked entries remain
 protected. Version-1 `list --json`/`status --json` are read-only observations, not
 approval or ownership tokens. Old published 0.3.0 builds lack these new interfaces;
 check runtime support instead of scraping tables or bypassing checks.

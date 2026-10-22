@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dwork-tray"
 version = "0.1.0"
-description = "Optional Linux and macOS tray companion for dwork"
+description = "Optional native Linux/macOS and Windows-to-WSL tray companion for dwork"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = ["dwork-cli>=0.3.0,<0.4", "pystray>=0.19.5,<0.20", "Pillow>=10,<13"]
+dependencies = ["dwork-cli>=0.3.0,<0.4; sys_platform != 'win32'", "pystray>=0.19.5,<0.20", "Pillow>=10,<13"]
 
 [project.scripts]
 dwork-tray = "dwork_tray.app:cli"

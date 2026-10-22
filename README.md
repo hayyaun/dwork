@@ -266,10 +266,13 @@ and configuration diagnostics. Existing files can add the same comment.
 ## Optional tray companion
 
 An experimental, separately installed `dwork-tray` companion lists registered
-workspaces and status on native Linux/macOS. It opens operation terminals for the
+workspaces and status on native Linux/macOS or Windows connected to one explicitly
+selected WSL distribution. It opens operation terminals for the
 existing CLI, preserving confirmations and ownership checks. Login startup is
-opt-in; Quit closes only the tray. Linux needs AppIndicator/Ayatana and a compatible
-host (GNOME may need indicator support). Windows-host support for WSL is planned.
+opt-in on Linux/macOS; Quit closes only the tray. Linux needs AppIndicator/Ayatana
+and a compatible host (GNOME may need indicator support). Windows uses a separate
+host installation, Windows Terminal, and an explicit Linux Python path with dwork
+installed; it manages WSL workspaces only. Windows login startup is not yet supported.
 [Setup and current verification limits →](docs/companion/README.md)
 
 `dwork list --json` and `dwork status --json` provide the versioned read-only
