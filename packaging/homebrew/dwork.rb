@@ -3,8 +3,8 @@ class Dwork < Formula
 
   desc "Switch development workspaces and resume existing containers"
   homepage "https://github.com/hayyaun/dwork"
-  url "https://github.com/hayyaun/dwork/archive/refs/tags/v0.5.0.tar.gz"
-  sha256 "f3974ea3036ec1bd6e4a068acf0ae6044117a0b6c53ccbdc5ce8fc88fd886568"
+  url "https://github.com/hayyaun/dwork/archive/refs/tags/v0.6.0.tar.gz"
+  sha256 "822d2089c5631f3db7112b49923da9c3755cc5792383a7fa68f80b019c53a4d0"
   license "MIT"
   head "https://github.com/hayyaun/dwork.git", branch: "main"
 

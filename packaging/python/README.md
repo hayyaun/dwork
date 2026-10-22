@@ -17,7 +17,7 @@ python -m pip install build twine
 python -m build
 python -m twine check dist/*
 python -m venv /tmp/dwork-wheel-test
-/tmp/dwork-wheel-test/bin/python -m pip install dist/dwork_cli-0.5.0-py3-none-any.whl
+/tmp/dwork-wheel-test/bin/python -m pip install dist/dwork_cli-0.6.0-py3-none-any.whl
 /tmp/dwork-wheel-test/bin/dwork --help
 ```
 
@@ -28,8 +28,8 @@ only inside its temporary environments.
 
 ## Publish
 
-The 0.5.0 wheel and source distribution are available from
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.5.0). TestPyPI
+The 0.6.0 wheel and source distribution are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.6.0). TestPyPI
 and PyPI publication remain pending; these build recipes do not publish to them.
 For a future release, first commit and tag
 the exact source that was tested. Create PyPI and TestPyPI accounts and verify

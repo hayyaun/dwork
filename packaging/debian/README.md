@@ -2,9 +2,9 @@
 
 Debhelper source-package files live here. The build helper copies them into the
 required top-level `debian/` directory in a temporary source tree; it does not
-change the checkout or install packages on your host. Version 0.5.0-1 matches the
-[published 0.5.0 release](https://github.com/hayyaun/dwork/releases/tag/v0.5.0),
-including its [Debian/Ubuntu package](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork_0.5.0-1_all.deb).
+change the checkout or install packages on your host. Version 0.6.0-1 matches the
+[published 0.6.0 release](https://github.com/hayyaun/dwork/releases/tag/v0.6.0),
+including its [Debian/Ubuntu package](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork_0.6.0-1_all.deb).
 No apt repository or PPA is published by this build.
 
 ## Build
@@ -23,7 +23,7 @@ Packages and build metadata are copied to `dist/debian/`. Build on each Debian o
 Ubuntu release you plan to support; Ubuntu 24.04 is the initial validation target.
 
 Inspect with `dpkg-deb --info` and `dpkg-deb --contents`. Install inside a test
-system with `sudo apt install ./dist/debian/dwork_0.5.0-1_all.deb`, then run
+system with `sudo apt install ./dist/debian/dwork_0.6.0-1_all.deb`, then run
 `dwork --help` and a host-only dry-run. Remove with `sudo apt remove dwork`.
 Use apt rather than make uninstall for package-managed installations.
 

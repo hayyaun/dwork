@@ -72,8 +72,8 @@ requires sourcing after Oh My Zsh/`compinit`. Python installs, older source
 checkouts, and prefixes outside the shell's search path need explicit setup.
 Do not assume older published assets include the new paths or loader behavior;
 see the bundled reference before suggesting a shell change.
-CLI 0.5.0 packages and the optional portable Windows tray 0.2.1 are available from
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.5.0); select the
+CLI 0.6.0 packages and the optional portable Windows tray 0.2.2 are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.6.0); select the
 appropriate platform package and verify its checksum before installation.
 Source build/test prerequisites differ from installed runtime dependencies:
 Git is required by the source installer and package regression tests, but the

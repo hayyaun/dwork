@@ -1,6 +1,6 @@
 pkgbase = dwork
 	pkgdesc = Switch development workspaces, resume existing containers, and launch terminals
-	pkgver = 0.5.0
+	pkgver = 0.6.0
 	pkgrel = 1
 	url = https://github.com/hayyaun/dwork
 	arch = any
@@ -20,7 +20,7 @@ pkgbase = dwork
 	optdepends = konsole: launch development terminals on KDE
 	optdepends = xfce4-terminal: launch development terminals on Xfce
 	optdepends = xterm: launch development terminals on X11
-	source = dwork-0.5.0.tar.gz::https://github.com/hayyaun/dwork/archive/refs/tags/v0.5.0.tar.gz
-	sha256sums = f3974ea3036ec1bd6e4a068acf0ae6044117a0b6c53ccbdc5ce8fc88fd886568
+	source = dwork-0.6.0.tar.gz::https://github.com/hayyaun/dwork/archive/refs/tags/v0.6.0.tar.gz
+	sha256sums = 822d2089c5631f3db7112b49923da9c3755cc5792383a7fa68f80b019c53a4d0
 
 pkgname = dwork

@@ -86,9 +86,14 @@
 
 ## Packaging publication
 
-- [ ] Verify and publish 0.6.0 with workspace groups and companion 0.2.2 native
-  CLI 0.4.x/0.5.x/0.6.x compatibility. Keep older release tags immutable; update
-  public download guidance and source pins only after release verification.
+- [x] Verify and publish [0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0)
+  with workspace groups and companion 0.2.2 native CLI 0.4.x/0.5.x/0.6.x support.
+  Immutable tag `v0.6.0` points to `39c5c89`; all 16 expanded package checks and
+  five release jobs passed. All six public downloads match SHA256SUMS and GitHub
+  asset sizes/digests; Windows version, revision, and PNG match the tag. The source
+  archive matches all 149 Git files/modes. Download guidance and Homebrew/AUR pins
+  select verified 0.6.0 source; AUR metadata is generated, with full recipe checks
+  still pending. No separate registry/tap/repository publication was performed.
 
 - [x] Verify and publish [0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0)
   with portable companion 0.2.1 and native CLI 0.4.x/0.5.x compatibility. Tag
@@ -96,7 +101,7 @@
   jobs passed. All six public package downloads match SHA256SUMS and GitHub asset
   sizes/digests; the Windows ZIP revision and PNG match the tag. Homebrew/AUR source
   pins match the verified immutable tag archive. Tag Homebrew checkout lanes verified
-  0.5.0, while stable lanes used 0.4.1; the current stable formula now pins 0.5.0.
+  0.5.0, while stable lanes used 0.4.1; the formula was then updated to 0.5.0.
   Full AUR 0.5.0 recipe verification remains pending after mirror download timeouts.
 
 - [x] Fix platform-independent transport/bootstrap/completion/installer fixtures, native Git build/test dependencies, secure noninteractive Zsh verification, and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
@@ -111,10 +116,10 @@
 - [x] Review and publish the resulting [GitHub release](https://github.com/hayyaun/dwork/releases/tag/v0.3.0) and its verified assets. All five public package downloads match SHA256SUMS.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.
-- [x] Build and verify Debian/Ubuntu packages and attach them to the matching releases (0.3.0-1, 0.4.1-1, and 0.5.0-1).
+- [x] Build and verify Debian/Ubuntu packages and attach them to the matching releases (0.3.0-1, 0.4.1-1, 0.5.0-1, and 0.6.0-1).
 - [ ] Evaluate a signed apt repository or PPA.
 - [ ] When AUR registration reopens, create the account, add an SSH public key, recheck package-name availability, and submit the prepared recipe.
-- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.5.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
+- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.6.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
 
 Keep the existing-container-only promise. Builds, deployments, and a large GUI are outside the current roadmap.
 

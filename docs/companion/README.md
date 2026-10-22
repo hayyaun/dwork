@@ -27,7 +27,7 @@ The companion is a **separate distribution** under [`companion/`](../../companio
 Ordinary CLI installs retain only their existing dependencies; they do not install
 pystray, Pillow, PyObjC, PyGObject, or a login entry. Companion 0.2.2
 pairs with `dwork-cli` 0.4.x, 0.5.x, or 0.6.x on native Linux/macOS (`>=0.4.0,<0.7`);
-the portable ZIP is published with CLI 0.5.0. Earlier companion 0.2.0 pairs with
+the portable ZIP is published with CLI 0.6.0. Earlier companion 0.2.0 pairs with
 CLI 0.4.x.
 The Windows app connects to a matching CLI inside WSL. Version 0.4.0 includes
 the version-1 JSON interface.
@@ -96,10 +96,10 @@ An optional portable Windows ZIP bundles the tray, terminal helper, Python runti
 and tray libraries. It connects to the existing CLI in WSL. No separate Windows
 Python, pip, venv, or compiler setup is required to use it.
 
-[Release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0) includes the
-[portable tray 0.2.1 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip),
+[Release v0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0) includes the
+[portable tray 0.2.2 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip),
 covered by the release
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS).
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS).
 The **Portable Windows tray** CI workflow also produces `release-assets-windows`
 with a ZIP and `SHA256SUMS.windows`; verified ZIPs join draft releases. The extracted
 `dwork-tray` folder contains `dwork-tray.exe`, `dwork-tray-terminal.exe`, and shared
@@ -126,7 +126,7 @@ path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 
    ```sh
    python3 -m venv "$HOME/dwork-env"
-   "$HOME/dwork-env/bin/python" -m pip install /path/to/dwork_cli-0.5.0-py3-none-any.whl
+   "$HOME/dwork-env/bin/python" -m pip install /path/to/dwork_cli-0.6.0-py3-none-any.whl
    ```
 
    An existing pipx/uv or editable development environment is also suitable when
@@ -136,8 +136,8 @@ path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 
 2. Download the portable ZIP and `SHA256SUMS` linked above. Compare the ZIP's
    SHA-256 with its entry in the manifest before extracting it. For example,
-   PowerShell provides `Get-FileHash .\dwork-tray-0.2.1-windows-x64.zip -Algorithm SHA256`;
-   Linux provides `sha256sum dwork-tray-0.2.1-windows-x64.zip`.
+   PowerShell provides `Get-FileHash .\dwork-tray-0.2.2-windows-x64.zip -Algorithm SHA256`;
+   Linux provides `sha256sum dwork-tray-0.2.2-windows-x64.zip`.
    Extract the **complete** `dwork-tray` folder to a stable location. Keep the
    sibling helper and `_internal` directory together with the EXE.
 

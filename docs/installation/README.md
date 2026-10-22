@@ -20,8 +20,8 @@ On macOS with Homebrew, install Python and choose it explicitly:
 brew install python@3.14
 ```
 
-CLI 0.5.0 and the portable Windows companion 0.2.1 are published in
-[GitHub release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0);
+CLI 0.6.0 and the portable Windows companion 0.2.2 are published in
+[GitHub release v0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0);
 see the [package options below](#python-homebrew-and-debian-packages).
 
 ## One-line installation
@@ -90,10 +90,10 @@ and Make (`xcode-select --install` if they are missing).
 
 ## Windows tray for WSL2
 
-The optional [portable Windows tray 0.2.1](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip)
-runs on the Windows host and connects to `dwork-cli` 0.5.x in a selected WSL
+The optional [portable Windows tray 0.2.2](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip)
+runs on the Windows host and connects to `dwork-cli` 0.6.x in a selected WSL
 distribution. No separate Windows Python or development tooling is required.
-Download the ZIP and release [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS),
+Download the ZIP and release [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS),
 verify its hash, and extract the complete app folder. That folder can stay in Linux.
 
 Follow the [Windows/WSL setup steps](../companion/README.md#set-up-the-portable-app)
@@ -108,8 +108,8 @@ WSL. Installing or launching the portable app does not enable Windows sign-in st
 
 ## Optional native tray
 
-The default installer remains CLI-only. Companion 0.2.1 supports CLI 0.4.x and
-0.5.x on native Linux/macOS; earlier companion 0.2.0 supports CLI 0.4.x.
+The default installer remains CLI-only. Companion 0.2.2 supports CLI 0.4.x, 0.5.x, and
+0.6.x on native Linux/macOS; earlier companion 0.2.0 supports CLI 0.4.x.
 Opt in to the separate `dwork-tray` package from source with:
 
 ```sh
@@ -228,38 +228,38 @@ recognize an interrupted upgrade's pending ownership record.
 
 ## Python, Homebrew, and Debian packages
 
-[GitHub release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0)
+[GitHub release v0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0)
 provides verified packages. Check downloaded files against its
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS)
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS)
 before installing. Public Homebrew tap, PyPI, AUR, and apt repository publication
 remain pending; channel instructions are in [packaging/](../../packaging/README.md).
 
-- Python: download the [wheel](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork_cli-0.5.0-py3-none-any.whl)
-  or [source distribution](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork_cli-0.5.0.tar.gz).
-  Install the local wheel with `pipx install ./dwork_cli-0.5.0-py3-none-any.whl`
-  or `uv tool install ./dwork_cli-0.5.0-py3-none-any.whl`.
+- Python: download the [wheel](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork_cli-0.6.0-py3-none-any.whl)
+  or [source distribution](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork_cli-0.6.0.tar.gz).
+  Install the local wheel with `pipx install ./dwork_cli-0.6.0-py3-none-any.whl`
+  or `uv tool install ./dwork_cli-0.6.0-py3-none-any.whl`.
   The distribution is named `dwork-cli`, while the command remains `dwork`.
   Checkout installation with `pipx install .` or `uv tool install .` also works;
   registry installation by name must wait for publication.
-- Homebrew: test the prepared v0.5.0 formula in a local tap using the
-  [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.5.0 includes
+- Homebrew: test the prepared v0.6.0 formula in a local tap using the
+  [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.6.0 includes
   macOS support; a public tap is separate and has not been published.
-- Debian/Ubuntu: download the [`.deb`](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork_0.5.0-1_all.deb)
+- Debian/Ubuntu: download the [`.deb`](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork_0.6.0-1_all.deb)
   and install the verified local file with apt. To build it yourself, use
   `python3 scripts/build-deb.py`; see the
   [Debian guide](../../packaging/debian/README.md) for prerequisites.
 - Fedora 44 and Arch: the release provides an
-  [RPM](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-0.5.0-1.fc44.noarch.rpm)
-  and [Arch package](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-0.5.0-1-any.pkg.tar.zst).
+  [RPM](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-0.6.0-1.fc44.noarch.rpm)
+  and [Arch package](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-0.6.0-1-any.pkg.tar.zst).
   These target Fedora 44 and the current Arch rolling distribution respectively.
 
 Use one installation method at a time. Remove an old sourced function when
 switching to an executable, as described below. The optional agent skill is
 installed separately for every distribution method.
 
-The optional [portable Windows tray 0.2.1 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip)
-is also attached to v0.5.0 and covered by the same checksum manifest. It connects
-to CLI 0.5.x in WSL; see [selection and launch](../companion/README.md#windows-and-wsl).
+The optional [portable Windows tray 0.2.2 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip)
+is also attached to v0.6.0 and covered by the same checksum manifest. It connects
+to CLI 0.6.x in WSL; see [selection and launch](../companion/README.md#windows-and-wsl).
 
 ## Runtime dependencies
 

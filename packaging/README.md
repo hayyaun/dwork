@@ -1,29 +1,26 @@
 # Distribution packaging
 
-- [AUR](aur/README.md): v0.5.0 recipe with native completion entries; submission pending.
-- [Homebrew](homebrew/README.md): v0.5.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
-- [Python / PyPI](python/README.md): v0.5.0 wheel/sdist recipes and console entry point; TestPyPI/PyPI publication pending.
-- [Debian / Ubuntu](debian/README.md): v0.5.0-1 debhelper packaging; no signed apt repository.
+- [AUR](aur/README.md): v0.6.0 recipe with native completion entries; submission pending.
+- [Homebrew](homebrew/README.md): v0.6.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
+- [Python / PyPI](python/README.md): v0.6.0 wheel/sdist recipes and console entry point; TestPyPI/PyPI publication pending.
+- [Debian / Ubuntu](debian/README.md): v0.6.0-1 debhelper packaging; no signed apt repository.
 - [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
-Verified v0.5.0 Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus the
-portable Windows tray 0.2.1 ZIP, are published in
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.5.0), with
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS).
-All six public package downloads match the checksum manifest. The release points
-to commit `a34e324`. Historical release verification does not
-prove that later checkout changes pass. Existing tags and downloads remain immutable.
-`make install` stays supported. These recipes and CI jobs do not publish packages
-to PyPI, a Homebrew tap, AUR, or an apt repository.
+Verified v0.6.0 CLI Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus
+portable Windows tray 0.2.2, are published in
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.6.0), with
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS).
+All six downloads match the manifest and GitHub sizes/digests. The immutable tag
+points to `39c5c89`; existing tags and downloads are unchanged. These recipes and
+CI jobs do not publish to PyPI, a Homebrew tap, AUR, or an apt repository.
 
 ## Current verification paths
 
-CLI 0.5.0 and the separate companion 0.2.1 are versioned independently. Native
-companion 0.2.1 supports CLI 0.4.x and 0.5.x (`>=0.4.0,<0.6`); earlier companion
-0.2.0 supports CLI 0.4.x. The portable Windows package embeds its own runtime and
-uses the matching CLI in WSL. Download links and pinned source recipes now select
-the immutable 0.5.0 release. AUR build verification remains limited as recorded
-in its [guide](aur/README.md#verification-scope-for-this-update).
+CLI 0.6.0 and companion 0.2.2 are versioned independently. Native companion
+0.2.2 supports CLI 0.4.x, 0.5.x, and 0.6.x (`>=0.4.0,<0.7`); companion 0.2.1
+supports CLI 0.4.x/0.5.x and 0.2.0 supports CLI 0.4.x. Windows embeds its runtime
+and connects to the selected CLI in WSL. Source recipes pin the verified immutable
+0.6.0 archive; AUR verification limits are recorded in its guide.
 
 `make quality` checks pinned Ruff lint/format rules, gradual mypy types, and stable
 formula/template parity. Install the development-only `quality` extra first; see
@@ -36,14 +33,18 @@ wheels/sdists from its checkout, verifies installed behavior outside the source
 tree, and builds/lints/smoke-tests Debian packages. Homebrew has two source modes
 on Linux and Apple Silicon macOS, adding Intel on tags/manual runs:
 
-- **Stable:** pinned v0.5.0 archive, style, source installation, formula test, strict audit.
+- **Stable:** pinned v0.6.0 archive, style, source installation, formula test, strict audit.
 - **Checkout:** checksummed `git archive HEAD` matching the expected full CI commit,
   generated local formula, style, source installation, and formula test. No remote
   HEAD substitution or checksum bypass is used. This temporary source is not published.
 
+The v0.6.0 tag passed all 16 expanded package checks and all five release jobs.
+Its checkout Homebrew lanes verified 0.6.0; stable lanes used the 0.5.0 pin
+in that tag. Public package downloads and Windows revision/icon were verified.
+
 The v0.5.0 tag passed all 16 expanded package checks and all five release jobs.
 Its checkout Homebrew lanes verified exact 0.5.0 source; its stable lanes used
-0.4.1, the pin present in the tag. The current formula pins 0.5.0; stable CI uses
+0.4.1, the pin present in the tag. The current formula pins 0.6.0; stable CI uses
 the version recorded in `stable.json` for each checked-out revision.
 
 The [shared Homebrew template](homebrew/dwork.rb.in) contains the same dependency,
