@@ -95,6 +95,30 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), expected)
 
+    def test_interactive_bash_source_registers_completion_on_each_load(self):
+        # In particular, exercise macOS's system Bash 3.2 with this test process's
+        # Python so an unrelated interpreter cannot silently skip generation.
+        generated = self.fixture.base / "completion-generations"
+        command = (
+            "python3() { printf 'generated\\n' >> "
+            + shlex.quote(str(generated))
+            + "; "
+            + shlex.quote(sys.executable)
+            + ' "$@"; }; '
+        )
+        load = "source " + shlex.quote(str(legacy.SOURCE)) + "; "
+        command += load + "complete -p dwork || exit 21; "
+        command += load + "complete -p dwork || exit 22"
+        result = subprocess.run(
+            ["bash", "--noprofile", "--norc", "-i", "-c", command],
+            cwd=self.root,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count("-F _dwork_complete dwork"), 2)
+        self.assertEqual(generated.read_text().splitlines(), ["generated", "generated"])
+
     def test_real_tab_completion_in_bash_and_zsh(self):
         import fcntl
         import pty

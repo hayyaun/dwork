@@ -46,7 +46,12 @@ class BootstrapTests(unittest.TestCase):
             (self.bin / name).symlink_to(executable)
         self.write_tool(
             "python3",
-            """sys.executable = sys.argv[0]
+            """# Cache the real interpreter configuration before simulating another OS.
+# ensurepip imports sysconfig on Python 3.13; its native configuration module
+# must not be selected using the simulated sys.platform or executable.
+import sysconfig
+sysconfig.get_config_vars()
+sys.executable = sys.argv[0]
 version = os.environ.get("BOOTSTRAP_TEST_PYTHON_VERSION")
 if version:
     sys.version_info = tuple(int(item) for item in version.split(".")) + (0, "final", 0)
@@ -259,19 +264,24 @@ raise SystemExit(int(os.environ.get("BOOTSTRAP_TEST_GIT_EXIT", "0")))
         self.assert_temporary_files_cleaned()
 
     def test_macos_accepts_the_documented_python_minimum(self):
-        self.env.update(
-            BOOTSTRAP_TEST_PLATFORM="Darwin", BOOTSTRAP_TEST_PYTHON_VERSION="3.13", VENV="0"
-        )
-        result = self.run_bootstrap()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual([event["tool"] for event in self.events()], ["git", "make"])
-        self.assert_temporary_files_cleaned()
+        for venv in ("0", "1"):
+            with self.subTest(venv=venv):
+                self.env.update(
+                    BOOTSTRAP_TEST_PLATFORM="Darwin",
+                    BOOTSTRAP_TEST_PYTHON_VERSION="3.13",
+                    VENV=venv,
+                )
+                result = self.run_bootstrap()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual([event["tool"] for event in self.events()], ["git", "make"])
+                self.assert_temporary_files_cleaned()
+                self.log.unlink()
 
     def test_clone_failure_cleans_partial_download_and_skips_make(self):
         self.env["BOOTSTRAP_TEST_GIT_EXIT"] = "23"
         result = self.run_bootstrap()
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual([event["tool"] for event in self.events()], ["git"])
+        self.assertEqual([event["tool"] for event in self.events()], ["git"], result.stderr)
         self.assert_temporary_files_cleaned()
 
     def test_make_failure_cleans_clone_and_propagates_failure(self):

@@ -5,6 +5,8 @@ dwork (0.4.0-1) unstable; urgency=medium
   * Preserve confirmations and ownership through configuration/lifecycle refactors.
   * Make Windows transport tests independent of host tool availability.
   * Correct Homebrew shared-data paths for strict formula auditing.
+  * Support source completion on macOS system Bash 3.2.
+  * Keep platform fixtures portable and Zsh package verification secure.
 
  -- Hayyan Hami <hayyaun@users.noreply.github.com>  Thu, 22 Oct 2026 06:42:08 +0330
 

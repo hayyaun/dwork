@@ -15,9 +15,10 @@ Zsh requires it after Oh My Zsh/`compinit`. If sourced earlier, source it again
 after initialization. It does not run `compinit` or generate completion in
 noninteractive shells; missing Python/runtime dependencies quietly skip optional
 loading. Python installations, older source/release packages, and custom prefixes
-may still need `source <(dwork completion zsh)` after `compinit`, or the Bash
-equivalent. Preserve existing shell choices; changing a shell startup file
-requires the user's authorization.
+may still need `source <(dwork completion zsh)` after `compinit`, or `eval "$(dwork completion bash)"` for Bash (including macOS Bash 3.2). Preserve existing shell choices; changing a shell startup file
+requires the user's authorization. If Zsh refuses completion initialization,
+inspect `compaudit` output and directory ownership/permissions; do not bypass its
+audit or change those permissions merely to generate workspace YAML.
 
 Use the exact filename `dwork.yml`. The nearest file in the current directory or
 its parents wins; files are not merged. `--project-directory` or an explicit

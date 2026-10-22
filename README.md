@@ -144,5 +144,5 @@ The skill inspects your existing commands and Compose services.
 - [Terminal options and background tasks](docs/terminals/README.md)
 - [Browser selection and readiness checks](docs/browsers/README.md)
 - [Optional tray companion](docs/companion/README.md), including a portable Windows app for WSL and a [replaceable icon](docs/companion/README.md#tray-icon)
-- [Development and testing](docs/development/README.md)
+- [Development, tests, and platform checks](docs/development/README.md)
 - [All documentation](docs/README.md)

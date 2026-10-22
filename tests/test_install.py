@@ -401,7 +401,7 @@ class TrayInstallTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="dwork-tray-install-")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.prefix = self.root / "prefix with spaces"
         self.args = SimpleNamespace(
             prefix=str(self.prefix),
@@ -614,10 +614,14 @@ class TrayInstallTests(unittest.TestCase):
         self.assertTrue((self.prefix / "bin/dwork-tray").is_file())
 
     def test_interrupted_addition_of_tray_allows_retry_or_uninstall(self):
+        # macOS temporary roots can contain /var -> /private/var aliases.
+        # Exercise the same canonicalization through an alias on every host.
+        alias = self.root / "temporary root alias"
+        alias.symlink_to(self.root, target_is_directory=True)
         for recovery in ("retry", "uninstall"):
             with self.subTest(recovery=recovery):
-                self.args.prefix = str(self.root / recovery)
-                prefix = Path(self.args.prefix)
+                self.args.prefix = str(alias / recovery)
+                prefix = Path(self.args.prefix).resolve()
                 self.args.tray = "0"
                 self.install()
                 self.args.tray = "1"

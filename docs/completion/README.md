@@ -31,6 +31,10 @@ in `fpath` before `compinit` runs. Oh My Zsh already calls `compinit`. With
 Homebrew, run `brew shellenv` before Oh My Zsh/`compinit` so Homebrew's completion
 directory is included. See [Homebrew's shell setup](https://docs.brew.sh/Shell-Completion).
 Installation does not configure these shell-wide prerequisites or edit rc files.
+If Zsh reports insecure completion directories, inspect them with `compaudit` and
+review their ownership/permissions. Do not disable the audit. Noninteractive package
+verification uses the documented `compinit -i -D` to exclude insecure entries and
+checks that dwork remains available; it does not change shell configuration.
 
 For package staging, Make accepts `BASH_COMPLETION_DIR` and `ZSH_COMPLETION_DIR`.
 They are final absolute paths under `PREFIX`, without `DESTDIR`; the installer
@@ -71,10 +75,10 @@ completion setup. Shell startup files are not edited by the loader.
 
 ## Manual setup: Python packages and custom prefixes
 
-For Bash, add this to `~/.bashrc`:
+For Bash, including macOS system Bash 3.2, add this to `~/.bashrc`:
 
 ```sh
-source <(dwork completion bash)
+eval "$(dwork completion bash)"
 ```
 
 For Zsh, add this to `~/.zshrc` after your existing `compinit` setup:

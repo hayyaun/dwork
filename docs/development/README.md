@@ -227,7 +227,13 @@ mypy; core modules retain normal checking.
 Windows transport unit tests supply fake tool discovery and dispatch explicitly,
 so they run on headless Linux and macOS as well as WSL. A separate missing-tool
 regression verifies that unavailable PowerShell still blocks dispatch; no runtime
-prerequisite is relaxed to make tests pass.
+prerequisite is relaxed to make tests pass. Bootstrap and completion fixtures
+select the test interpreter explicitly, and filesystem fault injection compares
+canonical paths so macOS temporary-directory aliases do not skip recovery checks.
+Interactive Bash loading evaluates the local generated completion text with the
+documented builtin, avoiding Bash 3.2 source handling of process-substitution
+pipes. Real Tab and repeated-load regressions exercise the runner shell; Zsh
+loading, noninteractive behavior, and quiet optional failures remain covered.
 
 `test_bootstrap.py` runs the shell installer with isolated fake Git/Make commands
 and temporary directories. It checks prerequisite failures, literal paths and
@@ -396,7 +402,9 @@ checksum, and installs/tests a temporary formula generated from the shared recip
 It verifies pull-request merge commits without fetching remote `main`. Stable
 mode retains the pinned release and strict publishing audit. Checkout mode runs
 style/install/test; its temporary local URL is not a publishable formula. No
-Homebrew packages are published by this workflow. No workflow launches real GUI
+Homebrew packages are published by this workflow. The Debian noninteractive Zsh smoke check uses `compinit -i -D` to exclude insecure
+completion directories while retaining the security audit; it still requires the
+installed dwork completion to be discovered. No workflow launches real GUI
 applications or development servers.
 
 ## Agent skill
