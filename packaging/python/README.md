@@ -28,9 +28,10 @@ only inside its temporary environments.
 
 ## Publish
 
-These files prepare version 0.5.0; its release assets and PyPI publication are
-pending. [Published GitHub packages](https://github.com/hayyaun/dwork/releases/tag/v0.4.1)
-remain available for 0.4.1. The build recipes do not publish to PyPI. First commit and tag
+The 0.5.0 wheel and source distribution are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.5.0). TestPyPI
+and PyPI publication remain pending; these build recipes do not publish to them.
+For a future release, first commit and tag
 the exact source that was tested. Create PyPI and TestPyPI accounts and verify
 the distribution name. Run `python -m twine upload --repository testpypi dist/*`
 first and verify the uploaded package. For TestPyPI installation, install PyYAML

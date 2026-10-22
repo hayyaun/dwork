@@ -68,8 +68,7 @@ dwork scan --dry-run
 dwork scan
 ```
 
-CLI 0.5.0+ (currently available from source; release publication pending) also
-accepts directory paths without changing your shell's working directory:
+CLI 0.5.0+ also accepts directory paths without changing your shell's working directory:
 
 ```sh
 dwork scan .
@@ -229,7 +228,7 @@ project cannot also be claimed by a separate registration on the same Docker tar
 
 ## Start named workspaces together
 
-CLI 0.5.0+ (currently available from source) supports:
+CLI 0.5.0+ supports:
 
 ```sh
 dwork up app frontend --dry-run
@@ -324,7 +323,7 @@ dwork down --dry-run
 dwork down
 ```
 
-To stop selected registrations with CLI 0.5.0+ (currently available from source):
+To stop selected registrations with CLI 0.5.0+:
 
 ```sh
 dwork down app frontend --dry-run

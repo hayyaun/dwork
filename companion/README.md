@@ -2,9 +2,10 @@
 
 Optional, experimental native Linux/macOS and Windows-to-WSL tray companion.
 This is a separate Python distribution; ordinary `dwork-cli` installs stay GUI-free.
-The source companion 0.2.1 supports `dwork-cli` 0.4.x and 0.5.x on native
+Companion 0.2.1 supports `dwork-cli` 0.4.x and 0.5.x on native
 Linux/macOS (`>=0.4.0,<0.6`). Windows connects to the matching CLI in WSL instead.
-The 0.2.1 release assets are not published yet.
+The portable 0.2.1 ZIP is published with CLI 0.5.0; native companion installation
+remains separate.
 
 From a checkout on native Linux/macOS, `make install TRAY=1` optionally includes
 this separate package with the managed CLI install. It creates a separate companion
@@ -23,8 +24,8 @@ dwork-tray
 Linux needs PyGObject and AppIndicator/Ayatana introspection plus a compatible tray
 host; GNOME may need indicator extension support. macOS needs Python 3.13+ and Cocoa.
 
-An optional [portable Windows ZIP in v0.4.1](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip)
-includes tray 0.2.0, the terminal helper, and runtime.
+An optional [portable Windows ZIP in v0.5.0](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip)
+includes tray 0.2.1, the terminal helper, and runtime.
 It connects to the existing CLI in WSL; no separate Windows Python setup is needed.
 From the extracted folder in PowerShell:
 

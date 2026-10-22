@@ -9,8 +9,7 @@ or directory paths after Compose options such as `-f` and `--project-directory`.
 This includes `--version`, `init --dry-run`, and Compose-selection flags for `validate`.
 CLI 0.5.0+ completion scripts also suggest registered names for each
 `up NAME...` / `down NAME...` argument and directories for each `scan PATH...`
-root. These additions are currently available from source; release publication
-is pending. Published v0.4.1 completion scripts do not include these new forms.
+root. Published v0.4.1 completion scripts do not include these new forms.
 
 ## Package and Make installations
 

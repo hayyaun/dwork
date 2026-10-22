@@ -5,11 +5,9 @@ resources, notices, and source revision. It connects to the CLI in WSL and needs
 no separately installed Windows Python. [Installation and connection check](../../docs/companion/README.md#set-up-the-portable-app)
 and [manual launch shortcut](../../docs/companion/README.md#start-it-again-without-remembering-the-arguments)
 are in the companion guide; installing or launching the ZIP does not enable startup.
-[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes
-[dwork-tray 0.2.0 for Windows x64](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
-covered by its [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS).
-The source companion version is 0.2.1 for the planned CLI 0.5.0 release; those
-portable assets are pending, so the download links still select published 0.2.0.
+[Release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0) includes
+[dwork-tray 0.2.1 for Windows x64](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip),
+covered by its [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS).
 
 The `Portable Windows tray` workflow builds on Windows CI with Python 3.13 x64 and
 PyInstaller 6.22.3. The documented multi-program spec collects two console-capable

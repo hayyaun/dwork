@@ -134,7 +134,7 @@ They work from any directory without Docker or workspace-directory access.
 are validated before any changes; an unknown name fails the whole request.
 
 CLI 0.5.0+ accepts registered names with `dwork up NAME...` and
-`dwork down NAME...` (currently available from source; release publication pending). Named `up` starts only the selected registrations and
+`dwork down NAME...`. Named `up` starts only the selected registrations and
 leaves all other workspaces running, using saved directories, Compose options,
 ownership checks, health gates, and applicable activation/group/task/browser
 confirmations. Named `down` limits the existing shutdown plan and confirmation to
@@ -151,8 +151,8 @@ Generating configuration does not authorize either live operation.
 
 `dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
 checkbox picker for unregistered Compose-only directories. It does not activate
-anything. `dwork scan --dry-run` previews without writing or prompting. Source
-checkouts for CLI 0.5.0+ also accept `dwork scan .` and several positional roots,
+anything. `dwork scan --dry-run` previews without writing or prompting.
+CLI 0.5.0+ also accepts `dwork scan .` and several positional roots,
 for example `dwork scan ~/projects ~/work/client-projects --dry-run`. Each root
 retains the normal traversal boundaries and exclusions. Explicit roots are
 resolved/deduplicated and validated before registration; overlapping roots do not
@@ -397,16 +397,16 @@ or real GUI verification.
 
 ## Optional tray and JSON observations
 
-The separate source `dwork-tray` 0.2.1 package supports native CLI 0.4.x and
-0.5.x (`>=0.4.0,<0.6`); its release assets are pending. Published 0.2.0 supports
+The separate `dwork-tray` 0.2.1 package supports native CLI 0.4.x and
+0.5.x (`>=0.4.0,<0.6`); earlier 0.2.0 supports
 native CLI 0.4.x. The companion targets native Linux/macOS and a
 Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
 Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
 A dependency/menu test is not proof of desktop rendering. An optional portable Windows ZIP bundles the tray, helper, and runtime.
-[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes
-tray 0.2.0 and a checksum manifest. It connects
+[Release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0) includes
+tray 0.2.1 and a checksum manifest. It connects
 to the matching CLI in a selected Linux interpreter; no separate Windows Python
 setup is needed. The extracted folder may remain on Linux and execute through its
 Windows UNC path. The app accepts explicit selection with `--wsl-distribution NAME`

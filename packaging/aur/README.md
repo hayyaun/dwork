@@ -1,6 +1,6 @@
 # dwork AUR packaging
 
-Prepared upstream version: [0.4.1](https://github.com/hayyaun/dwork/tree/v0.4.1).
+Prepared upstream version: [0.5.0](https://github.com/hayyaun/dwork/tree/v0.5.0).
 
 This directory prepares the stable `dwork` AUR package. It has not been submitted.
 AUR new-account registration was temporarily closed on 2026-10-20.
@@ -10,7 +10,7 @@ On Arch Linux, build as an ordinary user:
 ```sh
 makepkg --printsrcinfo > .SRCINFO
 makepkg -s
-sudo pacman -U dwork-0.4.1-1-any.pkg.tar.zst
+sudo pacman -U dwork-0.5.0-1-any.pkg.tar.zst
 dwork --help
 ```
 
@@ -18,7 +18,7 @@ Inspect `PKGBUILD` and the generated package before installing. Never run makepk
 as root. The recipe uses distribution Python/YAML, downloads no pip dependencies,
 and includes the MIT license in `/usr/share/licenses/dwork/LICENSE`.
 
-The prepared recipe uses the checksum-verified v0.4.1 source archive and installs
+The prepared recipe uses the checksum-verified v0.5.0 source archive and installs
 native Bash/Zsh completion entries. Bash files go into
 `/usr/share/bash-completion/completions`, and the Zsh autoload entry goes into
 `/usr/share/zsh/site-functions`. Existing shell completion setup discovers them
@@ -65,7 +65,7 @@ fingerprints published at https://aur.archlinux.org/ before accepting it.
 
 ```sh
 git add PKGBUILD .SRCINFO
-git commit -m "Add dwork 0.4.1"
+git commit -m "Add dwork 0.5.0"
 git push origin master
 ```
 
@@ -93,6 +93,17 @@ The script writes `.SRCINFO` and the built package into this directory. It uses
 validation when a previous build artifact is present.
 
 ## Verification scope for this update
+
+The prepared 0.5.0 recipe pins the verified immutable v0.5.0 tag archive. Its
+`.SRCINFO` was generated with `makepkg --printsrcinfo` as an ordinary builder in
+the official `archlinux:base-devel` container. Full recipe verification was
+attempted, but normal pacman dependency downloads from `geo.mirror.pkgbuild.com`
+timed out before source tests or a build could run. Current AUR build, lint,
+installation, and smoke verification therefore remain pending; the previous
+0.4.1 result below does not establish coverage for 0.5.0. GitHub v0.5.0 release
+assets are published separately; AUR submission remains pending.
+
+### Previous recipe verification (0.4.1)
 
 The prepared 0.4.1 AUR recipe was verified on 2026-10-22 in the official
 `archlinux:base-devel` container using the exact v0.4.1 tagged source archive.

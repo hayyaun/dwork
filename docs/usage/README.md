@@ -111,8 +111,7 @@ See [workspace registration](../workspaces/README.md) for naming, Docker targets
 configuration changes, shared infrastructure, and moved directories.
 
 `dwork scan` includes the current directory and its descendants. CLI 0.5.0+
-(currently available from source; release publication pending) also accepts one
-or more directory paths:
+also accepts one or more directory paths:
 
 ```sh
 dwork scan .
@@ -133,7 +132,7 @@ prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tre
 
 ### Start named workspaces
 
-CLI 0.5.0+ (currently available from source) accepts registered workspace names with `up`:
+CLI 0.5.0+ accepts registered workspace names with `up`:
 
 ```sh
 dwork up api frontend --dry-run
@@ -175,7 +174,7 @@ dwork down --dry-run
 dwork down
 ```
 
-CLI 0.5.0+ (currently available from source) can restrict the plan to named registrations:
+CLI 0.5.0+ can restrict the plan to named registrations:
 
 ```sh
 dwork down api frontend --dry-run

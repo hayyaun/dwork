@@ -22,9 +22,10 @@ launch another copy of configured commands, as it does from the CLI.
 
 The companion is a **separate distribution** under [`companion/`](../../companion/).
 Ordinary CLI installs retain only their existing dependencies; they do not install
-pystray, Pillow, PyObjC, PyGObject, or a login entry. The source companion 0.2.1
+pystray, Pillow, PyObjC, PyGObject, or a login entry. Companion 0.2.1
 pairs with `dwork-cli` 0.4.x or 0.5.x on native Linux/macOS (`>=0.4.0,<0.6`);
-its release assets are pending. Published companion 0.2.0 pairs with CLI 0.4.x.
+the portable ZIP is published with CLI 0.5.0. Earlier companion 0.2.0 pairs with
+CLI 0.4.x.
 The Windows app connects to a matching CLI inside WSL. Version 0.4.0 includes
 the version-1 JSON interface.
 The source installer can include this separate package on native Linux/macOS:
@@ -92,10 +93,10 @@ An optional portable Windows ZIP bundles the tray, terminal helper, Python runti
 and tray libraries. It connects to the existing CLI in WSL. No separate Windows
 Python, pip, venv, or compiler setup is required to use it.
 
-[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes the
-[portable tray 0.2.0 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
+[Release v0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0) includes the
+[portable tray 0.2.1 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip),
 covered by the release
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS).
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.5.0/SHA256SUMS).
 The **Portable Windows tray** CI workflow also produces `release-assets-windows`
 with a ZIP and `SHA256SUMS.windows`; verified ZIPs join draft releases. The extracted
 `dwork-tray` folder contains `dwork-tray.exe`, `dwork-tray-terminal.exe`, and shared
@@ -105,7 +106,7 @@ path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 #### Set up the portable app
 
 1. In the chosen WSL distribution, select a Python environment with `dwork-cli`
-   0.4.x installed. From your Linux home directory, check that it works independently
+   0.5.x installed. From your Linux home directory, check that it works independently
    of a source checkout:
 
    ```sh
@@ -122,7 +123,7 @@ path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 
    ```sh
    python3 -m venv "$HOME/dwork-env"
-   "$HOME/dwork-env/bin/python" -m pip install /path/to/dwork_cli-0.4.1-py3-none-any.whl
+   "$HOME/dwork-env/bin/python" -m pip install /path/to/dwork_cli-0.5.0-py3-none-any.whl
    ```
 
    An existing pipx/uv or editable development environment is also suitable when
@@ -132,8 +133,8 @@ path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 
 2. Download the portable ZIP and `SHA256SUMS` linked above. Compare the ZIP's
    SHA-256 with its entry in the manifest before extracting it. For example,
-   PowerShell provides `Get-FileHash .\dwork-tray-0.2.0-windows-x64.zip -Algorithm SHA256`;
-   Linux provides `sha256sum dwork-tray-0.2.0-windows-x64.zip`.
+   PowerShell provides `Get-FileHash .\dwork-tray-0.2.1-windows-x64.zip -Algorithm SHA256`;
+   Linux provides `sha256sum dwork-tray-0.2.1-windows-x64.zip`.
    Extract the **complete** `dwork-tray` folder to a stable location. Keep the
    sibling helper and `_internal` directory together with the EXE.
 

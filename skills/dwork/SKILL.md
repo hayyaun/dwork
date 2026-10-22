@@ -33,8 +33,7 @@ older installation; updating the skill alone does not update dwork.
 Stopping outgoing tracked commands during switches is available in 0.4.0+;
 verify the installed runtime includes this behavior before promising it.
 CLI 0.5.0+ adds positional `scan PATH...`, start-only `up NAME...`, and selected
-`down NAME...`; these additions are currently available from source while release
-publication is pending. Check the installed command's help before using them;
+`down NAME...`. Check the installed command's help before using them;
 published v0.4.1 packages lack these additions. See the bundled
 reference for their scope and unchanged confirmation/ownership rules.
 When installation is needed, check which package channels are actually published.
@@ -47,8 +46,8 @@ and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
 confuse a checkout of `main` with a versioned release package.
-Source companion 0.2.1 pairs with CLI 0.4.x or 0.5.x on native Linux/macOS;
-published companion 0.2.0 pairs with CLI 0.4.x. The 0.2.1 release assets are pending.
+Companion 0.2.1 pairs with CLI 0.4.x or 0.5.x on native Linux/macOS;
+earlier companion 0.2.0 pairs with CLI 0.4.x.
 Updating the skill alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
 `dwork-tray` as a separate package/environment. This is an explicit installation
 choice, not implied by YAML work. It neither launches the tray nor enables login
@@ -67,8 +66,8 @@ requires sourcing after Oh My Zsh/`compinit`. Python installs, older source
 checkouts, and prefixes outside the shell's search path need explicit setup.
 Do not assume older published assets include the new paths or loader behavior;
 see the bundled reference before suggesting a shell change.
-Verified 0.4.1 packages and the optional portable Windows tray 0.2.0 are available from
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.4.1); select the
+CLI 0.5.0 packages and the optional portable Windows tray 0.2.1 are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.5.0); select the
 appropriate platform package and verify its checksum before installation.
 Source build/test prerequisites differ from installed runtime dependencies:
 Git is required by the source installer and package regression tests, but the

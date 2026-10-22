@@ -38,11 +38,8 @@ terminal tasks need a [supported terminal](docs/terminals/README.md).
 
 [Inspect the installer](install.sh) ·
 [Install from a checkout, update, or uninstall](docs/installation/README.md) ·
-[v0.4.1 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) ·
+[v0.5.0 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.5.0) ·
 [Releases and package checks](docs/publishing/README.md)
-
-The current source prepares CLI 0.5.0 and companion 0.2.1; their release downloads
-are pending. Release download links here still select published v0.4.1 assets.
 
 ### Optional tray companion
 
@@ -63,7 +60,7 @@ dwork-tray --autostart enable
 
 [Check or disable login startup](docs/companion/README.md#startup-at-login-is-opt-in).
 An optional [portable Windows tray for WSL2](docs/companion/README.md#set-up-the-portable-app)
-is available as a [ZIP in v0.4.1](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
+is available as a [ZIP in v0.5.0](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork-tray-0.2.1-windows-x64.zip),
 with no separate Windows Python installation;
 [Windows sign-in startup uses an optional shortcut](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
 
@@ -79,7 +76,7 @@ dwork switch my-app
 ```
 
 Scanning registers projects without starting or stopping workloads. CLI 0.5.0+
-(currently available from source) also accepts `dwork scan .` or several roots, such as
+also accepts `dwork scan .` or several roots, such as
 `dwork scan ~/projects ~/work/client-projects`.
 [Scanning rules and previews](docs/workspaces/README.md#scan-a-directory-tree).
 
@@ -112,7 +109,7 @@ dwork unlock my-app    # Release the temporary lock
 dwork down             # Stop eligible registered workspaces and tracked commands
 ```
 
-CLI 0.5.0+ (currently available from source) also accepts explicit workspace names:
+CLI 0.5.0+ also accepts explicit workspace names:
 
 ```sh
 dwork up my-app docs    # Start these saved workspaces, keeping all others running

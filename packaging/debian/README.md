@@ -2,10 +2,10 @@
 
 Debhelper source-package files live here. The build helper copies them into the
 required top-level `debian/` directory in a temporary source tree; it does not
-change the checkout or install packages on your host. The source recipe prepares
-version 0.5.0-1; its release assets are pending. The published
-[0.4.1-1 package](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork_0.4.1-1_all.deb)
-remains available. No apt repository or PPA is published by this build.
+change the checkout or install packages on your host. Version 0.5.0-1 matches the
+[published 0.5.0 release](https://github.com/hayyaun/dwork/releases/tag/v0.5.0),
+including its [Debian/Ubuntu package](https://github.com/hayyaun/dwork/releases/download/v0.5.0/dwork_0.5.0-1_all.deb).
+No apt repository or PPA is published by this build.
 
 ## Build
 
