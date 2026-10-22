@@ -53,6 +53,9 @@
 
 - [`Makefile`](../../Makefile) and [installer](../../scripts/install.py): user
   installation, removal, and package staging.
+- [`install.sh`](../../install.sh): POSIX shell bootstrap for the curl one-line
+  installer; checks prerequisites, temporarily clones `main`, and delegates to
+  `make install` with the selected prefix and Python.
 - [`requirements.txt`](../../requirements.txt): isolated-install Python dependency.
 
 ## Internal boundaries
@@ -220,6 +223,12 @@ manual host verification. Optional GUI-framework stubs are excluded narrowly fro
 mypy; core modules retain normal checking.
 
 ## Tests
+
+`test_bootstrap.py` runs the shell installer with isolated fake Git/Make commands
+and temporary directories. It checks prerequisite failures, literal paths and
+arguments, and cleanup after success or failure without downloading or installing
+into the user's environment. The regular installer tests cover the delegated
+installation behavior.
 
 `test_packaging_checks.py` creates disposable local Git repositories and verifies
 exact committed archive contents even if a branch moves after validation, executable
@@ -414,3 +423,13 @@ Channel recipes, build instructions, and publication steps live under
 build and twine. Debian builds use `python3 scripts/build-deb.py`; Homebrew has
 its own installed-behavior test. Packaging verification must not run real
 project containers, development servers, or GUI tasks.
+
+
+Portable Windows packaging uses the documented PyInstaller multi-program spec in
+[`packaging/windows/`](../../packaging/windows/). Official ZIPs build on Windows CI;
+source development remains available to contributors. `test_portable_tray.py`
+covers helper/resource/process boundaries. The frozen verifier runs with external
+Python absent from child PATH and uses harmless WSL/Terminal fixtures. The packaged
+observer source is explicit data. External process launches temporarily restore
+system DLL search and copy child environment, following PyInstaller's documented
+[guidance](https://pyinstaller.org/en/stable/common-issues-and-pitfalls.html#launching-external-programs-from-the-frozen-application).

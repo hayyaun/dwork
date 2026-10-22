@@ -6,204 +6,76 @@
 
 <p>
   <a href="docs/installation/README.md"><img alt="Linux, macOS, and WSL2" src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20WSL2-3fb950?style=flat-square"></a>
-  <a href="docs/installation/README.md"><img alt="Python 3.10 or newer" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white"></a>
-  <a href="#install"><img alt="Install with make install" src="https://img.shields.io/badge/install-make%20install-3fb950?style=flat-square"></a>
+  <a href="#install"><img alt="Install with curl" src="https://img.shields.io/badge/install-curl-3fb950?style=flat-square"></a>
   <a href="https://github.com/hayyaun/dwork/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/hayyaun/dwork?style=flat-square"></a>
 </p>
 
+<a href="#get-started">Get started</a> ·
 <a href="examples/README.md">Examples</a> ·
-<a href="docs/configuration/README.md">Configuration</a> ·
-<a href="docs/terminals/README.md">Terminal support</a> ·
-<a href="docs/README.md">All docs</a>
+<a href="docs/README.md">Documentation</a>
 
 </div>
 
-`dwork` switches your development workspace: resume this project's existing
-containers, wait for healthy dependencies, and open your configured commands in
-new terminals. Only other workspaces you have registered with dwork may be stopped.
-Unregistered projects stay running.
-
-[Version 0.3.0](https://github.com/hayyaun/dwork/releases/tag/v0.3.0) adds macOS support through Apple Terminal and browser launching
-with custom browser selection, optional readiness checks, and confirmation controls.
-See [release publishing and package formats](docs/publishing/README.md).
+`dwork` switches your development workspace. It resumes a project's existing
+containers, waits for healthy dependencies, and opens your commands and browser URLs.
+Switches stop eligible registered workspaces; locked workspaces and unregistered
+projects stay running.
 
 ## Install
 
 ```sh
-git clone https://github.com/hayyaun/dwork.git
-cd dwork
-make install
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
 ```
 
-Installs a standalone `dwork` command for your user, with isolated Python
-dependencies. No `sudo` or shell sourcing required. If needed, the installer prints
-the line to add `~/.local/bin` to `PATH`.
+Installs the latest `main` source for your user with isolated Python dependencies.
+No `sudo` or shell sourcing required. If needed, the installer prints how to add
+`~/.local/bin` to `PATH`.
 
-[Python, Homebrew, and Debian packaging →](packaging/README.md)
-Build/install instructions are available, including a Homebrew formula pinned to
-0.3.0 for Linux, macOS, and WSL2. Registry and tap publication is pending.
-Verified Python, Debian/Ubuntu, Fedora 44, and Arch packages with checksums are
-available from the [0.3.0 release](https://github.com/hayyaun/dwork/releases/tag/v0.3.0).
+You need Git, Make, curl, and Python with `venv` support: Python 3.10+ on Linux/WSL2,
+or 3.13+ on macOS. Container workspaces also need Docker and Docker Compose;
+terminal tasks need a [supported terminal](docs/terminals/README.md).
 
-<details>
-<summary>Requirements and other installation options</summary>
+[Inspect the installer](install.sh) ·
+[Install from a checkout, update, or uninstall](docs/installation/README.md) ·
+[Release packages](packaging/README.md)
 
-- Python 3.10+ on Linux/WSL2, Python 3.13+ on macOS, Git, Make, and Python's `venv` support.
-- Docker + Docker Compose when using containers.
-- A supported graphical terminal for terminal tasks: GNOME Terminal, Konsole,
-  Xfce Terminal, or xterm on Linux; Apple Terminal on macOS (new windows only);
-  Windows Terminal + PowerShell on WSL2.
+## Get started
 
-On Ubuntu, the installer prerequisites are `git make python3 python3-venv`.
-[Custom prefixes, manual sourcing, migration, and uninstall →](docs/installation/README.md)
-
-Current checkout hardening preserves invocation-relative Compose file selections,
-keeps relative shell sourcing usable after changing directories, and includes
-Docker health inspections in their configured timeout. Unreachable owned task
-controllers block shutdown before workloads change; protected tasks remain
-protected. Interrupted Make upgrades can be retried or uninstalled while edited
-launchers/completions and linked install destinations remain protected. These
-fixes apply to builds containing this change, not existing release downloads.
-
-</details>
-
-## Let your agent configure it
-
-Install the optional dwork skill for your coding agents (Node.js 22.20+):
-
-```sh
-npx skills add hayyaun/dwork --skill dwork -g
-```
-
-Choose Codex, Claude Code, Cursor, or another supported agent, then open your
-project and ask: **"Use the dwork skill to create dwork.yml for this project."**
-The agent inspects your existing commands and Compose services and previews the
-configuration when dwork is available. The skill is separate from `make install`.
-
-[All-agent installation, manual setup, and usage →](docs/skills/README.md)
-
-## Use it
-
-Check the version, generate a starter, and validate it:
-
-```sh
-dwork --version
-dwork init --dry-run  # Preview a minimal local dwork.yml
-dwork init           # Create it without overwriting existing files
-dwork validate       # Check configuration without switching
-```
-
-`init` enables Compose only when a standard Compose filename exists in the current
-directory; otherwise it creates a host-only config. Commands and browser URLs start
-empty. `validate` checks schema, working directories, and Compose references without
-registering, inspecting containers, or opening applications. Compose-enabled validation
-needs Docker Compose CLI, but not a running Docker daemon. Use `doctor` to check
-runtime and desktop prerequisites. These helpers were added after release 0.3.0.
+From your project directory:
 
 ```sh
 cd your-project
-dwork --dry-run   # Preview the plan
-dwork             # First run: confirm registration, then switch
+dwork init        # Create a starter dwork.yml without overwriting existing files
+# Add your commands and browser URLs to dwork.yml
+dwork validate    # Check the configuration
+dwork --dry-run   # Preview the switch
+dwork            # Confirm registration and activate this workspace
 ```
 
-No `dwork.yml`? Your existing Compose project is the default.
-After the first registration, run `dwork` in that project to switch back to it.
-It shows the plan and asks for confirmation before switching. Set root-level
-`confirm: false` in `dwork.yml` to skip this activation prompt. Each configured
-terminal and browser still uses its own confirmation setting.
+Already have a Compose project? You can run `dwork` without a `dwork.yml`.
+It shows the plan and asks before switching. Terminal tasks and browser entries
+have separate confirmations.
 
-Remember a project without switching, give it a name, and return from anywhere:
-
-```sh
-dwork register my-app       # Remember this directory; start/stop nothing
-dwork scan                  # Find workspaces recursively; optionally select Compose directories
-dwork list                  # Show a table of remembered workspaces and status
-dwork switch my-app         # Activate it from any directory
-dwork switch my-app --dry-run
-dwork rename my-app api      # Change its saved name to an available name
-dwork lock api              # Keep it running until explicitly unlocked
-dwork unlock api            # Release that temporary protection
-dwork down                  # Stop registered containers and dwork-launched commands
-dwork forget my-app         # Forget it; leave containers and files alone
-```
-
-`scan` skips dependency, cache, and build directories such as `node_modules`,
-`.venv`, and `dist`. It stops descending at repo markers such as `.git`, `dwork.yml`,
-or `package.json`, then moves to the next project.
-[Skip list and repo markers →](docs/workspaces/README.md#scan-a-directory-tree)
-
-`switch` uses the saved directory and Compose options; your current shell stays
-where it is. It shuts down other eligible registered workspaces before activating
-the selected one. The selected workspace, including all members of a discovered
-group, stays running. [Workspace registration and switching →](docs/workspaces/README.md)
-
-Use `dwork down --dry-run` to preview shutdown. `down` respects
-`DWORK_KEEP_PROJECTS` and locked workspaces, and keeps containers, networks, and volumes for next time.
-
-Switching and `down` share shutdown rules: stop tracked commands first, then
-registered containers in one Docker batch. `switch` excludes the selected workspace;
-`down` excludes none. This shared lifecycle was added after release 0.3.0.
-Tracked terminal commands stop while their windows stay open at a shell prompt.
-Detached tasks (`window: none`) stop too. Commands started outside dwork or by
-versions without task tracking are not tracked. [Task lifecycle details →](docs/terminals/README.md#tracked-commands-and-shutdown)
-
-Keep a workspace running through every switch and `down` by adding this to its `dwork.yml`:
-
-```yaml
-locked: true
-```
-
-It still appears in `dwork list` and can be activated normally. For temporary local
-protection without editing YAML, use `dwork lock NAME...` and `dwork unlock NAME...`.
-Locks survive shell restarts until released; `unlock` preserves `locked: true`.
-`dwork ls` marks local locks as `temporary`. See
-[temporary locks](docs/workspaces/README.md#temporary-locks) for groups and previews.
-
-Short forms: `ls` = `list`, `sw` = `switch`, `reg` = `register`, `rm` = `forget`,
-`ps` = `status`, and `up` activates the current workspace.
-
-`dwork` and `dwork up` confirm the activation plan unless root-level
-`confirm: false` opts out. First-time registration and discovered-group consent
-remain separate. `dwork down` always confirms when there is work to stop.
-Enter or `n` cancels; `--dry-run` previews without prompting.
-
-`dwork list` (or `dwork ls`) prints aligned `NAME`, `STATUS`, `LOCKED`, and `PATH`
-columns, with one row per workspace. Use `dwork ls --names` for plain names without
-a header. [Workspace listing details →](docs/workspaces/README.md#list)
-
-## Tab completion
-
-Native package builds and the Homebrew formula install completion files in the
-standard shell directories. With Bash's `bash-completion` framework or Zsh's
-`compinit` already configured, reopen your shell to discover them automatically.
-This applies to builds containing the updated packaging; older release assets
-may still need the manual setup below.
-
-Sourcing the current `dwork.sh` also enables completion in interactive Bash and
-Zsh. For Zsh, source it after Oh My Zsh or your existing `compinit` setup.
-No separate completion line is needed for this source-based setup.
-
-For Python packages, older source checkouts, or a prefix outside your shell's
-completion search path, enable once in your shell startup file:
-
-```sh
-# Bash (~/.bashrc)
-source <(dwork completion bash)
-
-# Zsh (~/.zshrc, after compinit)
-source <(dwork completion zsh)
-```
-
-Then use `dwork <Tab>` for commands and `dwork sw <Tab>` for registered workspaces.
-[Setup and completion details →](docs/completion/README.md)
-
-> [!NOTE]
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
 > Complete your project's initial setup and migrations first.
 
+Remember a project and return to it from anywhere:
+
+```sh
+dwork register my-app  # Save this directory without switching
+dwork list             # See remembered workspaces
+dwork switch my-app    # Activate one from any directory
+dwork lock my-app      # Keep it running through switches and shutdowns
+dwork unlock my-app    # Release the temporary lock
+dwork down             # Stop eligible registered workspaces and tracked commands
+```
+
+[All commands](docs/usage/README.md) ·
+[Workspace names, scanning, and locks](docs/workspaces/README.md)
+
 ## Describe your workspace
 
-Put `dwork.yml` beside your Compose file:
+For a backend with a database, put this `dwork.yml` beside your Compose file:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/hayyaun/dwork/main/schemas/dwork.schema.json
@@ -225,87 +97,29 @@ browsers:
       timeout: 60
 ```
 
-**Start the database → wait for healthy → confirm → open the backend.**
+**Start the database → wait for healthy → open the backend → open its URL when ready.**
+Missing containers or failed health checks block dependent tasks.
 
-Each terminal asks `(y/N)`. Set `confirm: false` on a task to explicitly skip its
-prompt. Missing containers and failed health checks block dependent terminals.
+[Copy a full-stack, Compose-only, or host-only example](examples/README.md) ·
+[Configuration reference](docs/configuration/README.md)
 
-Browser entries ask separately and open the default or selected browser. WSL
-always uses a Windows browser. The server can already be running or be started
-by a terminal task. Set `browser` to a Linux executable, macOS application name,
-or Windows `.exe` name/path on WSL. Set `wait_for: false` to skip readiness and
-`confirm: false` to skip that browser's prompt. Terminal tasks also accept
-`confirm: false`. These options are independent:
+## Let your coding agent set it up
 
-```yaml
-browsers:
-  - url: http://localhost:3000
-    browser: default
-    wait_for: false
-    confirm: false
+Install the optional agent skill with Node.js 22.20+:
+
+```sh
+npx skills add hayyaun/dwork --skill dwork -g
 ```
 
-The bundled agent skill writes browser entries without readiness waiting by
-default, unless you explicitly request it. [Browser configuration →](docs/browsers/README.md)
+Then ask your agent: **"Use the dwork skill to create dwork.yml for this project."**
+The skill inspects your existing commands and Compose services.
+[Agent setup and usage](docs/skills/README.md)
 
-Set `window: none` on a task to run it silently in the background without opening
-a terminal. Confirmation still applies. [Detached tasks →](docs/terminals/README.md#detached-background-tasks)
+## Explore more
 
-`dwork.yml` can be personal workspace configuration. Consider adding `/dwork.yml`
-to the project's `.gitignore` when its commands, ports, terminal choices, or lock
-policy are specific to your setup. Keep it tracked when the team intentionally
-shares that configuration; an ignore rule does not untrack an existing file.
-
-[Copy an example →](examples/README.md) Backend, full-stack, Compose-only, or host-only.
-
-`dwork init` and the shipped examples include an editor schema comment. With a
-schema-capable YAML extension, it enables field/value completion, hover help,
-and configuration diagnostics. Existing files can add the same comment.
-[Editor setup, local/offline association, and validation limits →](docs/configuration/README.md#editor-autocomplete)
-
-## Optional tray companion
-
-An experimental, separately installed `dwork-tray` companion lists registered
-workspaces and status on native Linux/macOS or Windows connected to one explicitly
-selected WSL distribution. It opens operation terminals for the
-existing CLI, preserving confirmations and ownership checks. Login startup is
-opt-in on Linux/macOS; Quit closes only the tray. Linux needs AppIndicator/Ayatana
-and a compatible host (GNOME may need indicator support). Windows uses a separate
-host installation, Windows Terminal, and an explicit Linux Python path with dwork
-installed; it manages WSL workspaces only. Windows login startup is not yet supported.
-[Setup and current verification limits →](docs/companion/README.md)
-
-`dwork list --json` and `dwork status --json` provide the versioned read-only
-[status interface](docs/json/README.md). Ordinary CLI installs stay GUI-free.
-
-## A few useful controls
-
-- Keep shared infrastructure running: `DWORK_KEEP_PROJECTS=infra,monitoring dwork`.
-- Choose your Linux terminal: `DWORK_TERMINAL=konsole dwork`.
-- Run from a monorepo root: immediate child workspaces are listed for confirmation.
-- Names and status messages are colored in terminals; set `NO_COLOR=1` for plain text.
-
-## More
-
-[Install & uninstall](docs/installation/README.md) ·
-[Usage](docs/usage/README.md) ·
-[Configuration](docs/configuration/README.md) ·
-[Terminal launchers](docs/terminals/README.md) ·
-[Browser launching](docs/browsers/README.md) ·
-[Development](docs/development/README.md) ·
-[Publish packages](docs/publishing/README.md)
-
-The current lifecycle implementation separates configuration parsing from path/Compose
-resolution, registry storage from ownership policy, and launch preparation from dispatch.
-Typed activation plans carry prepared commands through the existing confirmations and
-final lock recheck. Preview behavior, ownership rules, shutdown order, and configuration/registry
-formats remain unchanged. See the [development guide](docs/development/README.md#internal-boundaries)
-for the boundaries and regression coverage.
-
-Linux, macOS, and WSL launchers have automated fake-launcher coverage; real desktop
-GUI behavior has not been visually verified in the WSL development environment.
-Routine macOS CI runs source/package tests on Python 3.13 and Homebrew verification
-of both the stable release and exact checked-out commit on Apple Silicon. Release
-tags and manual package verification also cover Python 3.14 and Intel Macs.
-Pinned Ruff lint/format checks and gradual mypy checks run through `make quality`;
-see the [quality baseline](docs/development/README.md#quality-baseline). [CI coverage →](docs/development/README.md#ci-coverage)
+- [Bash and Zsh completion](docs/completion/README.md)
+- [Terminal options and background tasks](docs/terminals/README.md)
+- [Browser selection and readiness checks](docs/browsers/README.md)
+- [Optional tray companion](docs/companion/README.md), including a portable Windows app for WSL
+- [Development and testing](docs/development/README.md)
+- [All documentation](docs/README.md)

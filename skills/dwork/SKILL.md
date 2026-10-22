@@ -35,6 +35,13 @@ verify the installed runtime includes this behavior before promising it.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
+The repository's curl one-line installer runs the latest `main` source through
+`make install` from a temporary checkout. It needs curl, Git, Make, and Python
+with venv/pip support (3.10+ on Linux/WSL2, 3.13+ on macOS), and accepts `PREFIX`
+and `PYTHON` environment choices. It leaves shell startup files alone and prints
+any needed PATH setup. Its temporary checkout is removed; uninstall requires a
+fresh or existing checkout and `make uninstall` with the same prefix. Do not
+confuse this source installation with the older published release packages.
 Native package builds with the updated installer place completion files in the
 platform's discovery directories; the shell still needs its completion framework
 enabled. Current `dwork.sh` enables completion when sourced interactively; Zsh
@@ -203,8 +210,8 @@ The native Linux/macOS and Windows-to-WSL companion needs GUI dependencies; ordi
 installs remain lightweight. Never install/launch it or enable login startup merely
 to generate YAML. Use its explicit `--check` diagnostic for backend guidance when
 requested. Linux needs AppIndicator/Ayatana and compatible indicator host support;
-GNOME extensions and system dependencies require their own authorization. Windows
-runs the companion on the host with explicit `--wsl-distribution` and absolute
+GNOME extensions and system dependencies require their own authorization. An optional portable Windows application bundles its runtime and connects to WSL,
+without a separate Windows Python setup. It accepts explicit `--wsl-distribution` and absolute
 Linux `--wsl-python` arguments; `--wsl-user` selects an account or omission uses
 the distribution default. Install the core CLI only in the selected WSL interpreter.
 Do not bypass stopped-distribution checks, scrape tables, or manage native Windows

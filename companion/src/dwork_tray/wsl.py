@@ -1,7 +1,6 @@
 """Windows host transport for one explicitly selected WSL distribution."""
 
 import base64
-from importlib import resources
 import json
 from pathlib import Path, PurePosixPath
 import shutil
@@ -11,6 +10,7 @@ import uuid
 
 from dwork_tray.client import parse_status, validate_operation
 from dwork_tray.platforms import CompanionError
+from dwork_tray.windows_runtime import system_process
 
 
 def selected_value(value, label):
@@ -58,13 +58,15 @@ def decode_output(output):
 
 def hidden_run(command, timeout):
     try:
-        return subprocess.run(
-            command,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            timeout=timeout,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
+        with system_process() as options:
+            return subprocess.run(
+                command,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=timeout,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                **options,
+            )
     except subprocess.TimeoutExpired as error:
         raise CompanionError(
             "Windows/WSL transport timed out. Only its local helper was stopped; no workspace or distribution was terminated."
@@ -88,13 +90,25 @@ def windows_python():
     return str(python)
 
 
+def operation_command(payload):
+    if getattr(sys, "frozen", False):
+        helper = Path(sys.executable).with_name("dwork-tray-terminal.exe")
+        if not helper.is_file():
+            raise CompanionError(
+                "The portable terminal helper is missing. Extract the entire dwork-tray ZIP together; no external Python is needed."
+            )
+        return [str(helper), payload]
+    # Source-only path used by development/CI, never by the portable application.
+    return [windows_python(), "-m", "dwork_tray.wsl_terminal", payload]
+
+
 def terminal_command(wt, powershell, spec):
     payload = base64.urlsafe_b64encode(json.dumps(spec).encode("utf-8")).decode("ascii")
-    # Windows Terminal treats semicolons as command separators. Its argv contains
-    # only fixed tokens and an encoded PowerShell command; all variable data is
-    # inside literal arguments. No execution-policy changes or profile loading.
-    python = windows_python().replace("'", "''")
-    script = "& '" + python + "' -m dwork_tray.wsl_terminal '" + payload + "'; exit $LASTEXITCODE"
+    # Windows Terminal separates commands on semicolons. Encode a PowerShell
+    # call with literal arguments so helper paths/names remain data throughout.
+    arguments = operation_command(payload)
+    script = "& " + " ".join("'" + value.replace("'", "''") + "'" for value in arguments)
+    script += "; exit $LASTEXITCODE"
     encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
     return [
         wt,
@@ -145,7 +159,7 @@ class WslTransport:
 
     def read_status(self):
         self.require_running()
-        source = resources.files("dwork_tray").joinpath("observer.py").read_text(encoding="utf-8")
+        source = Path(__file__).with_name("observer.py").read_text(encoding="utf-8")
         result = hidden_run(self.command() + ["-c", source], 25)
         try:
             return parse_status(

@@ -165,7 +165,7 @@ class WslTransportTests(unittest.TestCase):
             self.assertTrue(all(";" not in arg for arg in command))
             script = base64.b64decode(command[-1]).decode("utf-16-le")
             self.assertIn(python.replace("'", "''"), script)
-            payload = script.split("dwork_tray.wsl_terminal '")[1].split("'")[0]
+            payload = script.split("'dwork_tray.wsl_terminal' '")[1].split("'")[0]
             spec = json.loads(base64.urlsafe_b64decode(payload))
             self.assertEqual(
                 spec,

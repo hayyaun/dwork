@@ -9,6 +9,7 @@ import sys
 from dwork_tray.client import validate_operation
 from dwork_tray.platforms import CompanionError
 from dwork_tray.wsl import executable, wsl_command
+from dwork_tray.windows_runtime import system_process
 
 
 def run_operation(spec):
@@ -23,7 +24,8 @@ def run_operation(spec):
     code = 1
     try:
         # A real terminal, no piped input, approval flags, or answers to prompts.
-        code = subprocess.call(command)
+        with system_process() as options:
+            code = subprocess.call(command, **options)
         return code
     except KeyboardInterrupt:
         code = 130

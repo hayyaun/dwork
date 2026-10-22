@@ -134,8 +134,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  windows:
+    needs: packages
+    uses: ./.github/workflows/windows-portable.yml
+
   draft:
-    needs: [packages, fedora, arch]
+    needs: [packages, fedora, arch, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -152,8 +156,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          sha256sum --check SHA256SUMS.python-debian SHA256SUMS.fedora SHA256SUMS.arch
-          sha256sum -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst > SHA256SUMS
+          sha256sum --check SHA256SUMS.python-debian SHA256SUMS.fedora SHA256SUMS.arch SHA256SUMS.windows
+          sha256sum -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst *.zip > SHA256SUMS
           sha256sum --check SHA256SUMS
           gh release create "$TAG" --verify-tag --draft --title "$TAG" \
-            --generate-notes -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst SHA256SUMS
+            --generate-notes -- *.whl *.tar.gz *.deb *.rpm *.pkg.tar.zst *.zip SHA256SUMS

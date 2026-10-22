@@ -72,36 +72,28 @@ No UI keystroke automation or private native API is used.
 
 ### Windows and WSL
 
-Run the companion **on Windows from PowerShell**, using Windows Python 3.10+.
-The Linux CLI remains inside WSL. No native Windows workspace execution, direct
-registry/Docker access from Windows, or Windows workload ownership is added.
-Launching the Linux companion inside WSL/WSLg still produces guidance to use the
-Windows host. Use a build of the WSL CLI containing the version-1 JSON interface;
-older published 0.3.0 builds do not include it.
+An optional portable Windows ZIP bundles the tray, terminal helper, Python runtime,
+and tray libraries. It connects to the existing CLI in WSL. No separate Windows
+Python, pip, venv, or compiler setup is required to use it.
 
-1. Choose the Linux interpreter where the matching CLI is installed. In WSL, verify
-   `/absolute/path/to/python -m dwork list --json`. This may be a dedicated CLI venv;
-   a shell alias or an activated shell's `PATH` is not used by the host adapter.
-   A fresh CLI venv can be created with `python3 -m venv /your/chosen/dwork-env`, then
-   `/your/chosen/dwork-env/bin/python -m pip install .` from the matching checkout.
-2. Start the selected distribution deliberately in Windows Terminal. In PowerShell,
-   `wsl.exe --list --running --quiet` lists running names; choose one explicitly.
-3. From the checkout root in **Windows PowerShell**, create a Windows venv and
-   install the companion only. Substitute the actual distribution and Linux path:
+The **Portable Windows tray** CI workflow produces `release-assets-windows`, with
+a ZIP and `SHA256SUMS.windows`; verified ZIPs also join draft releases. The extracted
+`dwork-tray` folder contains `dwork-tray.exe`, `dwork-tray-terminal.exe`, and shared
+`_internal` files. It may remain inside Linux and execute through its Windows UNC
+path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
+
+From PowerShell in that folder, substitute the selected distribution and Linux
+interpreter containing a CLI build with the version-1 JSON interface:
 
 ```powershell
-$trayVenv = Join-Path $env:LOCALAPPDATA 'dwork-tray\venv'
-py -3 -m venv $trayVenv
-$trayPython = Join-Path $trayVenv 'Scripts\python.exe'
-& $trayPython -m pip install ./companion
-& $trayPython -m dwork_tray --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --check
-& $trayPython -m dwork_tray --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python
+.\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --check
+.\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python
 ```
 
-The example keeps the Windows venv on a Windows drive even if the checkout lives
-on a WSL UNC share; choose a different `$trayVenv` if desired. The Windows package installs pystray/Pillow and does **not** depend on a Windows `dwork-cli`
-installation. GUI dependencies are not needed inside WSL. Restarting the tray
-requires the same explicit selection arguments; this version saves no preferences.
+The ZIP is unsigned and includes its source revision, checksum, and dependency
+notices. The CLI and workspace execution remain inside WSL. A Linux tray inside
+WSL/WSLg remains unsupported; native Windows workspace management is not added.
+Restarting uses the same selection arguments; this version saves no preferences.
 
 `--wsl-distribution NAME` and `--wsl-python /ABSOLUTE/LINUX/PATH` are required on
 Windows. `--wsl-user USER` optionally chooses a Linux user; omission uses the
@@ -118,12 +110,14 @@ launch; WSL may start it in that race. Polling a running distribution performs r
 commands and can keep it active; quit the tray to stop these observations. No WSL
 shutdown/terminate command is used.
 
-Workspace actions open a new Windows Terminal window. A Windows-side wrapper
+Workspace actions open a new Windows Terminal window. The bundled terminal helper
 invokes the existing Linux `python -m dwork switch NAME` or `down` with normal
 terminal input/output, then records completion only for refresh. Windows Terminal
 receives a documented PowerShell `-EncodedCommand`; variable arguments are literal
 quoted data encoded into that command, preserving spaces, quotes, Unicode, and
-semicolons without interpreting workspace names as shell code. No profiles,
+semicolons without interpreting workspace names as shell code. Portable builds call the
+sibling `dwork-tray-terminal.exe`; source builds retain their module entry point.
+Both preserve normal terminal input/output. No profiles,
 execution-policy bypass, approval flags, or automated prompt responses are used.
 The tray observes completion but never supervises/stops the operation terminal.
 Windows login startup is not implemented: the menu item is absent and `--autostart`
@@ -192,9 +186,10 @@ callbacks, disabled states, and login/quit items without displaying an icon. Tes
 exercise protocol privacy, target/service scoping, UI scheduling, operation handoff,
 refresh, Quit behavior, login opt-in, and preservation of edited/linked entries.
 Package CI builds the separate distribution, installs matching CLI/companion wheels
-outside the checkout, and checks non-GUI entry points. The Windows lane installs
-the companion independently, proves the core CLI is absent, and exercises transport,
-no-autostart behavior, and a real harmless PowerShell argument round trip. A real
+outside the checkout, and checks non-GUI entry points. The portable Windows workflow tests extracted frozen entry points with external
+Python absent from child PATH. Self-contained WSL/Terminal fixtures exercise status,
+real PowerShell quoting, helper dispatch, declined confirmation input, exit codes,
+and completion markers; these do not substitute for real WSL/desktop checks. A real
 Windows-to-WSL status probe also verified a Linux interpreter path containing spaces
 and Unicode JSON with a temporary harmless CLI fixture. macOS also checks the actual
 pystray menu API without running an icon. None of these replaces manual GNOME/KDE

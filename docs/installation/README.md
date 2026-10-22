@@ -2,15 +2,16 @@
 
 [Project home](../../README.md) · [Usage](../usage/README.md)
 
-## Recommended: make install
+## Requirements
 
 Requirements: Git, Make, Python 3.10 or newer, and Python venv/pip support.
+The one-line installation also needs curl.
 On macOS, use Python 3.13 or newer for supervised terminal/background tasks;
 the process-lifecycle API used by dwork is available there starting with 3.13.
 On Ubuntu/WSL, install these prerequisites through your package manager if missing:
 
 ```sh
-sudo apt install git make python3 python3-venv
+sudo apt install curl git make python3 python3-venv
 ```
 
 On macOS with Homebrew, install Python and choose it explicitly:
@@ -19,7 +20,47 @@ On macOS with Homebrew, install Python and choose it explicitly:
 brew install python@3.14
 ```
 
-Then:
+## One-line installation
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
+```
+
+This installs the latest source from `main`, including changes since the published
+0.3.0 packages. The [bootstrap script](../../install.sh) checks Git, Make, and
+Python, clones into a temporary directory, and runs the existing `make install`
+target. It removes the temporary checkout on success or failure. The installed
+command does not depend on that checkout. System dependencies and the optional
+agent skill are not installed automatically.
+
+`PREFIX` and `PYTHON` can be set for this command. On macOS with Homebrew:
+
+```sh
+PYTHON="$(brew --prefix python@3.14)/bin/python3.14" sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
+```
+
+For a custom destination:
+
+```sh
+PREFIX="$HOME/tools/dwork" sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
+```
+
+The bootstrap also preserves existing Make environment options such as `VENV`,
+`BASH_COMPLETION_DIR`, and `ZSH_COMPLETION_DIR`. The same prefix and completion
+directories must be used when updating an existing installation. `VENV=0` requires
+you to provide PyYAML yourself, as with a direct Make installation.
+
+To review the script before running it:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh -o install-dwork.sh
+less install-dwork.sh
+sh install-dwork.sh
+```
+
+## Install from a checkout
+
+If you prefer to keep the source locally:
 
 ```sh
 git clone https://github.com/hayyaun/dwork.git
@@ -30,6 +71,8 @@ make install
 On macOS, run `make install PYTHON="$(brew --prefix python@3.14)/bin/python3.14"`
 to avoid selecting an older system Python. Apple's Command Line Tools provide Git
 and Make (`xcode-select --install` if they are missing).
+
+## Installed files
 
 This is a user install; do not run it with sudo. It creates:
 
@@ -135,14 +178,24 @@ are supported. The installer refuses unrelated existing files or modified launch
 
 ## Update or remove
 
-Update the checkout using your normal Git workflow, then run `make install` again.
-The launcher does not depend on the source checkout after installation.
+For a one-line installation, rerun the same installer command to update to the
+latest `main`. Reuse any `PREFIX`, `PYTHON`, or completion-directory choices.
+For a source checkout, update it using your normal Git workflow, then run
+`make install` again. The launcher does not depend on the source checkout after
+installation.
 
-From a checkout, uninstall with:
+Uninstall from a checkout with `make uninstall`. If you used the one-line installer
+and have no checkout, obtain one first:
 
 ```sh
+git clone https://github.com/hayyaun/dwork.git
+cd dwork
 make uninstall
 ```
+
+Pass the original `PREFIX` for a custom destination, for example
+`make uninstall PREFIX="$HOME/tools/dwork"`. On macOS, select your supported
+Python with `PYTHON` as during installation.
 
 It removes the managed launcher and installation directory, including the private
 venv. Your project's `dwork.yml` files and shell startup files are untouched.

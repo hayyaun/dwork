@@ -373,9 +373,10 @@ Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
 Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
-A dependency/menu test is not proof of desktop rendering. On Windows install only
-the companion in Windows Python; the selected absolute Linux interpreter must have
-the matching CLI installed. Launch from PowerShell with `--wsl-distribution NAME`
+A dependency/menu test is not proof of desktop rendering. An optional portable Windows ZIP bundles the tray, helper, and runtime. It connects
+to the matching CLI in a selected Linux interpreter; no separate Windows Python
+setup is needed. The extracted folder may remain on Linux and execute through its
+Windows UNC path. The app accepts explicit selection with `--wsl-distribution NAME`
 and `--wsl-python /ABS/PATH`, optionally `--wsl-user USER`; omission uses the
 selected distribution's default user and registry. `wsl.exe`, Windows Terminal,
 and Windows PowerShell are required. No native Windows workspace execution occurs.

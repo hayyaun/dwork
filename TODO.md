@@ -54,6 +54,9 @@
 
 ## CLI and releases
 
+- [x] Shorten the main README into a getting-started guide and add a curl one-line
+  source installer that reuses the managed Make installation, with cleanup,
+  prerequisite checks, and detailed update/removal instructions.
 - [x] Show `dwork list`/`ls` as an aligned workspace table with status, lock, and path columns; preserve the names-only completion API.
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
 - [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Python and unsearched prefixes keep explicit setup.
@@ -90,3 +93,5 @@
 - [ ] Update installation instructions only after each channel is published and verified. GitHub 0.3.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
 
 Keep the existing-container-only promise. Builds, deployments, and a large GUI are outside the current roadmap.
+
+- [x] Validate the portable Windows ZIP in CI and launch it on a real Windows host from the Linux filesystem; bundled helper/resources and no-external-Python fixture checks pass. Real interactive desktop behavior remains a separate check above.

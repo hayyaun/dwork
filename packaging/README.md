@@ -49,3 +49,7 @@ Report which revision, platform, source mode, and commands were verified, includ
 any unavailable checks. A successful old release run or stable Homebrew run is not
 evidence that the checkout lane passed. Never present local archive preparation
 or workflow syntax checks as a successful Homebrew installation.
+
+
+An optional [portable Windows tray](windows/README.md) bundles the app and runtime
+in a CI-built ZIP. Verified ZIP/checksum assets join draft releases.
