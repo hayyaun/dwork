@@ -404,7 +404,9 @@ mode retains the pinned release and strict publishing audit. Checkout mode runs
 style/install/test; its temporary local URL is not a publishable formula. No
 Homebrew packages are published by this workflow. The Debian noninteractive Zsh smoke check uses `compinit -i -D` to exclude insecure
 completion directories while retaining the security audit; it still requires the
-installed dwork completion to be discovered. No workflow launches real GUI
+installed dwork completion to be discovered. It reports the selected Zsh, function
+search paths, audit findings, and registration; failures also report installed
+completion ownership, permissions, and header. No workflow launches real GUI
 applications or development servers.
 
 ## Agent skill

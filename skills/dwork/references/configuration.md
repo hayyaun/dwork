@@ -18,7 +18,9 @@ loading. Python installations, older source/release packages, and custom prefixe
 may still need `source <(dwork completion zsh)` after `compinit`, or `eval "$(dwork completion bash)"` for Bash (including macOS Bash 3.2). Preserve existing shell choices; changing a shell startup file
 requires the user's authorization. If Zsh refuses completion initialization,
 inspect `compaudit` output and directory ownership/permissions; do not bypass its
-audit or change those permissions merely to generate workspace YAML.
+audit or change those permissions merely to generate workspace YAML. When
+reporting package completion failures, include the selected shell version,
+installation method, completion path, and audit findings.
 
 Use the exact filename `dwork.yml`. The nearest file in the current directory or
 its parents wins; files are not merged. `--project-directory` or an explicit

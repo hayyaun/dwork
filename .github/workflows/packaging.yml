@@ -174,7 +174,27 @@ jobs:
           cd /tmp/dwork-deb-smoke
           /usr/bin/dwork --dry-run
       - name: Check installed Debian Zsh completion
-        run: zsh -fc 'autoload -Uz compinit; compinit -i -D; [[ ${_comps[dwork]} == _dwork ]]'
+        run: |
+          command -v zsh
+          zsh --version
+          zsh -fc '
+            print -r -- "Zsh function search path before compinit:"
+            print -rl -- $fpath
+            autoload -Uz compaudit
+            print -r -- "Insecure completion paths before compinit:"
+            compaudit 2>&1 || true
+            autoload -Uz compinit
+            compinit -i -D || exit $?
+            print -r -- "Zsh function search path after compinit:"
+            print -rl -- $fpath
+            print -r -- "Registered dwork completion: ${_comps[dwork]-missing}"
+            [[ ${_comps[dwork]-} == _dwork ]] || {
+              print -u2 -r -- "Installed Debian dwork completion was not discovered."
+              stat -c "%U:%G %a %n" /usr /usr/share /usr/share/zsh /usr/share/zsh/vendor-completions /usr/share/zsh/vendor-completions/_dwork || true
+              head -n 1 /usr/share/zsh/vendor-completions/_dwork || true
+              exit 1
+            }
+          '
 
   homebrew:
     name: Homebrew (${{ matrix.source }}, ${{ matrix.os }})
