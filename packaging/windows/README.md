@@ -9,11 +9,17 @@ PyInstaller 6.22.3. The documented multi-program spec collects two console-capab
 entry points and shared runtime files. The tray hides only its own console; the
 terminal helper inherits a terminal for the existing CLI confirmations. Frozen
 handoff selects the sibling executable instead of an external Python interpreter.
-The observer source is explicit bundle data; the standard pystray hook collects
+The observer source and `dwork_tray/assets/tray.png` are explicit bundle data; the standard pystray hook collects
 its dynamic backends. External launches use PyInstaller's documented DLL-search
 and child-environment handling, restoring process settings afterward.
 
-CI tests the extracted ZIP with no external Python on child PATH. Harmless
+The extracted icon is `_internal/dwork_tray/assets/tray.png`. Replacing that PNG
+and restarting changes the tray image without rebuilding the app. To distribute
+repository artwork changes, rebuild the ZIP. This changes the notification-area
+image; the executable's Explorer icon is separate.
+
+CI tests the extracted ZIP with no external Python on child PATH. Its `--check`
+probe also loads the bundled PNG without displaying an icon. Harmless
 self-contained WSL/Terminal fixtures exercise frozen status/resources, real
 PowerShell quoting, helper dispatch, declined confirmation input, nonzero CLI
 exit, and completion markers. These fixture checks do not verify real WSL or

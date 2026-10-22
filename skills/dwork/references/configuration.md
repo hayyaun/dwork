@@ -382,6 +382,15 @@ selected distribution's default user and registry. `wsl.exe`, Windows Terminal,
 and Windows PowerShell are required. No native Windows workspace execution occurs.
 The Linux tray itself remains unsupported inside WSL/WSLg.
 
+The replaceable tray image is `companion/src/dwork_tray/assets/tray.png`, loaded
+relative to the package rather than the working directory. Its sibling `tray.svg`
+is editable artwork; export it to PNG after changes because SVG is not read at
+runtime. Source/editable users
+replace the PNG and restart; distributed wheels/ZIPs need rebuilding to include
+repository artwork changes. An extracted Windows ZIP also permits replacing
+`_internal/dwork_tray/assets/tray.png` directly before restarting. Do not imply
+that editing the checkout updates an existing installed or extracted copy.
+
 Windows `--check` validates the backend and reads selected WSL JSON status without
 an icon or mutations. Polling checks running names first and reports stopped/missing
 distributions; start one deliberately and Refresh. Do not silently start it or

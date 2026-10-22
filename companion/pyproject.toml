@@ -15,5 +15,8 @@ dependencies = ["dwork-cli>=0.3.0,<0.4; sys_platform != 'win32'", "pystray>=0.19
 [project.scripts]
 dwork-tray = "dwork_tray.app:cli"
 
+[tool.setuptools.package-data]
+dwork_tray = ["assets/tray.png", "assets/tray.svg"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

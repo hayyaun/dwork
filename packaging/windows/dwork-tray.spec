@@ -7,7 +7,10 @@ excludes = ["gi", "PyObjCTools", "dwork", "dwork_common", "dwork_terminals"]
 tray = Analysis(
     [str(root / "packaging/windows/tray_entry.py")],
     pathex=[str(source)],
-    datas=[(str(source / "dwork_tray/observer.py"), "dwork_tray")],
+    datas=[
+        (str(source / "dwork_tray/observer.py"), "dwork_tray"),
+        (str(source / "dwork_tray/assets/tray.png"), "dwork_tray/assets"),
+    ],
     excludes=excludes,
 )
 terminal = Analysis(

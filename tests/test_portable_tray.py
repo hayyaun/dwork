@@ -3,6 +3,7 @@
 import base64
 from importlib import util
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -10,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "companion/src"))
-from dwork_tray import windows_runtime, wsl
+from dwork_tray import platforms, windows_runtime, wsl
 from dwork_tray.platforms import CompanionError
 
 
@@ -86,6 +87,61 @@ class PortableTrayTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "cannot cross-compile"):
                 builder.build(Path("unused"))
             mkdir.assert_not_called()
+
+
+@unittest.skipUnless(util.find_spec("PIL"), "optional Pillow dependency is not installed")
+class TrayIconTests(unittest.TestCase):
+    def test_packaged_icon_loads_outside_the_working_directory(self):
+        source = Path(__file__).resolve().parents[1] / "companion/src"
+        with tempfile.TemporaryDirectory(prefix="dwork-icon-cwd-") as temporary:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    "-c",
+                    "from dwork_tray.platforms import load_icon; "
+                    "image = load_icon(); image.load(); "
+                    "assert image.mode == 'RGBA' and image.width > 0 and image.height > 0",
+                ],
+                cwd=temporary,
+                env={**os.environ, "PYTHONPATH": str(source)},
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_replacement_icon_is_converted_and_detached_from_its_file(self):
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory(prefix="dwork-icon-replacement-") as temporary:
+            root = Path(temporary)
+            (root / "assets").mkdir()
+            path = root / "assets/tray.png"
+            replacement = Image.new("P", (32, 32), 1)
+            replacement.putpalette([0, 0, 0, 25, 100, 200] + [0] * 762)
+            replacement.putpixel((1, 1), 0)
+            replacement.save(path, transparency=0)
+            with patch.object(platforms, "__file__", str(root / "platforms.py")):
+                image = platforms.load_icon()
+            path.unlink()
+            self.assertEqual(image.mode, "RGBA")
+            self.assertEqual(image.size, (32, 32))
+            self.assertEqual(image.getpixel((0, 0)), (25, 100, 200, 255))
+            self.assertEqual(image.getpixel((1, 1)), (0, 0, 0, 0))
+
+    def test_missing_or_invalid_icon_reports_its_path(self):
+        with tempfile.TemporaryDirectory(prefix="dwork-icon-invalid-") as temporary:
+            root = Path(temporary)
+            (root / "assets").mkdir()
+            path = root / "assets/tray.png"
+            with patch.object(platforms, "__file__", str(root / "platforms.py")):
+                for content in (None, b"invalid PNG"):
+                    if content is not None:
+                        path.write_bytes(content)
+                    with self.subTest(content=content), self.assertRaises(CompanionError) as error:
+                        platforms.load_icon()
+                    self.assertIn(str(path), str(error.exception))
+                    self.assertIn("valid PNG", str(error.exception))
 
 
 if __name__ == "__main__":

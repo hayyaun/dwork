@@ -27,6 +27,11 @@ The folder may remain in Linux and run through its WSL UNC path. Windows Termina
 and Windows PowerShell provide the interactive operation window. See the guide for
 selection options and verification limits.
 
+The shared tray icon is [`src/dwork_tray/assets/tray.png`](src/dwork_tray/assets/tray.png).
+Its sibling `tray.svg` is the editable design source.
+Replace the PNG and restart for editable installs; see the
+[icon guide](../docs/companion/README.md#tray-icon) for packaged copies.
+
 The companion never answers CLI confirmations or owns workspace shutdown.
 Linux/macOS login startup is disabled until explicitly enabled. Quit closes only
 the tray. See [the companion guide](../docs/companion/README.md) for full setup,

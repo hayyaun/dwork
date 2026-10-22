@@ -269,8 +269,6 @@ class TrayTests(unittest.TestCase):
 
     def test_native_ui_schedulers_use_public_main_loop_apis(self):
         callbacks = []
-        image = SimpleNamespace(new=Mock(return_value=object()))
-        draw = SimpleNamespace(Draw=Mock())
         pystray = SimpleNamespace(Icon=SimpleNamespace(HAS_MENU=True))
         glib = SimpleNamespace(
             Variant=lambda *args: object(),
@@ -286,7 +284,6 @@ class TrayTests(unittest.TestCase):
         )
         modules = {
             "pystray": pystray,
-            "PIL": SimpleNamespace(Image=image, ImageDraw=draw),
             "gi": SimpleNamespace(),
             "gi.repository": SimpleNamespace(GLib=glib, Gio=gio),
             "PyObjCTools": SimpleNamespace(AppHelper=SimpleNamespace(callAfter=callbacks.append)),
@@ -298,7 +295,8 @@ class TrayTests(unittest.TestCase):
                 patch.object(platforms, "native_platform", return_value=platform),
                 patch.dict(os.environ, {"DISPLAY": ":test", "PYSTRAY_BACKEND": "appindicator"}),
             ):
-                _, _, schedule = platforms.load_ui()
+                with patch.object(platforms, "load_icon", return_value=object()):
+                    _, _, schedule = platforms.load_ui()
                 callback = Mock()
                 schedule(callback)
                 callback.assert_not_called()

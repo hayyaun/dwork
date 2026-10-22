@@ -76,6 +76,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/companion-smoke"
           cd "$RUNNER_TEMP/companion-smoke"
           export XDG_STATE_HOME="$RUNNER_TEMP/companion-state"
+          "$RUNNER_TEMP/companion-venv/bin/python" -c "from dwork_tray.platforms import load_icon; load_icon().load()"
           "$RUNNER_TEMP/companion-venv/bin/dwork-tray" --help
           "$RUNNER_TEMP/companion-venv/bin/dwork" list --json
       - name: Validate the public pystray menu contract without displaying an icon
@@ -131,6 +132,8 @@ jobs:
           Set-Location $env:RUNNER_TEMP
           Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
           & "$env:RUNNER_TEMP/tray-venv/Scripts/python.exe" -c "import importlib.util; from dwork_tray import wsl, observer; assert importlib.util.find_spec('dwork') is None"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:RUNNER_TEMP/tray-venv/Scripts/python.exe" -c "from dwork_tray.platforms import load_icon; load_icon().load()"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & "$env:RUNNER_TEMP/tray-venv/Scripts/dwork-tray.exe" --help
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

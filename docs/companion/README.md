@@ -123,6 +123,26 @@ The tray observes completion but never supervises/stops the operation terminal.
 Windows login startup is not implemented: the menu item is absent and `--autostart`
 returns guidance without writing settings.
 
+## Tray icon
+
+The shared icon is a separate PNG at
+[`companion/src/dwork_tray/assets/tray.png`](../../companion/src/dwork_tray/assets/tray.png).
+The editable [SVG source](../../companion/src/dwork_tray/assets/tray.svg) defines
+the two perspective window frames; the runtime reads the exported PNG only.
+Replace the PNG with your artwork using the same filename. A square PNG with
+transparent background and bold, simple shapes reads best at small tray sizes.
+The included artwork is a 256-pixel light outline for dark tray backgrounds.
+Pillow loads it as RGBA; no drawing-code changes are needed. The icon is loaded
+relative to the companion package, independent of the working directory.
+
+Restart the tray after replacing the image. Editable/source installs use this
+file directly; rebuild and reinstall a wheel to distribute repository changes.
+The portable Windows ZIP includes the image at
+`_internal/dwork_tray/assets/tray.png` inside the extracted app folder. You can
+also replace that extracted PNG and restart without rebuilding. Changing the
+repository file does not update previously extracted or installed copies.
+Missing or unreadable images report their path and stop tray startup.
+
 ## Refresh and failures
 
 Status refreshes on startup, every 15 seconds by default, on **Refresh**, and after

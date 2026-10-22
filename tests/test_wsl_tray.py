@@ -290,7 +290,6 @@ class WslUiTests(unittest.TestCase):
         ui = SimpleNamespace(Icon=SimpleNamespace(HAS_MENU=True))
         modules = {
             "pystray": ui,
-            "PIL": SimpleNamespace(Image=Mock(), ImageDraw=Mock()),
             "gi": None,
             "PyObjCTools": None,
         }
@@ -299,7 +298,8 @@ class WslUiTests(unittest.TestCase):
             patch.dict(os.environ, {"PYSTRAY_BACKEND": "win32"}),
             patch.dict(sys.modules, modules),
         ):
-            _, _, schedule = platforms.load_ui()
+            with patch.object(platforms, "load_icon", return_value=object()):
+                _, _, schedule = platforms.load_ui()
             callback = Mock()
             schedule(callback)
             callback.assert_called_once()
