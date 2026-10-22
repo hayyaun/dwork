@@ -2,8 +2,9 @@
 
 Optional, experimental native Linux/macOS and Windows-to-WSL tray companion.
 This is a separate Python distribution; ordinary `dwork-cli` installs stay GUI-free.
-Companion 0.2.0 requires `dwork-cli` 0.4.x on native Linux/macOS; Windows connects
-to the matching CLI in WSL instead.
+The source companion 0.2.1 supports `dwork-cli` 0.4.x and 0.5.x on native
+Linux/macOS (`>=0.4.0,<0.6`). Windows connects to the matching CLI in WSL instead.
+The 0.2.1 release assets are not published yet.
 
 From a checkout on native Linux/macOS, `make install TRAY=1` optionally includes
 this separate package with the managed CLI install. It creates a separate companion

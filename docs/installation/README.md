@@ -20,6 +20,10 @@ On macOS with Homebrew, install Python and choose it explicitly:
 brew install python@3.14
 ```
 
+The current source prepares CLI 0.5.0 and companion 0.2.1. Their release assets
+are pending; the [published package links below](#python-homebrew-and-debian-packages)
+continue to use v0.4.1.
+
 ## One-line installation
 
 ```sh
@@ -104,8 +108,9 @@ WSL. Installing or launching the portable app does not enable Windows sign-in st
 
 ## Optional native tray
 
-The default installer remains CLI-only. On native Linux or macOS, opt in to the
-separate `dwork-tray` package with:
+The default installer remains CLI-only. The source companion 0.2.1 supports CLI
+0.4.x and 0.5.x on native Linux/macOS; published companion 0.2.0 supports CLI 0.4.x.
+Opt in to the separate `dwork-tray` package from source with:
 
 ```sh
 TRAY=1 sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"

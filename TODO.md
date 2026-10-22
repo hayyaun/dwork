@@ -85,6 +85,8 @@
 
 ## Packaging publication
 
+- [ ] Verify and publish CLI 0.5.0 with companion 0.2.1, then update download guidance and pinned channel recipes to the immutable verified tag archive. Retain existing 0.4.x companion compatibility; verify the new wheels, expanded package checks, release builds, public downloads, and checksums before marking complete.
+
 - [x] Fix platform-independent transport/bootstrap/completion/installer fixtures, native Git build/test dependencies, secure noninteractive Zsh verification, and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
 - [x] Verify and publish [0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) with portable companion 0.2.0, and update pinned channel recipes to the verified release archive. Tag `v0.4.1` points to `9982923`; all 16 expanded package checks and all five release jobs passed. All six public package downloads match SHA256SUMS, including the Windows ZIP whose source revision and icon match the tag. The earlier v0.4.0 tag remains unchanged after its missing Git build/test dependency was corrected in 0.4.1.
 

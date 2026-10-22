@@ -32,9 +32,10 @@ Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
 Stopping outgoing tracked commands during switches is available in 0.4.0+;
 verify the installed runtime includes this behavior before promising it.
-Source checkouts after v0.4.1 add positional `scan PATH...`, start-only
-`up NAME...`, and selected `down NAME...`. Check the installed command's help
-before using them; published v0.4.1 packages lack these additions. See the bundled
+CLI 0.5.0+ adds positional `scan PATH...`, start-only `up NAME...`, and selected
+`down NAME...`; these additions are currently available from source while release
+publication is pending. Check the installed command's help before using them;
+published v0.4.1 packages lack these additions. See the bundled
 reference for their scope and unchanged confirmation/ownership rules.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
@@ -46,8 +47,9 @@ and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
 confuse a checkout of `main` with a versioned release package.
-Companion 0.2.0 pairs with CLI 0.4.x on native Linux/macOS; updating the skill
-alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
+Source companion 0.2.1 pairs with CLI 0.4.x or 0.5.x on native Linux/macOS;
+published companion 0.2.0 pairs with CLI 0.4.x. The 0.2.1 release assets are pending.
+Updating the skill alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
 `dwork-tray` as a separate package/environment. This is an explicit installation
 choice, not implied by YAML work. It neither launches the tray nor enables login
 startup. Native Linux requires matching system desktop bindings; WSL instead has

@@ -2,8 +2,8 @@
 
 - [AUR](aur/README.md): v0.4.1 recipe with native completion entries; submission pending.
 - [Homebrew](homebrew/README.md): v0.4.1 formula, shared recipe template, and exact-checkout verification; public tap pending.
-- [Python / PyPI](python/README.md): v0.4.1 wheel/sdist and console entry point; TestPyPI/PyPI publication pending.
-- [Debian / Ubuntu](debian/README.md): v0.4.1-1 debhelper packaging; no signed apt repository.
+- [Python / PyPI](python/README.md): v0.5.0 candidate wheel/sdist recipes and console entry point; TestPyPI/PyPI publication pending.
+- [Debian / Ubuntu](debian/README.md): v0.5.0-1 candidate debhelper packaging; no signed apt repository.
 - [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
 Verified v0.4.1 Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus the
@@ -17,10 +17,12 @@ to PyPI, a Homebrew tap, AUR, or an apt repository.
 
 ## Current verification paths
 
-CLI 0.4.1 and the separate companion 0.2.0 are versioned independently. Native
-companion dependencies target CLI 0.4.x; the portable Windows package embeds its
-own runtime and uses the matching CLI in WSL. Published assets and pinned channel
-recipes are updated only after the tagged release is built and verified.
+The current source prepares CLI 0.5.0 and the separate companion 0.2.1; their
+release assets are pending. Native companion 0.2.1 dependencies support CLI 0.4.x
+and 0.5.x (`>=0.4.0,<0.6`), while published companion 0.2.0 supports CLI 0.4.x.
+The portable Windows package embeds its own runtime and uses the matching CLI in
+WSL. Published download links and pinned channel recipes remain on v0.4.1 until
+the new tagged release is built and verified.
 
 `make quality` checks pinned Ruff lint/format rules, gradual mypy types, and stable
 formula/template parity. Install the development-only `quality` extra first; see

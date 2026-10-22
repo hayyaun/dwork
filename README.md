@@ -41,6 +41,9 @@ terminal tasks need a [supported terminal](docs/terminals/README.md).
 [v0.4.1 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) ·
 [Releases and package checks](docs/publishing/README.md)
 
+The current source prepares CLI 0.5.0 and companion 0.2.1; their release downloads
+are pending. Release download links here still select published v0.4.1 assets.
+
 ### Optional tray companion
 
 View saved workspaces and switch between them from your desktop tray. To include
@@ -75,8 +78,8 @@ dwork list         # See the saved names
 dwork switch my-app
 ```
 
-Scanning registers projects without starting or stopping workloads. Current source
-checkouts after v0.4.1 also accept `dwork scan .` or several roots, such as
+Scanning registers projects without starting or stopping workloads. CLI 0.5.0+
+(currently available from source) also accepts `dwork scan .` or several roots, such as
 `dwork scan ~/projects ~/work/client-projects`.
 [Scanning rules and previews](docs/workspaces/README.md#scan-a-directory-tree).
 
@@ -109,7 +112,7 @@ dwork unlock my-app    # Release the temporary lock
 dwork down             # Stop eligible registered workspaces and tracked commands
 ```
 
-Current source checkouts after v0.4.1 also accept explicit workspace names:
+CLI 0.5.0+ (currently available from source) also accepts explicit workspace names:
 
 ```sh
 dwork up my-app docs    # Start these saved workspaces, keeping all others running

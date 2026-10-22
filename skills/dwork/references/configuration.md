@@ -133,8 +133,8 @@ They work from any directory without Docker or workspace-directory access.
 `--dry-run` before or after the names previews without writing state. All names
 are validated before any changes; an unknown name fails the whole request.
 
-Source checkouts after v0.4.1 accept registered names with `dwork up NAME...`
-and `dwork down NAME...`. Named `up` starts only the selected registrations and
+CLI 0.5.0+ accepts registered names with `dwork up NAME...` and
+`dwork down NAME...` (currently available from source; release publication pending). Named `up` starts only the selected registrations and
 leaves all other workspaces running, using saved directories, Compose options,
 ownership checks, health gates, and applicable activation/group/task/browser
 confirmations. Named `down` limits the existing shutdown plan and confirmation to
@@ -152,7 +152,7 @@ Generating configuration does not authorize either live operation.
 `dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
 checkbox picker for unregistered Compose-only directories. It does not activate
 anything. `dwork scan --dry-run` previews without writing or prompting. Source
-checkouts after v0.4.1 also accept `dwork scan .` and several positional roots,
+checkouts for CLI 0.5.0+ also accept `dwork scan .` and several positional roots,
 for example `dwork scan ~/projects ~/work/client-projects --dry-run`. Each root
 retains the normal traversal boundaries and exclusions. Explicit roots are
 resolved/deduplicated and validated before registration; overlapping roots do not
@@ -397,8 +397,9 @@ or real GUI verification.
 
 ## Optional tray and JSON observations
 
-The separate `dwork-tray` package (0.2.0 paired with native CLI 0.4.x) targets
-native Linux/macOS and a
+The separate source `dwork-tray` 0.2.1 package supports native CLI 0.4.x and
+0.5.x (`>=0.4.0,<0.6`); its release assets are pending. Published 0.2.0 supports
+native CLI 0.4.x. The companion targets native Linux/macOS and a
 Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or

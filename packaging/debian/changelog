@@ -1,3 +1,11 @@
+dwork (0.5.0-1) unstable; urgency=medium
+
+  * Accept explicit paths for workspace scanning.
+  * Start and stop named registered workspaces with existing safeguards.
+  * Extend Bash/Zsh completion and clarify Windows tray setup.
+
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Thu, 22 Oct 2026 20:01:40 +0330
+
 dwork (0.4.1-1) unstable; urgency=medium
 
   * Declare Git as a build/test dependency for package regression checks.

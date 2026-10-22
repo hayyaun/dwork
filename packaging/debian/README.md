@@ -2,15 +2,17 @@
 
 Debhelper source-package files live here. The build helper copies them into the
 required top-level `debian/` directory in a temporary source tree; it does not
-change the checkout or install packages on your host. Version 0.4.0-1 matches
-the 0.4.0 release; no apt repository or PPA is published by this build.
+change the checkout or install packages on your host. The source recipe prepares
+version 0.5.0-1; its release assets are pending. The published
+[0.4.1-1 package](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork_0.4.1-1_all.deb)
+remains available. No apt repository or PPA is published by this build.
 
 ## Build
 
 On Debian/Ubuntu, install build dependencies through your package manager:
 
 ```sh
-sudo apt install build-essential debhelper python3 python3-yaml python3-jsonschema bash-completion zsh lintian
+sudo apt install build-essential debhelper git python3 python3-yaml python3-jsonschema bash-completion zsh lintian
 python3 scripts/build-deb.py
 lintian dist/debian/*.deb
 ```
@@ -21,7 +23,7 @@ Packages and build metadata are copied to `dist/debian/`. Build on each Debian o
 Ubuntu release you plan to support; Ubuntu 24.04 is the initial validation target.
 
 Inspect with `dpkg-deb --info` and `dpkg-deb --contents`. Install inside a test
-system with `sudo apt install ./dist/debian/dwork_0.4.0-1_all.deb`, then run
+system with `sudo apt install ./dist/debian/dwork_0.5.0-1_all.deb`, then run
 `dwork --help` and a host-only dry-run. Remove with `sudo apt remove dwork`.
 Use apt rather than make uninstall for package-managed installations.
 
