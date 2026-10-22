@@ -21,7 +21,7 @@
 
 ## Reusable named workspace groups
 
-- [x] Add and verify local named groups of existing registrations across directories: create/list/show/add/remove/delete, explicit `--group` lifecycle selection, read-only previews, and Bash/Zsh completion. Available in current unreleased source after v0.5.0; published v0.5.0 packages do not include this interface.
+- [x] Add and verify local named groups of existing registrations across directories: create/list/show/add/remove/delete, explicit `--group` lifecycle selection, read-only previews, and Bash/Zsh completion. Available in CLI 0.6.0+; v0.5.0 packages do not include this interface.
 - [x] Implement and verify one combined group switch protecting the full selected union, additive group startup, and scoped shutdown with existing confirmations, ownership, locks, `DWORK_KEEP_PROJECTS`, and the existing-container-only promise. Regression coverage includes health-gate failure and interruption after earlier member starts; no automatic rollback is added.
 - [x] Decide flat ordered membership with overlap allowed and no nested groups, active-session tracking, reference counting, task reuse changes, or automatic rollback. Require one shared Compose target, allow host-only members, update references atomically on rename/re-registration, and refuse referenced forget. Use registry version 2 only while groups exist so older runtimes fail closed.
 - [ ] Consider tray group selection separately; the initial named-group CLI leaves the tray unchanged.
@@ -85,6 +85,10 @@
 - [ ] Consider app-managed opt-in Windows login startup after native tray/terminal verification, with explicit target preferences and protected ownership of startup entries. Manual OS shortcut setup is documented; no Windows autostart API was added.
 
 ## Packaging publication
+
+- [ ] Verify and publish 0.6.0 with workspace groups and companion 0.2.2 native
+  CLI 0.4.x/0.5.x/0.6.x compatibility. Keep older release tags immutable; update
+  public download guidance and source pins only after release verification.
 
 - [x] Verify and publish [0.5.0](https://github.com/hayyaun/dwork/releases/tag/v0.5.0)
   with portable companion 0.2.1 and native CLI 0.4.x/0.5.x compatibility. Tag

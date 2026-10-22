@@ -254,8 +254,7 @@ no-name form only.
 
 ## Reusable named groups
 
-This feature is in current source after v0.5.0 and is not included in published
-v0.5.0 packages. Check `dwork --help` for `group` and `--group` support before use.
+This feature requires CLI 0.6.0+; v0.5.0 packages do not include it. Check `dwork --help` for `group` and `--group` support before use.
 A reusable group is a personal, ordered list of existing registered workspace
 names. It can refer to projects in unrelated directories. It does not add a
 `dwork.yml` field or change the configuration schema.

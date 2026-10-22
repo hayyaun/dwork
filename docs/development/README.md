@@ -82,7 +82,7 @@ refresh stay in the registry facade. Missing configs retain cached lock policy;
 unreadable policy protects the member. The operation lock still spans prompts and
 mutations, and the final live policy recheck remains immediately before shutdown.
 
-Current source after v0.5.0 adds personal flat named groups of registered
+CLI 0.6.0+ adds personal flat named groups of registered
 workspaces. The store accepts legacy group-free version 1 and grouped version 2;
 the first saved group upgrades atomically, and removing the last returns version 1.
 An older runtime rejects version 2 before mutation. Ordered group references and
@@ -99,7 +99,7 @@ then browsers. Each member retains its own cwd, saved Compose environment and ta
 owner; task/browser consent stays at dispatch. Additive `up --group` uses the named
 startup path, and `down --group` scopes the shared shutdown policy. There is no
 active-group/session ownership, reference counting, task reuse, or rollback layer.
-These additions are unreleased; published v0.5.0 packages do not implement them.
+Published v0.5.0 packages do not implement these additions.
 
 For live activation, `prepare_launches` attaches immutable commands returned by the
 terminal/browser preflights to the copied plan. Preparation resolves the same launcher,

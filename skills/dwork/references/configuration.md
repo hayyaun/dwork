@@ -171,7 +171,7 @@ shutdown stays scoped to the current Docker target.
 
 ## Reusable named groups
 
-Current unreleased source after v0.5.0 adds personal flat groups of existing
+CLI 0.6.0+ adds personal flat groups of existing
 workspace registrations across directories. Check installed help first; published
 v0.5.0 packages do not support `group` or `--group`. This adds no YAML field or
 configuration/observation schema change. A registered directory bundle of
@@ -442,8 +442,8 @@ or real GUI verification.
 
 ## Optional tray and JSON observations
 
-The separate `dwork-tray` 0.2.1 package supports native CLI 0.4.x and
-0.5.x (`>=0.4.0,<0.6`); earlier 0.2.0 supports
+The separate `dwork-tray` 0.2.2 package supports native CLI 0.4.x, 0.5.x, and
+0.6.x (`>=0.4.0,<0.7`); companion 0.2.1 supports CLI 0.4.x/0.5.x, and 0.2.0 supports
 native CLI 0.4.x. The companion targets native Linux/macOS and a
 Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens

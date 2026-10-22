@@ -7,7 +7,7 @@ macOS, or a Windows host connected to one explicitly selected WSL distribution.
 It lists registered workspaces, observed container/command counts, and lock
 protection (including partially protected directory bundles). Selecting a workspace opens an operation terminal running the existing
 `dwork switch NAME`. **Stop eligible workspaces…** opens `dwork down` separately.
-The unreleased reusable CLI groups do not add tray items: selection still switches
+The reusable CLI groups in 0.6.0+ do not add tray items: selection still switches
 an individual registration, including its discovered children, and the stop item
 retains its existing all-eligible scope.
 **Quit tray** closes only the companion: commands, containers, browsers, operation
@@ -25,8 +25,8 @@ launch another copy of configured commands, as it does from the CLI.
 
 The companion is a **separate distribution** under [`companion/`](../../companion/).
 Ordinary CLI installs retain only their existing dependencies; they do not install
-pystray, Pillow, PyObjC, PyGObject, or a login entry. Companion 0.2.1
-pairs with `dwork-cli` 0.4.x or 0.5.x on native Linux/macOS (`>=0.4.0,<0.6`);
+pystray, Pillow, PyObjC, PyGObject, or a login entry. Companion 0.2.2
+pairs with `dwork-cli` 0.4.x, 0.5.x, or 0.6.x on native Linux/macOS (`>=0.4.0,<0.7`);
 the portable ZIP is published with CLI 0.5.0. Earlier companion 0.2.0 pairs with
 CLI 0.4.x.
 The Windows app connects to a matching CLI inside WSL. Version 0.4.0 includes

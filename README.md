@@ -120,9 +120,9 @@ Without names, `up` still switches to the current directory and `down` still sto
 all eligible registered workloads. Existing confirmations, locks, and ownership
 checks apply. Published v0.4.1 packages retain their earlier syntax.
 
-### Reusable named groups (unreleased)
+### Reusable named groups
 
-Current source after v0.5.0 can save a personal group of existing registered
+CLI 0.6.0+ can save a personal group of existing registered
 workspaces, including projects in different directories:
 
 ```sh

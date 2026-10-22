@@ -14,6 +14,15 @@ Public Homebrew tap, PyPI, AUR, and apt repository publication remain pending.
 
 ## Release preparation
 
+The next release is CLI **0.6.0** with reusable named workspace groups and native
+companion **0.2.2** (`dwork-cli>=0.4.0,<0.7`). Group activation preserves existing
+confirmation, ownership, lock, and container-lifecycle rules. The first saved group
+uses registry version 2, which older CLIs reject before mutation; deleting the
+final group returns to version 1. Overlapping membership does not protect a shared
+member from group shutdown. The tray still lists individual registrations.
+Release builds, public downloads, and updated channel pins must be verified before
+this preparation is described as a published release.
+
 CLI 0.5.0 adds positional `scan PATH...`, start-only
 `up NAME...`, and selected `down NAME...`, plus matching Bash/Zsh completion.
 No-name behavior, confirmations, locks, and ownership checks are preserved.

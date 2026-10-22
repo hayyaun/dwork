@@ -160,9 +160,9 @@ Use `--dry-run` before or after the names to preview. They make no Docker calls
 and work even when a workspace directory is missing. `ls` shows `temporary` in
 the lock column. See [temporary locks](../workspaces/README.md#temporary-locks).
 
-### Reusable named groups (unreleased)
+### Reusable named groups
 
-Current source after v0.5.0 can save a flat personal selection of registered
+CLI 0.6.0+ can save a flat personal selection of registered
 workspaces, including projects in different directories:
 
 ```sh

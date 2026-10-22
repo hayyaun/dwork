@@ -36,7 +36,7 @@ CLI 0.5.0+ adds positional `scan PATH...`, start-only `up NAME...`, and selected
 `down NAME...`. Check the installed command's help before using them;
 published v0.4.1 packages lack these additions. See the bundled
 reference for their scope and unchanged confirmation/ownership rules.
-Current unreleased source after v0.5.0 adds flat reusable groups of registered
+CLI 0.6.0+ adds flat reusable groups of registered
 workspaces. Check installed `--help` before using `group` or `--group`; published
 v0.5.0 packages lack them. Read [reusable group guidance](references/configuration.md#reusable-named-groups)
 when requested. Group edits change personal registry state, not YAML, and require
@@ -51,7 +51,8 @@ and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
 confuse a checkout of `main` with a versioned release package.
-Companion 0.2.1 pairs with CLI 0.4.x or 0.5.x on native Linux/macOS;
+Companion 0.2.2 pairs with CLI 0.4.x, 0.5.x, or 0.6.x on native Linux/macOS;
+companion 0.2.1 pairs with CLI 0.4.x or 0.5.x;
 earlier companion 0.2.0 pairs with CLI 0.4.x.
 Updating the skill alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
 `dwork-tray` as a separate package/environment. This is an explicit installation
