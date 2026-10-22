@@ -11,6 +11,12 @@ CLI 0.5.0+ completion scripts also suggest registered names for each
 `up NAME...` / `down NAME...` argument and directories for each `scan PATH...`
 root. Published v0.4.1 completion scripts do not include these new forms.
 
+Current source after v0.5.0 also completes reusable group subcommands and names.
+Group names are suggested after lifecycle `--group` and for `group show`, `add`,
+`remove`, and `delete`; `create` takes a new name. Member arguments suggest
+registered workspace names. Bare lifecycle names continue to complete workspaces,
+not reusable groups. Published v0.5.0 scripts do not include these group additions.
+
 ## Package and Make installations
 
 Current Make installs generate native completion files as well as the existing
@@ -128,6 +134,11 @@ dwork unlock api <Tab>   another registered name to unlock
 dwork lock --d<Tab>      --dry-run
 dwork scan --d<Tab>      --dry-run
 dwork -f <Tab>           file paths
+# Current unreleased group-capable source:
+dwork group <Tab>       list, show, create, add, remove, delete
+dwork group show <Tab>  reusable group names
+dwork group add daily <Tab> registered workspace members
+dwork switch --group <Tab> reusable group names
 ```
 
 Shell settings determine whether one Tab completes immediately or another Tab
@@ -146,6 +157,11 @@ It only reads the registry: no Docker calls, project-config reads, lock refresh,
 directory scans, prompts, or state writes. Locked and unavailable registered names
 are included. Completion suppresses registry errors rather than interrupting shell
 input; run `dwork list --names` manually to inspect an error.
+
+The unreleased group interface also provides `dwork group list --names`. It
+outputs only sorted reusable group names and performs no Docker/configuration
+queries or state writes. Workspace completion continues using `dwork list --names`;
+the two name namespaces are not mixed.
 
 References: [Bash programmable completion](https://www.gnu.org/s/bash/manual/html_node/Programmable-Completion.html),
 [Zsh completion system](https://zsh.sourceforge.io/Doc/Release/Completion-System.html).

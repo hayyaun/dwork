@@ -21,6 +21,8 @@
   ownership, service selection, lock protection, and tracked-command eligibility.
 - [`lib/dwork_registry.py`](../../lib/dwork_registry.py): registration workflows,
   live YAML lock refresh, registration consent, and display.
+- [`lib/dwork_groups.py`](../../lib/dwork_groups.py): local reusable group selection
+  and management without changing project YAML or taking workload ownership.
 - [`lib/dwork_docker.py`](../../lib/dwork_docker.py): Compose models, Docker
   inventory, health prerequisites, and container status reporting.
 - [`lib/dwork_plans.py`](../../lib/dwork_plans.py): typed activation/shutdown
@@ -40,8 +42,10 @@
 - [`lib/dwork_workspaces.py`](../../lib/dwork_workspaces.py): switch and shutdown
   orchestration, launch preparation attachment, shared typed execution, confirmations, and
   partial-failure/recovery presentation.
-  Switches exclude the selected registration; `down` uses the same path without
-  an exclusion. Both stop commands before containers and recheck locks after prompts.
+  Single switches exclude the selected registration; reusable group switches
+  exclude the full selected union. `down` can select the full registry, named
+  registrations, or explicit group members. Shutdown stops commands before
+  containers and rechecks locks after prompts.
 - [`lib/dwork_common.py`](../../lib/dwork_common.py): shared models, errors,
   terminal choices, and console formatting.
 - [`lib/dwork_tasks.py`](../../lib/dwork_tasks.py): local task supervision and
@@ -77,6 +81,25 @@ and tracked-command workspace/member identity. Registration and the existing liv
 refresh stay in the registry facade. Missing configs retain cached lock policy;
 unreadable policy protects the member. The operation lock still spans prompts and
 mutations, and the final live policy recheck remains immediately before shutdown.
+
+Current source after v0.5.0 adds personal flat named groups of registered
+workspaces. The store accepts legacy group-free version 1 and grouped version 2;
+the first saved group upgrades atomically, and removing the last returns version 1.
+An older runtime rejects version 2 before mutation. Ordered group references and
+workspace rename/re-registration updates share the same atomic replacement and
+operation lock; referenced forget is refused. Target-incompatible re-registration
+is rejected before replacing either registrations or groups. Group management and
+inspection never load Compose or change workloads. No YAML or observation schema
+field is added, and the tray interface is unchanged.
+
+`switch --group` prepares and approves every member before any outgoing shutdown.
+It protects the whole selected union, then executes one combined plan: outgoing
+commands, container stop batch, all destination starts, all health gates, terminals,
+then browsers. Each member retains its own cwd, saved Compose environment and task
+owner; task/browser consent stays at dispatch. Additive `up --group` uses the named
+startup path, and `down --group` scopes the shared shutdown policy. There is no
+active-group/session ownership, reference counting, task reuse, or rollback layer.
+These additions are unreleased; published v0.5.0 packages do not implement them.
 
 For live activation, `prepare_launches` attaches immutable commands returned by the
 terminal/browser preflights to the copied plan. Preparation resolves the same launcher,
@@ -275,6 +298,18 @@ session consent, skipped actions, failures and interrupts at every action type,
 completed task cleanup, supervisor PID results, opaque display labels, and replay
 rejection. Existing CLI, group, ownership, shutdown, and real harmless process tests
 remain the behavioral compatibility checks.
+
+Group regressions cover ordered/nonempty flat membership, separate name
+namespaces, cross-target rejection with host-only members allowed, atomic rename
+and re-registration references, referenced forget, old-format compatibility, and
+preview/read-only persistence. Lifecycle cases verify combined switching without
+stopping a selected member, full preflight/consent before mutation, scoped shutdown,
+locks/KEEP/ownership, overlapping selections without reference counts, and task
+cwd/environment/owner retention. Health-gate failure and interruption regressions
+verify that combined failure reports include earlier member starts, identify
+unfinished actions, and do not invent rollback. Shell tests cover group selectors without
+mixing bare workspace completion. These checks use temporary state and fake Docker/launch
+adapters; they do not authorize changes to a user's live groups or workloads.
 
 `test_list.py` covers aligned workspace tables, ANSI/plain output, service-filtered
 container counts, group locks, offline/missing targets, compact host-only rows,

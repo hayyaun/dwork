@@ -120,6 +120,21 @@ Without names, `up` still switches to the current directory and `down` still sto
 all eligible registered workloads. Existing confirmations, locks, and ownership
 checks apply. Published v0.4.1 packages retain their earlier syntax.
 
+### Reusable named groups (unreleased)
+
+Current source after v0.5.0 can save a personal group of existing registered
+workspaces, including projects in different directories:
+
+```sh
+dwork group create daily my-app docs
+dwork up --group daily                 # Start members, keeping other workspaces running
+dwork switch --group daily --dry-run   # Preview one switch to the whole group
+```
+
+`down --group daily` stops only eligible member workloads. A group switch protects
+all selected members from its outgoing shutdown. Published v0.5.0 packages do not
+include these group commands; see [group management and safeguards](docs/workspaces/README.md#reusable-named-groups).
+
 [All commands](docs/usage/README.md) ·
 [Workspace names, scanning, and locks](docs/workspaces/README.md)
 

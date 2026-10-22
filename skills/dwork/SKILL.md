@@ -1,6 +1,6 @@
 ---
 name: dwork
-description: Create, review, or update dwork.yml for a project's development workspace. Use when configuring dwork with existing Compose services, terminal or background commands, browser readiness, or troubleshooting workspace configuration.
+description: Create, review, or update dwork.yml and manage requested personal dwork workspace groups. Use for existing Compose services, terminal or background commands, browser readiness, workspace configuration, or group troubleshooting.
 ---
 
 # Configure a dwork workspace
@@ -12,7 +12,7 @@ host commands in terminals or the background, then opens configured browser URLs
 with optional HTTP readiness. Unregistered projects stay running. Host commands are
 tracked for shutdown. Switches and `dwork down` share the same shutdown rules:
 stop eligible registered host commands before containers, excluding the selected
-registration and all its group members only during a switch. Destination startup
+registrations and all their discovered child members during a switch. Destination startup
 begins after shutdown succeeds. Locks and `DWORK_KEEP_PROJECTS` protect both.
 It never creates, rebuilds, recreates, or removes containers.
 
@@ -36,6 +36,11 @@ CLI 0.5.0+ adds positional `scan PATH...`, start-only `up NAME...`, and selected
 `down NAME...`. Check the installed command's help before using them;
 published v0.4.1 packages lack these additions. See the bundled
 reference for their scope and unchanged confirmation/ownership rules.
+Current unreleased source after v0.5.0 adds flat reusable groups of registered
+workspaces. Check installed `--help` before using `group` or `--group`; published
+v0.5.0 packages lack them. Read [reusable group guidance](references/configuration.md#reusable-named-groups)
+when requested. Group edits change personal registry state, not YAML, and require
+a request to manage those groups; generating configuration alone does not authorize them.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
@@ -107,7 +112,7 @@ invent service names, commands, health checks, or folders.
   through switches and `dwork down`. It remains listed and can still be activated.
 - For temporary local protection, use `dwork lock NAME...` with registered names
   instead of editing YAML. It lasts until `dwork unlock NAME...`, survives shell
-  restarts, and protects every member of a registered group. Unlocking preserves
+  restarts, and protects every child of a registered directory bundle. Unlocking preserves
   YAML locks and `DWORK_KEEP_PROJECTS`. Check runtime support (0.4.0+),
   preview with `--dry-run`, and obtain authorization before changing local locks.
 - Keep workspace activation confirmation enabled by default. Use root-level
@@ -204,7 +209,8 @@ and shell environment choices before invoking dwork. See the bundled reference f
 verification scope.
 
 Typed activation plans/actions/results are an internal refactor, not new YAML
-fields, a changed registry format, or a resume API. A rendered
+fields or a resume API. Reusable groups have their own versioned local-state rules
+in the bundled reference. A rendered
 plan does not authorize execution. Keep registration/group/activation consent
 separate from task/browser consent, and retain the live lock recheck before stops.
 When explaining partial failures, distinguish completed, already-finished, skipped,

@@ -9,6 +9,7 @@ from dwork_common import DworkError, color, colored_name
 import dwork_config
 import dwork_docker
 from dwork_registry_store import (
+    read_groups as read_groups,
     read_registry as read_registry,
     registry_lock as registry_lock,
     registry_path as registry_path,

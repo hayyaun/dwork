@@ -45,7 +45,7 @@ waiting for health checks, opening terminals, or registering directories.
    For a remembered single workspace, asks to apply the plan unless the selected
    `dwork.yml` sets root-level `confirm: false`.
 4. Uses the same shutdown path as `down`, excluding the selected registration and
-   its group members: stops outgoing tracked commands first, then running,
+   its discovered child members: stops outgoing tracked commands first, then running,
    restarting, or paused managed containers on the current Docker target in one
    Docker stop call. Locks and `DWORK_KEEP_PROJECTS` protect both kinds of workload.
 5. Starts selected-project containers whose state is `created` or `exited`.
@@ -141,11 +141,11 @@ dwork up api frontend
 
 This starts the selected saved workspaces while leaving all other workspaces
 running. It uses their saved directories and Compose selections and retains
-ownership, health, activation/group, and task/browser checks and confirmations.
-An explicit name identifies a registration, including all members of a saved
-group; it is not a path or a Compose service name. Names come from `dwork list`.
+ownership, health, activation/discovered-child, and task/browser checks and confirmations.
+An explicit name identifies a registration, including all children of a directory
+bundle; it is not a reusable group, path, or Compose service name. Names come from `dwork list`.
 The full batch is validated and preflighted first; repeated names are activated
-once in argument order. Applicable activation/group consents are collected before
+once in argument order. Applicable activation/discovered-child consents are collected before
 any workspace starts, and declining one cancels the batch. Task/browser prompts
 remain separate. `--dry-run` may appear before, among, or after the names.
 Without names, `dwork up` still activates the current directory with its usual
@@ -154,11 +154,54 @@ that no-name form.
 
 `lock NAME...` and `unlock NAME...` change only your local registration state.
 They protect containers and tracked commands through switches and `down`, for
-every member of a registered group. Locks survive shell restarts until explicitly
+every child of a registered directory bundle. Locks survive shell restarts until explicitly
 released; `unlock` still respects YAML `locked: true` and `DWORK_KEEP_PROJECTS`.
 Use `--dry-run` before or after the names to preview. They make no Docker calls
 and work even when a workspace directory is missing. `ls` shows `temporary` in
 the lock column. See [temporary locks](../workspaces/README.md#temporary-locks).
+
+### Reusable named groups (unreleased)
+
+Current source after v0.5.0 can save a flat personal selection of registered
+workspaces, including projects in different directories:
+
+```sh
+dwork group create daily api frontend --dry-run
+dwork group create daily api frontend
+dwork group list --names
+dwork group show daily
+dwork group add daily docs
+dwork group remove daily docs
+dwork up --group daily --dry-run
+dwork up --group daily
+dwork switch --group daily --dry-run
+dwork switch --group daily
+dwork down --group daily --dry-run
+dwork group delete daily --dry-run
+```
+
+`up --group` leaves other workspaces running; `down --group` selects only eligible
+member workloads. `switch --group` shows one combined switch plan, protects all
+selected members from its outgoing shutdown, and requires combined group consent
+plus applicable member activation/discovered-child consents before any shutdown.
+Terminal/browser prompts remain separate. Existing locks, `DWORK_KEEP_PROJECTS`,
+health, target, ownership, and task supervision checks still apply.
+
+Use exactly one explicit `--group NAME`, without bare workspace names or replacement
+Compose options. Group names are separate from workspace names; bare `up NAME`,
+`down NAME`, and `switch NAME` keep selecting individual registrations. Groups
+cannot contain groups or become empty; delete a group instead of removing its
+last member. Compose-enabled members must share a Docker target; host-only members
+are allowed. Groups can overlap, but membership is not a lock or active session:
+`down --group` can stop an eligible shared member regardless of another group's use.
+
+Membership changes write only local registry metadata, with `--dry-run` available
+for create/add/remove/delete. List/show are read-only. Rename/re-registration
+rename updates references atomically; referenced forget is refused. Creating the
+first group uses registry version 2 so older runtimes fail closed; deleting the
+final group returns version 1. Published v0.5.0 packages and the existing tray do
+not include this group interface. See [the group guide](../workspaces/README.md#reusable-named-groups)
+for storage compatibility, confirmation details, and membership operations.
 
 ### Stop all registered workloads
 
@@ -167,7 +210,7 @@ plan and ask for confirmation before applying it. Root-level `confirm: false`
 in `dwork.yml` skips that activation prompt only. `dwork down` shows the containers and tracked commands it will stop
 and asks for confirmation when there is work to stop. Only `y` or `Y` proceeds; Enter, `n`, and
 end-of-input cancel. `--dry-run` previews without prompting. Existing registration,
-group, and terminal-task confirmations still apply.
+discovered-child, and terminal-task confirmations still apply.
 
 ```sh
 dwork down --dry-run
@@ -182,7 +225,7 @@ dwork down api frontend
 ```
 
 Only eligible workloads owned by those registrations enter the stop plan; other
-registered workspaces stay running. Saved groups include all their members.
+registered workspaces stay running. Directory bundles include all their child members.
 The whole name batch is validated before stopping anything, and `--dry-run` may
 appear before, among, or after the names.
 Locks, service selections, the current Docker target, ownership checks, and the

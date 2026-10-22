@@ -107,6 +107,75 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), expected)
 
+    def test_group_completion_keeps_group_and_workspace_name_apis_separate(self):
+        script = self.script("bash")
+        queries = self.fixture.base / "completion-queries"
+        setup = (
+            "source "
+            + shlex.quote(str(script))
+            + "; dwork() { printf '%s\\n' \"$*\" >> "
+            + shlex.quote(str(queries))
+            + "; if [ \"$*\" = 'group list --names' ]; then printf 'daily\\npersonal\\n'; "
+            + "elif [ \"$*\" = 'ls --names' ] || [ \"$*\" = 'list --names' ]; "
+            + "then printf 'alpha\\nbeta\\n'; else return 77; fi; }; "
+        )
+        for words, index, expected, expected_queries in (
+            ("dwork group sh", 2, ["show"], []),
+            ("dwork group show da", 3, ["daily"], ["group list --names"]),
+            ("dwork group delete da", 3, ["daily"], ["group list --names"]),
+            ("dwork group add da", 3, ["daily"], ["group list --names"]),
+            ("dwork group remove --dry-run da", 4, ["daily"], ["group list --names"]),
+            ("dwork group create da", 3, [""], []),
+            ("dwork group create new al", 4, ["alpha"], ["ls --names"]),
+            ("dwork group add daily al", 4, ["alpha"], ["ls --names"]),
+            ("dwork group add daily alpha be", 5, ["beta"], ["ls --names"]),
+            ("dwork group remove daily --dry-run be", 5, ["beta"], ["ls --names"]),
+            ("dwork group --dry-run create new al", 5, ["alpha"], ["ls --names"]),
+            ("dwork group create new --dry-run al", 5, ["alpha"], ["ls --names"]),
+            ("dwork group list --n", 3, ["--names"], []),
+            ("dwork group list --d", 3, [""], []),
+            ("dwork group show daily --d", 4, [""], []),
+            ("dwork group delete daily --d", 4, ["--dry-run"], []),
+            ("dwork group --dry-run --d", 3, [""], []),
+            ("dwork group --dry-run li", 3, [""], []),
+            ("dwork group add daily --dry-run --d", 5, [""], []),
+            ("dwork up --g", 2, ["--group"], []),
+            ("dwork down --dry-run --g", 3, ["--group"], []),
+            ("dwork switch --dry-run --g", 3, ["--group"], []),
+            ("dwork up --group da", 3, ["daily"], ["group list --names"]),
+            ("dwork down --dry-run --group pe", 4, ["personal"], ["group list --names"]),
+            ("dwork sw --group da", 3, ["daily"], ["group list --names"]),
+            ("dwork up da", 2, [""], ["list --names"]),
+            ("dwork up alpha --g", 3, [""], []),
+            ("dwork down alpha --g", 3, [""], []),
+            ("dwork switch alpha --g", 3, [""], []),
+            ("dwork up -p dev --g", 4, [""], []),
+            ("dwork up --group daily --g", 4, [""], []),
+            ("dwork up --dry-run --group daily --d", 5, [""], []),
+            ("dwork up alpha --group da", 4, [""], []),
+        ):
+            with self.subTest(words=words):
+                queries.unlink(missing_ok=True)
+                command = (
+                    setup
+                    + "COMP_WORDS=("
+                    + words
+                    + "); COMP_CWORD="
+                    + str(index)
+                    + "; _dwork_complete; printf '%s\\n' \"${COMPREPLY[@]}\""
+                )
+                result = subprocess.run(
+                    ["bash", "--noprofile", "--norc", "-c", command],
+                    cwd=self.root,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.splitlines(), expected)
+                self.assertEqual(
+                    queries.read_text().splitlines() if queries.exists() else [], expected_queries
+                )
+
     def test_interactive_bash_source_registers_completion_on_each_load(self):
         # In particular, exercise macOS's system Bash 3.2 with this test process's
         # Python so an unrelated interpreter cannot silently skip generation.
@@ -224,7 +293,9 @@ class CompletionTests(unittest.TestCase):
                     setup = (
                         init
                         + load
-                        + "dwork() { if [ \"$1\" = list ]; then printf 'alpha\\nbeta\\n'; else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
+                        + "dwork() { if [ \"$*\" = 'group list --names' ]; then printf 'daily\\npersonal\\n'; "
+                        + 'elif [ "$1" = list ] || [ "$1" = ls ]; then printf \'alpha\\nbeta\\n\'; '
+                        + "else printf 'EXECUTED:%s\\n' \"$*\"; fi; }; printf '\\nREADY\\n'\n"
                     )
                     os.write(master, setup.encode())
                     until(b"\r\nREADY\r\n")
@@ -238,6 +309,31 @@ class CompletionTests(unittest.TestCase):
                         (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
                         (b"dwork rm be\t\n", b"EXECUTED:rm beta"),
                         (b"dwork rename al\tnew-name\n", b"EXECUTED:rename alpha new-name"),
+                        (b"dwork gr\tli\t\n", b"EXECUTED:group list"),
+                        (
+                            b"dwork group cr\tnew-group al\tbe\t\n",
+                            b"EXECUTED:group create new-group alpha beta",
+                        ),
+                        (
+                            b"dwork group --d\tcr\tnew-group al\t\n",
+                            b"EXECUTED:group --dry-run create new-group alpha",
+                        ),
+                        (
+                            b"dwork group add dai\tal\tbe\t\n",
+                            b"EXECUTED:group add daily alpha beta",
+                        ),
+                        (b"dwork group remove dai\tal\t\n", b"EXECUTED:group remove daily alpha"),
+                        (b"dwork group sh\tdai\t\n", b"EXECUTED:group show daily"),
+                        (b"dwork group del\tdai\t\n", b"EXECUTED:group delete daily"),
+                        (b"dwork up --g\tdai\t\n", b"EXECUTED:up --group daily"),
+                        (
+                            b"dwork down --d\t--g\tdai\t\n",
+                            b"EXECUTED:down --dry-run --group daily",
+                        ),
+                        (
+                            b"dwork sw --g\tdai\t--d\t\n",
+                            b"EXECUTED:sw --group daily --dry-run",
+                        ),
                     ):
                         os.write(master, typed)
                         until(result)

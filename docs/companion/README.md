@@ -5,8 +5,11 @@
 `dwork-tray` is an optional, experimental Python companion for native Linux and
 macOS, or a Windows host connected to one explicitly selected WSL distribution.
 It lists registered workspaces, observed container/command counts, and lock
-protection (including partially protected groups). Selecting a workspace opens an operation terminal running the existing
+protection (including partially protected directory bundles). Selecting a workspace opens an operation terminal running the existing
 `dwork switch NAME`. **Stop eligible workspaces…** opens `dwork down` separately.
+The unreleased reusable CLI groups do not add tray items: selection still switches
+an individual registration, including its discovered children, and the stop item
+retains its existing all-eligible scope.
 **Quit tray** closes only the companion: commands, containers, browsers, operation
 terminals, and login-startup settings remain unchanged.
 

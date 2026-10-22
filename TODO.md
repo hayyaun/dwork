@@ -19,11 +19,12 @@
 - [x] Confirm plain workspace activation before applying its plan; use a root-level `confirm` boolean (default `true`) with `confirm: false` to opt out, preserving separate registration, group, task/browser, and shutdown confirmations.
 - [x] Share shutdown planning and execution between workspace switches and `down`: stop outgoing tracked commands before containers, exclude the selected registration during switches, and apply the same ownership, lock, service, and Docker-target rules.
 
-## Workspace groups (idea)
+## Reusable named workspace groups
 
-- [ ] Explore named groups of registered workspaces, including projects in different directories, that go up/down together without stopping one another.
-- [ ] Plan group activation as one combined switch and provide group-scoped shutdown, preserving locks, `DWORK_KEEP_PROJECTS`, and the existing-container-only promise.
-- [ ] Decide member activation behavior, overlapping/nested membership, host-task lifecycle, Docker-target restrictions, and rename/forget handling before implementation.
+- [x] Add and verify local named groups of existing registrations across directories: create/list/show/add/remove/delete, explicit `--group` lifecycle selection, read-only previews, and Bash/Zsh completion. Available in current unreleased source after v0.5.0; published v0.5.0 packages do not include this interface.
+- [x] Implement and verify one combined group switch protecting the full selected union, additive group startup, and scoped shutdown with existing confirmations, ownership, locks, `DWORK_KEEP_PROJECTS`, and the existing-container-only promise. Regression coverage includes health-gate failure and interruption after earlier member starts; no automatic rollback is added.
+- [x] Decide flat ordered membership with overlap allowed and no nested groups, active-session tracking, reference counting, task reuse changes, or automatic rollback. Require one shared Compose target, allow host-only members, update references atomically on rename/re-registration, and refuse referenced forget. Use registry version 2 only while groups exist so older runtimes fail closed.
+- [ ] Consider tray group selection separately; the initial named-group CLI leaves the tray unchanged.
 
 ## Repeatable terminal sessions
 

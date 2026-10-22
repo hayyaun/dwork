@@ -9,6 +9,7 @@ from dwork_version import __version__
 import dwork_browsers
 import dwork_config
 import dwork_docker
+import dwork_groups
 import dwork_registry
 import dwork_scan
 import dwork_status
@@ -22,6 +23,7 @@ COMMANDS = (
     "register",
     "scan",
     "list",
+    "group",
     "switch",
     "rename",
     "forget",
@@ -50,7 +52,17 @@ def completion_script(shell):
 _dwork_complete() {
     local cur="${COMP_WORDS[COMP_CWORD]}" prev="${COMP_WORDS[COMP_CWORD-1]}"
     local cmd="${COMP_WORDS[1]}" choices candidate index compose_mode=0 named_mode=0 literal=0
+    local group_mode=0 selector_available=1 group_action="" member_count=0 group_dry=0
     COMPREPLY=()
+    if [[ "$cmd" == up || "$cmd" == down || "$cmd" == switch || "$cmd" == sw ]]; then
+        for (( index=2; index<COMP_CWORD; index++ )); do
+            case "${COMP_WORDS[index]}" in
+                --dry-run) group_dry=1 ;;
+                --group) group_mode=1 ;;
+                *) [[ "$group_mode" == 0 ]] && selector_available=0 ;;
+            esac
+        done
+    fi
     if [[ "$cmd" == scan ]]; then
         for (( index=2; index<COMP_CWORD; index++ )); do
             [[ "${COMP_WORDS[index]}" == -- ]] && literal=1
@@ -58,6 +70,49 @@ _dwork_complete() {
     fi
     if (( COMP_CWORD == 1 )); then
         choices='@COMMANDS@ --help --version --dry-run'
+    elif [[ "$group_mode" == 1 ]]; then
+        if [[ "$prev" == --group && "$selector_available" == 1 ]]; then
+            while IFS= read -r candidate; do
+                [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
+            done < <(dwork group list --names 2>/dev/null)
+            return
+        fi
+        choices='--help'
+        [[ "$group_dry" == 0 ]] && choices+=' --dry-run'
+    elif [[ "$cmd" == group ]]; then
+        for (( index=2; index<COMP_CWORD; index++ )); do
+            if [[ "${COMP_WORDS[index]}" == --dry-run ]]; then
+                group_dry=1
+                continue
+            fi
+            if [[ -z "$group_action" ]]; then
+                group_action="${COMP_WORDS[index]}"
+            elif [[ "${COMP_WORDS[index]}" != -* ]]; then
+                member_count=$((member_count + 1))
+            fi
+        done
+        if [[ -z "$group_action" ]]; then
+            choices='create add remove delete --help'
+            [[ "$group_dry" == 0 ]] && choices+=' list show --dry-run'
+        else
+            choices='--help'
+            case "$group_action" in
+                list) choices+=' --names' ;;
+                create|add|remove|delete) [[ "$group_dry" == 0 ]] && choices+=' --dry-run' ;;
+            esac
+            if [[ "$cur" != -* ]]; then
+                if (( member_count == 0 )) && [[ "$group_action" == show || "$group_action" == add || "$group_action" == remove || "$group_action" == delete ]]; then
+                    while IFS= read -r candidate; do
+                        [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
+                    done < <(dwork group list --names 2>/dev/null)
+                elif (( member_count > 0 )) && [[ "$group_action" == create || "$group_action" == add || "$group_action" == remove ]]; then
+                    while IFS= read -r candidate; do
+                        [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
+                    done < <(dwork ls --names 2>/dev/null)
+                fi
+                return
+            fi
+        fi
     elif [[ "$literal" == 0 && ( "$prev" == -f || "$prev" == --file || "$prev" == --env-file ) ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -f -- "$cur")
         return
@@ -89,9 +144,10 @@ _dwork_complete() {
             return
         fi
         choices='--dry-run --help'
+        [[ ( "$cmd" == up || "$cmd" == down ) && "$selector_available" == 1 ]] && choices+=' --group'
         [[ "$cmd" == up && "$named_mode" == 0 ]] && choices+=' -f --file -p --project-name --project-directory --env-file --profile'
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
-        if (( COMP_CWORD == 2 )) && [[ "$cur" != -* ]]; then
+        if [[ "$cur" != -* ]] && { (( COMP_CWORD == 2 )) || [[ ( "$cmd" == switch || "$cmd" == sw ) && "$selector_available" == 1 ]]; }; then
             while IFS= read -r candidate; do
                 [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
             done < <(dwork list --names 2>/dev/null)
@@ -99,6 +155,7 @@ _dwork_complete() {
         fi
         choices='--help'
         [[ "$cmd" == switch || "$cmd" == sw ]] && choices+=' --dry-run'
+        [[ ( "$cmd" == switch || "$cmd" == sw ) && "$selector_available" == 1 ]] && choices+=' --group'
     elif [[ "$cmd" == completion ]] && (( COMP_CWORD == 2 )); then
         choices='bash zsh'
     else
@@ -120,7 +177,17 @@ complete -o bashdefault -o default -F _dwork_complete dwork
 # Source this file after compinit in ~/.zshrc.
 _dwork() {
     local cmd="${words[2]}" prev="${words[CURRENT-1]}" index compose_mode=0 named_mode=0 literal=0
+    local group_mode=0 selector_available=1 group_action="" member_count=0 group_dry=0
     local -a names choices
+    if [[ "$cmd" == up || "$cmd" == down || "$cmd" == switch || "$cmd" == sw ]]; then
+        for (( index=3; index<CURRENT; index++ )); do
+            case "${words[index]}" in
+                --dry-run) group_dry=1 ;;
+                --group) group_mode=1 ;;
+                *) [[ "$group_mode" == 0 ]] && selector_available=0 ;;
+            esac
+        done
+    fi
     if [[ "$cmd" == scan ]]; then
         for (( index=3; index<CURRENT; index++ )); do
             [[ "${words[index]}" == -- ]] && literal=1
@@ -128,6 +195,46 @@ _dwork() {
     fi
     if (( CURRENT == 2 )); then
         choices=(@COMMANDS@ --help --version --dry-run)
+    elif [[ "$group_mode" == 1 ]]; then
+        if [[ "$prev" == --group && "$selector_available" == 1 ]]; then
+            names=("${(@f)$(dwork group list --names 2>/dev/null)}")
+            (( ${#names} )) && compadd -- "${names[@]}"
+            return
+        fi
+        choices=(--help)
+        [[ "$group_dry" == 0 ]] && choices+=(--dry-run)
+    elif [[ "$cmd" == group ]]; then
+        for (( index=3; index<CURRENT; index++ )); do
+            if [[ "${words[index]}" == --dry-run ]]; then
+                group_dry=1
+                continue
+            fi
+            if [[ -z "$group_action" ]]; then
+                group_action="${words[index]}"
+            elif [[ "${words[index]}" != -* ]]; then
+                member_count=$((member_count + 1))
+            fi
+        done
+        if [[ -z "$group_action" ]]; then
+            choices=(create add remove delete --help)
+            [[ "$group_dry" == 0 ]] && choices+=(list show --dry-run)
+        else
+            choices=(--help)
+            case "$group_action" in
+                list) choices+=(--names) ;;
+                create|add|remove|delete) [[ "$group_dry" == 0 ]] && choices+=(--dry-run) ;;
+            esac
+            if [[ "$PREFIX" != -* ]]; then
+                if (( member_count == 0 )) && [[ "$group_action" == show || "$group_action" == add || "$group_action" == remove || "$group_action" == delete ]]; then
+                    names=("${(@f)$(dwork group list --names 2>/dev/null)}")
+                    (( ${#names} )) && compadd -- "${names[@]}"
+                elif (( member_count > 0 )) && [[ "$group_action" == create || "$group_action" == add || "$group_action" == remove ]]; then
+                    names=("${(@f)$(dwork ls --names 2>/dev/null)}")
+                    (( ${#names} )) && compadd -- "${names[@]}"
+                fi
+                return
+            fi
+        fi
     elif [[ "$literal" == 0 && ( "$prev" == -f || "$prev" == --file || "$prev" == --env-file ) ]]; then
         _files
         return
@@ -158,15 +265,17 @@ _dwork() {
             return
         fi
         choices=(--dry-run --help)
+        [[ ( "$cmd" == up || "$cmd" == down ) && "$selector_available" == 1 ]] && choices+=(--group)
         [[ "$cmd" == up && "$named_mode" == 0 ]] && choices+=(-f --file -p --project-name --project-directory --env-file --profile)
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
-        if (( CURRENT == 3 )) && [[ "$PREFIX" != -* ]]; then
+        if [[ "$PREFIX" != -* ]] && { (( CURRENT == 3 )) || [[ ( "$cmd" == switch || "$cmd" == sw ) && "$selector_available" == 1 ]]; }; then
             names=("${(@f)$(dwork list --names 2>/dev/null)}")
             (( ${#names} )) && compadd -- "${names[@]}"
             return
         fi
         choices=(--help)
         [[ "$cmd" == switch || "$cmd" == sw ]] && choices+=(--dry-run)
+        [[ ( "$cmd" == switch || "$cmd" == sw ) && "$selector_available" == 1 ]] && choices+=(--group)
     elif [[ "$cmd" == completion ]] && (( CURRENT == 3 )); then
         choices=(bash zsh)
     else
@@ -283,6 +392,68 @@ def positional_arguments(options, preview, usage):
     return values, preview
 
 
+def group_management(options, preview):
+    """Validate the full management request before taking the mutation lock."""
+    usage = "Usage: dwork group list [--names] | show NAME | create/add/remove NAME WORKSPACE... | delete NAME [--dry-run]"
+    if options == ["list", "--names"] and not preview:
+        for name in dwork_groups.group_names():
+            print(name)
+        return 0
+    values, preview = positional_arguments(options, preview, usage)
+    if not values:
+        raise DworkError(usage)
+    action, *arguments = values
+    valid = (
+        (action == "list" and not arguments)
+        or (action in ("show", "delete") and len(arguments) == 1)
+        or (action in ("create", "add", "remove") and len(arguments) >= 2)
+    )
+    if not valid or (preview and action in ("list", "show")):
+        raise DworkError(usage)
+    name = arguments[0] if arguments else None
+    members = arguments[1:]
+
+    def run():
+        return dwork_groups.group_command(
+            dwork_registry.read_registry(), action, name, members, preview
+        )
+
+    if preview or action in ("list", "show"):
+        return run()
+    with dwork_registry.registry_lock():
+        return run()
+
+
+def group_lifecycle(mode, options, preview):
+    """An explicit group selector never changes the meaning of a bare name."""
+    usage = "Usage: dwork " + mode + " --group NAME [--dry-run]"
+    if options.count("--group") != 1 or "--" in options:
+        raise DworkError(usage)
+    index = options.index("--group")
+    if index + 1 >= len(options) or options[index + 1].startswith("-"):
+        raise DworkError(usage)
+    name = options[index + 1]
+    extra, preview = positional_arguments(options[:index] + options[index + 2 :], preview, usage)
+    if extra:
+        raise DworkError(usage)
+
+    def run():
+        entries = dwork_registry.read_registry()
+        selected = dwork_groups.select_group(entries, name)
+        names = [entry["name"] for entry in selected]
+        print("Named group: " + colored_name(name) + " -> " + ", ".join(names))
+        if mode == "up":
+            return dwork_workspaces.up_registered_workspaces(entries, names, preview)
+        if mode == "down":
+            return dwork_workspaces.down_workspaces(entries, preview, names)
+        return dwork_workspaces.switch_registered_group(entries, names, name, preview)
+
+    if preview:
+        return run()
+    with dwork_registry.registry_lock():
+        return run()
+
+
 def main():
     options = list(sys.argv[1:])
     version_options = (
@@ -312,6 +483,10 @@ def main():
         print("       dwork unlock NAME... [--dry-run]")
         print("       dwork up [NAME...] [--dry-run]")
         print("       dwork down [NAME...] [--dry-run]")
+        print("       dwork up|switch|down --group NAME [--dry-run]")
+        print("       dwork group list [--names] | show NAME")
+        print("       dwork group create|add|remove NAME WORKSPACE... [--dry-run]")
+        print("       dwork group delete NAME [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
         print("       dwork list --json | status --json [Docker Compose global options]")
@@ -328,6 +503,12 @@ def main():
         )
         print("switch: activate a remembered workspace; forget: remove only its registration.")
         print("up NAME...: start named registered workspaces together; leave all others running.")
+        print(
+            "group: save reusable local selections of registered workspaces; editing never launches workloads."
+        )
+        print(
+            "switch --group: switch once to every member; down --group also stops shared eligible members."
+        )
         print(
             "down NAME...: stop only the named registrations; no names keeps the existing all-workspace scope."
         )
@@ -368,6 +549,10 @@ def main():
         print("Color is automatic in terminals; NO_COLOR disables it. Pipes and logs stay plain.")
         return 0
     directory = Path.cwd()
+    if mode == "group":
+        return group_management(options, preview)
+    if mode in ("up", "switch", "down") and "--group" in options:
+        return group_lifecycle(mode, options, preview)
     if mode in ("lock", "unlock"):
         if options[-1:] == ["--dry-run"] and not preview:
             preview, options = True, options[:-1]

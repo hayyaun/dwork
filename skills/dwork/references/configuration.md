@@ -97,7 +97,7 @@ unless root `confirm: false` is set; only `y`/`Y` accepts, and EOF cancels.
 remembers without activating; `dwork list`, `dwork switch NAME`, and `dwork forget NAME`
 list, activate, and forget remembered directories. `list`/`ls` use an aligned
 `NAME`, `STATUS`, `LOCKED`, `PATH` table; the lock column contains `yes` for one
-locked member, protected project names for groups, or `-`. Local CLI locks show
+locked member, protected project names for directory bundles, or `-`. Local CLI locks show
 `temporary`, plus any YAML-protected project names when both apply. Use `list --names`
 for sorted names only, without a table or Docker status queries. Changed Compose identity,
 selection options, or managed services requires explicit re-registration.
@@ -109,7 +109,7 @@ remain open. `dwork down --dry-run`
 previews without stopping anything or prompting. Commands launched by older versions
 are not tracked. Tracking does not follow commands that daemonize into other groups
 or sessions. Switches share the shutdown planner and executor with `down`, excluding
-the selected registration and all its group members. Outgoing commands stop before
+the selected registration and all its discovered child members. Outgoing commands stop before
 the batch container stop and any destination startup. A shutdown failure aborts
 activation. This switch behavior requires 0.4.0 or newer; check installed-runtime support.
 Tasks already running in the selected workspace stay running, and approved configured
@@ -124,7 +124,7 @@ temporary CLI lock still applies.
 `dwork lock NAME...` protects one or more registered workspaces without changing
 YAML. `dwork unlock NAME...` removes only these local locks, preserving YAML
 `locked: true` and `DWORK_KEEP_PROJECTS`. They protect containers and tracked
-commands, including every registered member of a group. A temporary lock lasts
+commands, including every discovered child in a directory bundle. A temporary lock lasts
 until explicitly released, survives shell restarts, renaming, and re-registration,
 and is discarded by `forget`. It is stored in the local registry; users sharing
 no registry do not share this policy. These commands require a runtime containing
@@ -136,12 +136,12 @@ are validated before any changes; an unknown name fails the whole request.
 CLI 0.5.0+ accepts registered names with `dwork up NAME...` and
 `dwork down NAME...`. Named `up` starts only the selected registrations and
 leaves all other workspaces running, using saved directories, Compose options,
-ownership checks, health gates, and applicable activation/group/task/browser
+ownership checks, health gates, and applicable activation/discovered-child/task/browser
 confirmations. Named `down` limits the existing shutdown plan and confirmation to
-selected registrations, including all members of saved groups; locks, managed
+selected registrations, including discovered children in a directory bundle; locks, managed
 service selections, and Docker-target restrictions still apply. Names are registry
 names, not paths or service names. Validate/preflight the complete `up` batch
-before any startup; applicable activation/group consents are collected first,
+before any startup; applicable activation/discovered-child consents are collected first,
 and declining one cancels the batch. Task/browser prompts remain separate. `down`
 validates its entire name batch before stopping anything. A single `--dry-run`
 can appear before, among, or after names. The no-name forms retain their existing behavior:
@@ -168,6 +168,51 @@ containers on the current Docker target when Compose registrations exist. Docker
 is unnecessary only when the selected workspace and entire registry are host-only.
 Local tracked commands are considered across saved Docker targets; container
 shutdown stays scoped to the current Docker target.
+
+## Reusable named groups
+
+Current unreleased source after v0.5.0 adds personal flat groups of existing
+workspace registrations across directories. Check installed help first; published
+v0.5.0 packages do not support `group` or `--group`. This adds no YAML field or
+configuration/observation schema change. A registered directory bundle of
+immediate children remains one indivisible workspace reference.
+
+`dwork group list [--names]` and `show NAME` only inspect saved group state,
+without Docker/configuration access or writes. Management commands are
+`create NAME WORKSPACE...`, `add NAME WORKSPACE...`, `remove NAME WORKSPACE...`,
+and `delete NAME`; each accepts `--dry-run` anywhere. Members are registered names
+from `dwork list --names`, not paths, services, or other groups. Groups are ordered,
+nonempty, and have a separate namespace from workspaces; removing the last member
+is refused, so delete the group instead. Compose-enabled members must share one
+saved Docker target; host-only members are allowed. Inspect group names with
+`dwork group list --names` rather than guessing from workspace names.
+
+Use exactly one `up --group NAME`, `down --group NAME`, or `switch --group NAME`,
+optionally with `--dry-run`, without bare workspace names or replacement Compose
+options. `up` is additive and uses member activation/discovered-child consents;
+`down` scopes existing shutdown and its confirmation. `switch` prepares one combined
+plan protecting the selected union, always requires combined group-switch consent,
+and collects applicable member activation/discovered-child consents before any
+shutdown. A member's `confirm: false` cannot approve the combined switch. Complete
+validation/preflight precedes workload changes; lock/KEEP/service/ownership and live
+policy rechecks remain. Task/browser prompts are separate, and approved configured
+tasks may launch another copy. No automatic rollback or task reuse is added.
+
+Groups can overlap without active-session tracking or reference counting. Stopping
+one group can stop an eligible shared member even if another group was started.
+Membership is not a lock; protect workspaces by their registered names. Direct
+member lifecycle commands keep their existing behavior. The tray still selects
+individual registrations and has no reusable-group integration.
+
+Creating a group writes only personal registry metadata. Registering a member
+under a new name or `rename` updates all references atomically; target-incompatible
+re-registration fails without replacement. Referenced `forget` is refused until
+membership is removed or referring groups are deleted. Group deletion/removal does
+not stop workloads or forget registrations. The first group upgrades registry
+version 1 to 2 so older runtimes reject it instead of losing group metadata; use a
+group-capable runtime while groups exist. Deleting the final group restores
+version 1. Do not create/edit groups merely to generate workspace YAML, or invoke
+group lifecycle operations without the corresponding user request.
 
 ## Terminal tasks
 

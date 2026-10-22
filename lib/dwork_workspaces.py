@@ -1,6 +1,7 @@
 """Workspace switching and shutdown, including plans and confirmations."""
 
 from dataclasses import dataclass, replace
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import os
 import shlex
@@ -310,7 +311,11 @@ def execute_action(
 
 
 def execute_actions(
-    result: ExecutionResult, entries: list[dict[str, Any]], operation: str
+    result: ExecutionResult,
+    entries: list[dict[str, Any]],
+    operation: str,
+    *,
+    contexts: dict[int, dict[str, Any]] | None = None,
 ) -> ExecutionResult:
     """Record every outcome without replaying an already-used execution result."""
     if any(item.status is not ActionStatus.PENDING for item in result.results):
@@ -319,7 +324,9 @@ def execute_actions(
         result.current = item
         item.status = ActionStatus.RUNNING
         try:
-            item.status = execute_action(item, entries, operation)
+            entry = contexts.get(id(item.action)) if contexts is not None else None
+            with registered_environment(entry) if entry is not None else nullcontext():
+                item.status = execute_action(item, entries, operation)
         except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt) as error:
             item.status = (
                 ActionStatus.INTERRUPTED
@@ -396,13 +403,17 @@ def report_failure(
 
 
 def execute_activation(
-    plan: ActivationPlan, entries: list[dict[str, Any]], *, result: ExecutionResult | None = None
+    plan: ActivationPlan,
+    entries: list[dict[str, Any]],
+    *,
+    result: ExecutionResult | None = None,
+    contexts: dict[int, dict[str, Any]] | None = None,
 ) -> ExecutionResult:
     result = result if result is not None else ExecutionResult(plan.actions)
     if result.actions != plan.actions:
         raise ValueError("Execution actions do not match the activation plan.")
     try:
-        return execute_actions(result, entries, "Switch")
+        return execute_actions(result, entries, "Switch", contexts=contexts)
     except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
         report_failure(result, plan, entries)
         raise
@@ -481,8 +492,29 @@ class PreparedActivation:
     start_only: bool
 
 
+@contextmanager
+def registered_environment(entry):
+    """Restore one registration's invocation context without changing task ownership."""
+    original = Path.cwd()
+    try:
+        os.chdir(entry["path"])
+        with dwork_config.compose_environment(entry["environment"]):
+            yield
+    finally:
+        os.chdir(original)
+
+
 def registry_command(
-    directory, options, mode, preview, name, entries, *, start_only=False, prepare_only=False
+    directory,
+    options,
+    mode,
+    preview,
+    name,
+    entries,
+    *,
+    start_only=False,
+    prepare_only=False,
+    group_switch=False,
 ):
     if mode in ("switch", "forget") or (mode == "up" and name is not None):
         entry = next((e for e in entries if e["name"] == name), None)
@@ -516,6 +548,7 @@ def registry_command(
                     name,
                     start_only=start_only,
                     prepare_only=prepare_only,
+                    group_switch=group_switch,
                 )
         finally:
             os.chdir(original)
@@ -540,7 +573,16 @@ def prepare_launches(plan: ActivationPlan) -> ActivationPlan:
 
 
 def switch_workspace(
-    directory, options, mode, preview, entries, name=None, *, start_only=False, prepare_only=False
+    directory,
+    options,
+    mode,
+    preview,
+    entries,
+    name=None,
+    *,
+    start_only=False,
+    prepare_only=False,
+    group_switch=False,
 ):
     known = next((e for e in entries if e["path"] == str(directory)), None)
     direct = bool(known and known.get("direct", False))
@@ -662,7 +704,11 @@ def switch_workspace(
     )
     print("Tracked commands to stop: " + str(len(shutdown.tasks)))
     if start_only:
-        print("Other registered workspaces are left running.")
+        print(
+            "Member activation; outgoing shutdown is shown in the combined group plan."
+            if group_switch
+            else "Other registered workspaces are left running."
+        )
     else:
         if has_compose:
             print(
@@ -808,8 +854,8 @@ def apply_prepared_activation(prepared, entries, *, confirmed=False):
     return 0
 
 
-def up_registered_workspaces(entries, names, preview):
-    """Prepare and approve all named destinations before starting any of them."""
+def prepare_registered_workspaces(entries, names, preview, *, group_switch=False):
+    """Resolve and preflight the entire selection before any mutation or consent."""
     selected = dwork_registry.select_registrations(entries, names)
     for entry in selected:
         if not Path(entry["path"]).is_dir():
@@ -828,9 +874,16 @@ def up_registered_workspaces(entries, names, preview):
             entries,
             start_only=True,
             prepare_only=True,
+            group_switch=group_switch,
         )
         for entry in selected
     ]
+    return selected, prepared
+
+
+def up_registered_workspaces(entries, names, preview):
+    """Prepare and approve all named destinations before starting any of them."""
+    selected, prepared = prepare_registered_workspaces(entries, names, preview)
     if preview:
         return 0
     if not all(confirm_prepared_activation(item, named=True) for item in prepared):
@@ -843,4 +896,78 @@ def up_registered_workspaces(entries, names, preview):
                 apply_prepared_activation(item, entries, confirmed=True)
     finally:
         os.chdir(original)
+    return 0
+
+
+def switch_registered_group(entries, names, name, preview):
+    """Switch once, excluding every destination and retaining member action contexts."""
+    selected, prepared = prepare_registered_workspaces(entries, names, preview, group_switch=True)
+    has_compose = any(entry["target"] is not None for entry in entries)
+    target = dwork_docker.docker_target() if has_compose else None
+    containers = dwork_docker.inventory() if has_compose else []
+    keep = keep_projects()
+    destinations = {entry["path"] for entry in selected}
+    shutdown = plan_shutdown(
+        entries,
+        target,
+        containers,
+        keep,
+        include_workspaces={entry["path"] for entry in entries} - destinations,
+    )
+    # Each action retains its preflighted launch and registration-owned task metadata.
+    # The group supplies selection only; it never becomes a workload owner.
+    plan = replace(
+        prepared[0].plan,
+        workspaces=tuple(workspace for item in prepared for workspace in item.plan.workspaces),
+        inventory=tuple(containers),
+        shutdown=shutdown,
+        starts=tuple(action for item in prepared for action in item.plan.starts),
+        gates=tuple(action for item in prepared for action in item.plan.gates),
+        terminals=tuple(action for item in prepared for action in item.plan.terminals),
+        browsers=tuple(action for item in prepared for action in item.plan.browsers),
+        warnings=tuple(warning for item in prepared for warning in item.plan.warnings),
+    )
+    print("Combined group switch plan: " + colored_name(name))
+    print("Selected workspaces: " + ", ".join(colored_name(entry["name"]) for entry in selected))
+    if has_compose:
+        dwork_docker.show_target()
+    print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
+    print(
+        "Locked projects: " + (", ".join(dwork_registry.locked_projects(entries, target)) or "none")
+    )
+    show_shutdown_plan(shutdown, entries)
+    print(
+        "Group switch: "
+        + str(len(shutdown.containers))
+        + " container stop(s), "
+        + str(len(shutdown.tasks))
+        + " tracked command stop(s), "
+        + str(len(plan.starts))
+        + " start(s). All destination members stay selected."
+    )
+    if preview:
+        return 0
+    if not dwork_common.confirm_action(
+        "Switch all listed workspaces in group " + name + " together?"
+    ):
+        print("Cancelled; nothing changed.")
+        return 0
+    if not all(confirm_prepared_activation(item, named=True) for item in prepared):
+        return 0
+    shutdown, changed = recheck_shutdown(shutdown, entries, target, keep)
+    if changed or any(item.locks_changed for item in prepared):
+        dwork_registry.save_registry(entries)
+    contexts = {
+        id(action): entry
+        for entry, item in zip(selected, prepared, strict=True)
+        for action in item.plan.actions
+    }
+    try:
+        execute_activation(replace(plan, shutdown=shutdown), entries, contexts=contexts)
+    except (DworkError, OSError, ValueError, KeyError, TypeError, KeyboardInterrupt):
+        print(
+            "Preview a group retry: dwork switch --group " + shlex.quote(name) + " --dry-run",
+            file=sys.stderr,
+        )
+        raise
     return 0
