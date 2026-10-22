@@ -23,7 +23,20 @@ launch another copy of configured commands, as it does from the CLI.
 The companion is a **separate distribution** under [`companion/`](../../companion/).
 Ordinary CLI installs retain only their existing dependencies; they do not install
 pystray, Pillow, PyObjC, PyGObject, or a login entry. Use matching development sources
-until releases containing the version-1 JSON interface and companion are published:
+until releases containing the version-1 JSON interface and companion are published.
+The source installer can include this separate package on native Linux/macOS:
+
+```sh
+make install TRAY=1
+```
+
+The [installation guide](../installation/README.md#optional-native-tray) also shows
+the curl option, platform prerequisites, and managed files. Installation never
+runs the tray or enables login startup. Launch `dwork-tray` manually when desired.
+The default CLI-only install is unchanged. WSL users have the optional Windows app
+[described below](#windows-and-wsl).
+
+For source development, matching editable packages remain available:
 
 ```sh
 # Native Linux/macOS: from the checkout, in a virtual environment:
@@ -143,6 +156,13 @@ also replace that extracted PNG and restart without rebuilding. Changing the
 repository file does not update previously extracted or installed copies.
 Missing or unreadable images report their path and stop tray startup.
 
+If the icon still looks old, check the executable's extracted folder and
+`build-info.json` revision. Source changes do not update a frozen Windows EXE.
+Older portable builds draw their icon in code and need a new complete ZIP;
+copying a PNG beside those EXEs has no effect. Quit the old tray and launch the
+updated extracted app. Builds with the file loader support replacing their
+`_internal/dwork_tray/assets/tray.png` and restarting.
+
 ## Refresh and failures
 
 Status refreshes on startup, every 15 seconds by default, on **Refresh**, and after
@@ -172,14 +192,31 @@ a changed/forgotten name cannot be activated through a stale ownership snapshot.
 
 ## Startup at login is opt-in
 
-On native Linux/macOS, the menu checkbox or these explicit commands manage only
-this installation's entry. Windows does not offer login-startup management:
+Startup means the user's graphical login, not a boot-time system service.
+Installing through `install.sh`, `make`, or pip never enables it.
+
+### Native Linux/macOS: one command or menu checkbox
+
+After installing the companion, run as your normal user without sudo:
 
 ```sh
-dwork-tray --autostart status
-dwork-tray --autostart enable
+dwork-tray --autostart enable   # Enable for the next graphical login
+dwork-tray --autostart status   # Prints enabled or disabled
+```
+
+Or launch `dwork-tray` manually and select **Start at login** in its menu.
+To disable startup, uncheck that item or run:
+
+```sh
 dwork-tray --autostart disable
 ```
+
+The commands work without opening an icon. They do not start the tray now; launch
+`dwork-tray` manually if desired. Disabling affects future logins and does not stop
+an existing tray. For the default managed install, the command is
+`~/.local/bin/dwork-tray`; custom prefixes use `PREFIX/bin/dwork-tray`.
+Startup entries use the installed companion interpreter, so removal of the curl
+installer's temporary clone does not break them.
 
 Nothing is enabled on installation or ordinary launch. Linux uses
 `$XDG_CONFIG_HOME/autostart/dwork-tray.desktop` (default `~/.config`); relative
@@ -197,7 +234,47 @@ Linux login executable paths containing `=` or `%` are rejected with guidance
 (the native desktop launcher rejected the percent-path probe); manual tray launch
 remains available. Standard Desktop Entry quoting and `TryExec` are used for other
 supported paths, without a shell shim.
-Quit does not disable an opted-in next-login start.
+Quit does not disable an opted-in next-login start. Updates at the same prefix
+retain the entry. Disable startup with the current installation before moving its
+interpreter or uninstalling if you want the entry removed; uninstall deliberately
+leaves user login-startup settings untouched.
+
+### Windows/WSL: start at sign-in with a shortcut
+
+The Windows companion does not manage login entries: it omits the menu checkbox
+and refuses `--autostart` without writing settings. Windows can independently run
+the portable app at sign-in using a shortcut in the current user's Startup folder.
+This is an optional manual Windows setting; `install.sh` in WSL does not create it.
+
+1. Keep the complete extracted `dwork-tray` folder in a stable location and check
+   that your normal manual launch works with the selected WSL arguments.
+2. Press **Win+R**, enter `shell:startup`, and press Enter. This opens your own
+   Startup folder; no administrator access or all-users folder is needed.
+3. Choose **New → Shortcut**. Use your actual executable path, distribution,
+   Linux interpreter, and optional Linux user. For example, a Linux-hosted app:
+
+   ```text
+   "\\wsl.localhost\Ubuntu\home\YOU\apps\dwork-tray\dwork-tray.exe" --wsl-distribution Ubuntu --wsl-python "/home/YOU/dwork-env/bin/python" --wsl-user YOU
+   ```
+
+4. Name it **dwork tray**. In shortcut **Properties**, set **Start in** to the
+   extracted app folder (the same path without `dwork-tray.exe` or arguments).
+   Use an ordinary shortcut target, without PowerShell's `&` prefix.
+5. The shortcut runs at your next Windows sign-in. Delete only this shortcut from
+   `shell:startup` to disable it. Quit tray closes the current instance but leaves
+   the shortcut in place. Update its target if you move the app or change WSL paths.
+
+A Windows-hosted extracted app folder can be used instead; its target is the full
+Windows path to `dwork-tray.exe` with the same WSL arguments. The tray's running-state
+checks still apply: if the selected distribution is unavailable, start it deliberately
+and choose **Refresh**. Launch order at sign-in is not guaranteed. Accessing an EXE
+through `\\wsl.localhost` can itself auto-start the distribution serving that path
+on Windows 11, before the tray performs its checks. Account for that when choosing
+where the shortcut points; it is separate from tray polling or workspace activation.
+
+This uses [Windows' supported Startup-folder mechanism](https://support.microsoft.com/en-US/Windows/Experience/Startup-Boot/configure-startup-applications-in-windows)
+and ordinary [Shell Links](https://learn.microsoft.com/en-us/windows/win32/shell/links).
+Microsoft documents [WSL UNC access and automatic distribution startup](https://learn.microsoft.com/en-us/windows/dev-environment/wsl-interop).
 
 ## Verification scope
 

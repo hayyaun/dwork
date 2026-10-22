@@ -13,12 +13,15 @@ if [ "$#" -gt 0 ]; then
 Install the latest dwork source from GitHub (main).
 
 Usage: sh install.sh
+       TRAY=1 sh install.sh  # Also install the optional native Linux/macOS tray
 
 Requires Git, Make, and Python with venv/pip support.
 Python 3.10+ is required on Linux/WSL2; macOS needs Python 3.13+.
 Set PREFIX to choose an install prefix (default: $HOME/.local).
 Set PYTHON to choose a Python executable (default: python3).
 Existing make install environment options are also supported.
+TRAY=1 requires VENV=1 and native Linux/macOS; WSL uses the portable Windows app.
+The tray is never launched and login startup is never enabled by installation.
 No sudo is used and shell startup files are not edited.
 EOF
         exit 0
@@ -36,6 +39,7 @@ command -v "$python" >/dev/null 2>&1 || fail "Cannot find Python: $python. Set P
 # resolving venv symlinks back to the system interpreter.
 python=$("$python" -c '
 import os
+import platform
 import sys
 
 if sys.platform not in ("linux", "darwin"):
@@ -44,6 +48,20 @@ minimum = (3, 13) if sys.platform == "darwin" else (3, 10)
 if sys.version_info < minimum:
     version = ".".join(map(str, minimum))
     raise SystemExit("dwork installer: Python " + version + "+ required; choose it with PYTHON.")
+tray = os.environ.get("TRAY", "0")
+if tray not in ("0", "1"):
+    raise SystemExit("dwork installer: TRAY must be 0 or 1.")
+if tray == "1":
+    if os.environ.get("VENV", "1") != "1" or os.environ.get("DESTDIR"):
+        raise SystemExit("dwork installer: TRAY=1 requires VENV=1 without DESTDIR staging.")
+    if sys.platform == "linux" and (
+        os.environ.get("WSL_DISTRO_NAME") or "microsoft" in platform.release().lower()
+    ):
+        raise SystemExit(
+            "dwork installer: TRAY=1 is for native Linux/macOS. "
+            "For WSL, use the optional portable Windows tray; see "
+            "https://github.com/hayyaun/dwork/blob/main/docs/companion/README.md#windows-and-wsl"
+        )
 if os.environ.get("VENV", "1") != "0":
     try:
         import ensurepip

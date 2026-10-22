@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import shlex
 import shutil
 import subprocess
@@ -105,6 +106,17 @@ def completion_locations(prefix, root, bash_directory, zsh_directory):
     return locations
 
 
+def tray_launcher_path(root):
+    path = root / "bin/dwork-tray"
+    try:
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        raise InstallError("Tray launcher must remain inside PREFIX/DESTDIR.")
+    if path.is_symlink():
+        raise InstallError("Refusing a linked tray launcher: " + str(path))
+    return path
+
+
 def ownership(data, launcher, prefix):
     if not data.exists():
         if launcher.exists():
@@ -132,6 +144,16 @@ def ownership(data, launcher, prefix):
                 "Installed launcher was modified; refusing to overwrite or remove it."
             )
         record["launcher_sha256"] = digest(launcher.read_text())
+    tray_hashes = (record.get("tray_launcher_sha256"), pending.get("tray_launcher_sha256"))
+    if any(tray_hashes):
+        tray_launcher = tray_launcher_path(data.parent.parent)
+        current = digest(tray_launcher.read_text()) if tray_launcher.is_file() else None
+        if tray_launcher.exists() and (not tray_launcher.is_file() or current not in tray_hashes):
+            raise InstallError(
+                "Installed tray launcher was modified; refusing to overwrite or remove it."
+            )
+        record["tray_launcher_sha256"] = current or tray_hashes[1] or tray_hashes[0]
+        record["tray"] = True
     completions = record.get("completions", {})
     pending_completions = pending.get("completions", {})
     if not isinstance(completions, dict) or not isinstance(pending_completions, dict):
@@ -160,6 +182,69 @@ def checked(command):
     subprocess.run([str(arg) for arg in command], check=True)
 
 
+def tray_platform(args):
+    if args.venv != "1" or args.destdir:
+        raise InstallError("TRAY=1 requires VENV=1 without DESTDIR staging.")
+    if sys.platform == "linux":
+        if os.environ.get("WSL_DISTRO_NAME") or "microsoft" in platform.release().lower():
+            raise InstallError(
+                "TRAY=1 is for native Linux/macOS. For WSL, use the optional portable "
+                "Windows tray; see docs/companion/README.md#windows-and-wsl."
+            )
+        return "linux"
+    if sys.platform == "darwin" and sys.version_info >= (3, 13):
+        return "darwin"
+    raise InstallError("The native tray requires Linux (Python 3.10+) or macOS (Python 3.13+).")
+
+
+def install_tray(data, native):
+    environment = data / "tray-venv"
+    python = environment / "bin/python"
+    if not python.is_file():
+        command = [sys.executable, "-m", "venv"]
+        if native == "linux":
+            # GI/indicator introspection comes from the matching system Python.
+            # Only the companion environment exposes system site-packages.
+            command.append("--system-site-packages")
+        checked([*command, environment])
+    if native == "linux":
+        probe = """import gi
+gi.require_version("Gtk", "3.0")
+for namespace in ("AyatanaAppIndicator3", "AppIndicator3"):
+    try:
+        gi.require_version(namespace, "0.1")
+        break
+    except ValueError:
+        continue
+else:
+    raise SystemExit("AppIndicator/Ayatana introspection is unavailable")
+from gi.repository import Gio, GLib, Gtk
+"""
+        try:
+            checked([python, "-c", probe])
+        except subprocess.CalledProcessError as error:
+            raise InstallError(
+                "Linux tray prerequisites are unavailable to this Python. Install matching "
+                "PyGObject and AppIndicator/Ayatana introspection with your system package "
+                "manager, then retry; see docs/companion/README.md#linux. "
+                "No system packages were installed."
+            ) from error
+    # Install both local projects so native operations use this exact CLI source,
+    # rather than resolving an older CLI release from a package registry.
+    checked(
+        [
+            python,
+            "-m",
+            "pip",
+            "install",
+            "--quiet",
+            "--disable-pip-version-check",
+            SOURCE,
+            SOURCE / "companion",
+        ]
+    )
+
+
 def install(args):
     prefix, root, data, launcher = paths(args.prefix, args.destdir)
     if args.venv == "1" and args.destdir:
@@ -175,6 +260,17 @@ def install(args):
             "Install location cannot be inside copied source documentation/examples."
         )
     previous = ownership(data, launcher, prefix)
+    with_tray = args.tray == "1" or bool(previous and previous.get("tray"))
+    native = tray_platform(args) if with_tray else None
+    tray_launcher = tray_launcher_path(root) if with_tray else None
+    if (
+        tray_launcher is not None
+        and tray_launcher.exists()
+        and not (previous and previous.get("tray_launcher_sha256"))
+    ):
+        raise InstallError(
+            "Refusing to overwrite an unrelated tray executable: " + str(tray_launcher)
+        )
     locations = completion_locations(
         prefix, root, args.bash_completion_dir, args.zsh_completion_dir
     )
@@ -196,6 +292,8 @@ def install(args):
         "completions",
         "venv",
         "venv/bin",
+        "tray-venv",
+        "tray-venv/bin",
         "README.md",
         "requirements.txt",
         MARKER,
@@ -224,6 +322,14 @@ def install(args):
         "launcher_sha256": digest(launcher_text),
         "venv": args.venv == "1",
     }
+    tray_launcher_text = (
+        "#!/bin/sh\n# Installed by dwork; managed by make install/uninstall.\nexec "
+        + shlex.quote(str(runtime_data / "tray-venv/bin/python"))
+        + ' -m dwork_tray "$@"\n'
+    )
+    if with_tray:
+        record["tray"] = True
+        record["tray_launcher_sha256"] = digest(tray_launcher_text)
     scripts = {
         shell: subprocess.check_output(
             [sys.executable, str(SOURCE / "lib/dwork.py"), "completion", shell], text=True
@@ -245,7 +351,11 @@ def install(args):
     # Journal generated hashes before replacing owned files. After interruption,
     # only the previous or planned contents authorize retry/uninstall.
     journal = dict(previous or record)
-    journal["pending"] = {key: record[key] for key in ("launcher_sha256", "completions")}
+    journal["pending"] = {
+        key: record[key]
+        for key in ("launcher_sha256", "completions", "tray_launcher_sha256")
+        if key in record
+    }
     write_marker(data, journal)
     try:
         if args.venv == "1":
@@ -269,6 +379,8 @@ def install(args):
                     SOURCE / "requirements.txt",
                 ]
             )
+        if with_tray:
+            install_tray(data, native)
         (data / "lib").mkdir(exist_ok=True)
         for module in sorted((SOURCE / "lib").glob("*.py")):
             shutil.copy2(module, data / "lib" / module.name)
@@ -289,11 +401,17 @@ def install(args):
                 shutil.copy2(SOURCE / name, data / name)
         launcher.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(launcher, launcher_text, 0o755)
+        if tray_launcher is not None:
+            atomic_write(tray_launcher, tray_launcher_text, 0o755)
         write_marker(data, record)
     except (OSError, subprocess.CalledProcessError, InstallError):
         # Keep a marked partial install for a safe retry; never remove user files.
         raise
     print("Installed dwork: " + str(launcher))
+    if tray_launcher is not None:
+        print("Installed optional tray: " + str(tray_launcher))
+        print("Start it manually with: " + shlex.quote(str(tray_launcher)))
+        print("The tray was not launched and login startup was not enabled.")
     if not args.destdir:
         bindir = str(prefix / "bin")
         if bindir not in os.environ.get("PATH", "").split(os.pathsep):
@@ -326,6 +444,8 @@ def uninstall(args):
         raise InstallError("Refusing to remove a directory outside the expected install location.")
     for relative in record.get("completions", {}):
         completion_path(root, relative).unlink(missing_ok=True)
+    if record.get("tray_launcher_sha256"):
+        tray_launcher_path(root).unlink(missing_ok=True)
     if launcher.exists():
         launcher.unlink()
     shutil.rmtree(data)
@@ -347,6 +467,12 @@ def main():
         command.add_argument("--destdir", default="")
         if name == "install":
             command.add_argument("--venv", choices=("0", "1"), default="1")
+            command.add_argument(
+                "--tray",
+                choices=("0", "1"),
+                default="0",
+                help="Also install the optional native tray; never launch or enable startup",
+            )
             command.add_argument("--bash-completion-dir", default="")
             command.add_argument("--zsh-completion-dir", default="")
     args = parser.parse_args()

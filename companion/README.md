@@ -3,6 +3,11 @@
 Optional, experimental native Linux/macOS and Windows-to-WSL tray companion.
 This is a separate Python distribution; ordinary `dwork-cli` installs stay GUI-free.
 
+From a checkout on native Linux/macOS, `make install TRAY=1` optionally includes
+this separate package with the managed CLI install. It creates a separate companion
+environment and launcher; it never launches the tray or enables login startup.
+See [installation options and prerequisites](../docs/installation/README.md#optional-native-tray).
+
 From the repository root, native Linux/macOS users install matching development
 sources in a platform-appropriate virtual environment:
 
@@ -33,7 +38,11 @@ Replace the PNG and restart for editable installs; see the
 [icon guide](../docs/companion/README.md#tray-icon) for packaged copies.
 
 The companion never answers CLI confirmations or owns workspace shutdown.
-Linux/macOS login startup is disabled until explicitly enabled. Quit closes only
-the tray. See [the companion guide](../docs/companion/README.md) for full setup,
+Linux/macOS login startup is disabled until explicitly enabled: use
+`dwork-tray --autostart enable` or the **Start at login** menu checkbox. Check with
+`--autostart status` and undo with `--autostart disable`; changes apply at the next
+login and never launch or stop the current tray. Windows has an optional manual
+Startup-folder shortcut instead; see the [startup guide](../docs/companion/README.md#startup-at-login-is-opt-in).
+Quit closes only the tray. See [the companion guide](../docs/companion/README.md) for full setup,
 timeout/running-state limits, login ownership, and UI verification requirements,
 and the [JSON contract](../docs/json/README.md) for protocol details.

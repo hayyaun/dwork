@@ -298,8 +298,11 @@ class WslUiTests(unittest.TestCase):
             patch.dict(os.environ, {"PYSTRAY_BACKEND": "win32"}),
             patch.dict(sys.modules, modules),
         ):
-            with patch.object(platforms, "load_icon", return_value=object()):
-                _, _, schedule = platforms.load_ui()
+            expected_image = object()
+            with patch.object(platforms, "load_icon", return_value=expected_image) as load_icon:
+                _, actual_image, schedule = platforms.load_ui()
+            load_icon.assert_called_once_with()
+            self.assertIs(actual_image, expected_image)
             callback = Mock()
             schedule(callback)
             callback.assert_called_once()

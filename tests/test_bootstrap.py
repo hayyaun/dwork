@@ -38,7 +38,7 @@ class BootstrapTests(unittest.TestCase):
             "TMPDIR": str(self.downloads),
             "BOOTSTRAP_TEST_LOG": str(self.log),
         }
-        for name in ("PYTHON", "PREFIX", "DESTDIR", "VENV", "MAKEFLAGS"):
+        for name in ("PYTHON", "PREFIX", "DESTDIR", "VENV", "TRAY", "MAKEFLAGS", "WSL_DISTRO_NAME"):
             self.env.pop(name, None)
         for name in ("mktemp", "rm", "cat"):
             executable = shutil.which(name)
@@ -50,6 +50,8 @@ class BootstrapTests(unittest.TestCase):
 version = os.environ.get("BOOTSTRAP_TEST_PYTHON_VERSION")
 if version:
     sys.version_info = tuple(int(item) for item in version.split(".")) + (0, "final", 0)
+import platform
+platform.release = lambda: os.environ.get("BOOTSTRAP_TEST_KERNEL", "generic")
 platform_name = os.environ.get("BOOTSTRAP_TEST_PLATFORM", "Linux")
 sys.platform = {"Linux": "linux", "Darwin": "darwin"}.get(platform_name, platform_name)
 if os.environ.get("BOOTSTRAP_TEST_PYTHON_FAIL"):
@@ -90,7 +92,8 @@ raise SystemExit(int(os.environ.get("BOOTSTRAP_TEST_GIT_EXIT", "0")))
             preamble += """with open(os.environ["BOOTSTRAP_TEST_LOG"], "a") as stream:
     stream.write(json.dumps({"tool": Path(sys.argv[0]).name, "args": sys.argv[1:],
                              "cwd": os.getcwd(), "venv": os.environ.get("VENV"),
-                             "completion": os.environ.get("ZSH_COMPLETION_DIR")}) + "\\n")
+                             "completion": os.environ.get("ZSH_COMPLETION_DIR"),
+                             "tray": os.environ.get("TRAY")}) + "\\n")
 """
         path.write_text("#!" + sys.executable + "\n" + preamble + body)
         path.chmod(0o755)
@@ -164,6 +167,29 @@ raise SystemExit(int(os.environ.get("BOOTSTRAP_TEST_GIT_EXIT", "0")))
         self.assertEqual(make["venv"], "0")
         self.assertEqual(make["completion"], completion)
         self.assert_temporary_files_cleaned()
+
+    def test_optional_tray_choice_is_forwarded_without_running_it(self):
+        self.env["TRAY"] = "1"
+        result = self.run_bootstrap()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([event["tool"] for event in self.events()], ["git", "make"])
+        self.assertEqual(self.events()[-1]["tray"], "1")
+        self.assert_temporary_files_cleaned()
+
+    def test_invalid_tray_choices_and_unsupported_modes_fail_before_downloading(self):
+        for extra in (
+            {"TRAY": "yes"},
+            {"TRAY": "1", "VENV": "0"},
+            {"TRAY": "1", "DESTDIR": str(self.root / "stage")},
+            {"TRAY": "1", "WSL_DISTRO_NAME": "Ubuntu"},
+            {"TRAY": "1", "BOOTSTRAP_TEST_KERNEL": "6.6-microsoft-standard-WSL2"},
+        ):
+            with self.subTest(environment=extra):
+                result = self.run_bootstrap(env={**self.env, **extra})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("TRAY", result.stderr)
+                self.assertEqual(self.events(), [])
+                self.assert_temporary_files_cleaned()
 
     def test_help_and_unknown_arguments_never_download_or_install(self):
         for argument, successful in (("--help", True), ("-h", True), ("--unknown", False)):

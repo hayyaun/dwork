@@ -42,6 +42,17 @@ and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
 confuse this source installation with the older published release packages.
+The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
+`dwork-tray` as a separate package/environment. This is an explicit installation
+choice, not implied by YAML work. It neither launches the tray nor enables login
+startup. Native Linux requires matching system desktop bindings; WSL instead has
+the optional portable Windows app. Updates retain a previously selected tray;
+`TRAY=0` does not remove it. On native Linux/macOS, the separate user action
+`dwork-tray --autostart enable` (or **Start at login**) enables the next graphical
+login; status/disable use the same flag. Do not enable it merely because the tray
+was installed. Windows can use a user-created Startup-folder shortcut with explicit
+WSL arguments; the Windows app itself still refuses `--autostart`. See the companion
+reference for prerequisites, startup ownership, and UNC-path caveats.
 Native package builds with the updated installer place completion files in the
 platform's discovery directories; the shell still needs its completion framework
 enabled. Current `dwork.sh` enables completion when sourced interactively; Zsh

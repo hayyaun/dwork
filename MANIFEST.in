@@ -6,7 +6,7 @@ recursive-include schemas *.json
 recursive-include docs *.md *.png
 graft packaging
 include companion/pyproject.toml companion/README.md companion/LICENSE
-recursive-include companion/src *.py
+recursive-include companion/src *.py *.png *.svg
 global-exclude *.pkg.tar.* *.deb *.rpm *.buildinfo *.changes
 recursive-include tests *.py
 recursive-exclude * __pycache__ *.py[cod]

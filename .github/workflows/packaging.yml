@@ -79,6 +79,25 @@ jobs:
           "$RUNNER_TEMP/companion-venv/bin/python" -c "from dwork_tray.platforms import load_icon; load_icon().load()"
           "$RUNNER_TEMP/companion-venv/bin/dwork-tray" --help
           "$RUNNER_TEMP/companion-venv/bin/dwork" list --json
+      - name: Native Linux bindings for the managed tray installer
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-venv python3-gi gir1.2-ayatanaappindicator3-0.1
+      - name: Install and remove the optional native tray without launching it
+        shell: bash
+        run: |
+          installer_python=python
+          if [ "${{ runner.os }}" = Linux ]; then installer_python=/usr/bin/python3; fi
+          prefix="$RUNNER_TEMP/dwork-managed-tray"
+          make install TRAY=1 PYTHON="$installer_python" PREFIX="$prefix"
+          cd "$RUNNER_TEMP/companion-smoke"
+          "$prefix/bin/dwork" --version
+          "$prefix/bin/dwork-tray" --help
+          "$prefix/share/dwork/tray-venv/bin/python" -c "from importlib.metadata import version; from dwork_tray.platforms import load_icon; assert version('dwork-tray'); load_icon().load()"
+          cd "$GITHUB_WORKSPACE"
+          make uninstall PYTHON="$installer_python" PREFIX="$prefix"
+          test ! -e "$prefix/bin/dwork"
+          test ! -e "$prefix/bin/dwork-tray"
+          test ! -e "$prefix/share/dwork"
       - name: Validate the public pystray menu contract without displaying an icon
         if: runner.os == 'macOS'
         shell: bash

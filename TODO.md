@@ -70,13 +70,16 @@
 
 ## Optional tray companion
 
+- [x] Keep the tray as a separate package in this repository and offer explicit `TRAY=1` native source installation, with a separate environment, retained update selection, protected launcher/removal, regression tests, and visible README/install guidance; installation never launches it or enables startup.
+
 - [x] Move the static tray icon into a replaceable packaged PNG, retain native/frozen resource loading, and cover image loading and package inclusion.
 
 - [x] Add a separate experimental native Linux/macOS companion package, read-only JSON protocol/schema, shared menu/worker logic, supported native UI dispatch, operation-terminal CLI handoff, periodic/completion refresh, opt-in protected login entries, Quit-only semantics, and regression/package checks.
 - [ ] Verify actual indicator display/menu/operation terminals/login startup on native GNOME/KDE and Cocoa hosts; headless/menu/unit checks are not full desktop validation.
 - [x] Add a separate Windows-host transport for one explicitly selected WSL distribution/user/interpreter, running-state checks, bounded read observer, Windows Terminal handoff, preserved CLI confirmations/ownership, regression tests, and Windows package CI; no native Windows workspace execution.
 - [ ] Verify Windows tray rendering, real interactive Windows Terminal confirmations/completion, and Windows/WSL suspend/resume manually; transport/quoting/package tests do not prove GUI behavior.
-- [ ] Consider opt-in Windows login startup after native tray/terminal verification, with explicit target preferences and protected ownership of startup entries.
+- [x] Make native startup enable/status/disable and the tray menu checkbox easy to discover, document an optional manual Windows Startup-folder shortcut with explicit WSL arguments/UNC caveats, and explain that install.sh treats installation and startup as separate choices.
+- [ ] Consider app-managed opt-in Windows login startup after native tray/terminal verification, with explicit target preferences and protected ownership of startup entries. Manual OS shortcut setup is documented; no Windows autostart API was added.
 
 ## Packaging publication
 

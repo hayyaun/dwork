@@ -1,6 +1,7 @@
 """Small native integrations using public pystray, GLib, and AppHelper APIs."""
 
 import os
+from pathlib import Path
 import sys
 import threading
 
@@ -29,6 +30,19 @@ def native_platform():
     )
 
 
+def load_icon():
+    from PIL import Image
+
+    path = Path(__file__).with_name("assets") / "tray.png"
+    try:
+        with Image.open(path) as source:
+            return source.convert("RGBA")
+    except (OSError, ValueError) as error:
+        raise CompanionError(
+            f"Cannot load tray icon {path}: {error}. Replace it with a valid PNG and restart the tray."
+        ) from error
+
+
 def load_ui():
     if threading.current_thread() is not threading.main_thread():
         raise CompanionError("The tray event loop must run on the main thread.")
@@ -50,7 +64,6 @@ def load_ui():
         os.environ.setdefault("PYSTRAY_BACKEND", "win32")
     try:
         import pystray
-        from PIL import Image, ImageDraw
 
         if platform == "darwin":
             from PyObjCTools import AppHelper
@@ -121,15 +134,11 @@ def load_ui():
             raise CompanionError(
                 "This tray backend does not support menus; use AppIndicator/Ayatana on Linux, Cocoa on macOS, or Win32 on Windows."
             )
+        image = load_icon()
     except (ImportError, ValueError, RuntimeError) as error:
         raise CompanionError(
             "Tray backend unavailable: "
             + str(error)
             + ". Install the optional dwork-tray package. Linux also needs PyGObject and AppIndicator/Ayatana introspection libraries visible to this Python, plus a compatible desktop indicator host. CLI installs do not need these dependencies."
         ) from error
-    image = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((6, 6, 58, 58), radius=12, fill="#253443")
-    draw.line((19, 21, 29, 31, 19, 41), fill="white", width=5)
-    draw.line((34, 42, 46, 42), fill="#68dfb3", width=4)
     return pystray, image, schedule

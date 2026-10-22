@@ -39,6 +39,28 @@ terminal tasks need a [supported terminal](docs/terminals/README.md).
 [Install from a checkout, update, or uninstall](docs/installation/README.md) ·
 [Release packages](packaging/README.md)
 
+### Optional tray companion
+
+View saved workspaces and switch between them from your desktop tray. To include
+the separate tray package on **native Linux or macOS**:
+
+```sh
+TRAY=1 sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
+```
+
+[Tray prerequisites and manual launch](docs/installation/README.md#optional-native-tray).
+Installation never launches the tray or enables login startup. After installing,
+native Linux/macOS users can optionally enable it for their next graphical login:
+
+```sh
+dwork-tray --autostart enable
+```
+
+[Check or disable login startup](docs/companion/README.md#startup-at-login-is-opt-in).
+An optional [portable Windows tray for WSL2](docs/companion/README.md#windows-and-wsl)
+is also available, with no separate Windows Python installation;
+[Windows sign-in startup uses an optional shortcut](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
+
 ## Get started
 
 From your project directory:

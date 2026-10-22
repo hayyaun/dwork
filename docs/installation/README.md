@@ -45,10 +45,23 @@ For a custom destination:
 PREFIX="$HOME/tools/dwork" sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
 ```
 
+The script does not prompt to install the tray. A fresh ordinary install includes
+only the CLI; set `TRAY=1` explicitly to also install the separate native companion,
+as [shown below](#optional-native-tray). An already selected tray is retained on
+updates even when `TRAY=1` is omitted. Tray installation never launches it or
+changes login startup; startup is a separate user choice.
+
 The bootstrap also preserves existing Make environment options such as `VENV`,
 `BASH_COMPLETION_DIR`, and `ZSH_COMPLETION_DIR`. The same prefix and completion
 directories must be used when updating an existing installation. `VENV=0` requires
 you to provide PyYAML yourself, as with a direct Make installation.
+
+The one-line command executes a script downloaded from `main`, then clones the
+current `main` source and installs dependencies with pip. It uses your account's
+permissions without invoking sudo; a Python environment isolates dependencies,
+not the downloaded code's access to your files. Review the source if needed.
+The script and later clone are separate downloads of a moving branch, so reviewing
+only the script does not pin the project source to that revision.
 
 To review the script before running it:
 
@@ -72,6 +85,79 @@ On macOS, run `make install PYTHON="$(brew --prefix python@3.14)/bin/python3.14"
 to avoid selecting an older system Python. Apple's Command Line Tools provide Git
 and Make (`xcode-select --install` if they are missing).
 
+## Optional native tray
+
+The default installer remains CLI-only. On native Linux or macOS, opt in to the
+separate `dwork-tray` package with:
+
+```sh
+TRAY=1 sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
+```
+
+From a checkout, the equivalent is:
+
+```sh
+make install TRAY=1
+```
+
+Use the same `PREFIX`, `PYTHON`, and completion-directory choices as your CLI
+installation. This option requires `VENV=1` without `DESTDIR` staging. It installs
+both local projects from the same source checkout into a separate managed
+`PREFIX/share/dwork/tray-venv`, with a `PREFIX/bin/dwork-tray` launcher. It does not
+require the checkout after installation. The CLI's own environment remains isolated
+and does not gain GUI dependencies.
+
+Native Linux needs matching system PyGObject, GTK 3, and AppIndicator or Ayatana
+introspection packages, plus a compatible desktop tray host when launched. The
+companion environment uses Python's `--system-site-packages` to see those bindings;
+the selected Python must match them. macOS requires Python 3.13+; pip installs its
+tray dependencies in the companion environment. The installer does not install OS
+packages or desktop extensions. See [platform prerequisites](../companion/README.md#linux).
+Missing Linux bindings produce guidance and leave a marked partial install that
+can be retried after installing prerequisites, or removed with `make uninstall`.
+
+**Installation does not launch the tray or change login startup.** When ready,
+start the tray manually:
+
+```sh
+dwork-tray
+```
+
+### Start the tray at login (optional)
+
+On native Linux/macOS, run these separately after installation, as your normal
+user without sudo:
+
+```sh
+dwork-tray --autostart enable   # Start at the next graphical login
+dwork-tray --autostart status   # Check whether this installation enabled it
+```
+
+Alternatively, select **Start at login** in the running tray's menu. To opt out:
+
+```sh
+dwork-tray --autostart disable
+```
+
+These commands do not start, restart, or stop the current tray. Start `dwork-tray`
+manually to use it now. If the command directory is not on PATH, use the installed
+full path, such as `~/.local/bin/dwork-tray --autostart enable`. Edited or linked
+startup entries are protected; inspect conflicts rather than overwriting them.
+[Platform files and Windows sign-in instructions](../companion/README.md#startup-at-login-is-opt-in)
+are in the companion guide. Disable an opted-in entry before uninstalling or
+moving the installation if you want that entry removed.
+
+### Updating or removing the tray
+
+Normal updates retain and update an already selected tray, even if
+`TRAY=1` is omitted; `TRAY=0` does not remove it. To return that prefix to a CLI-only
+installation, uninstall it and reinstall without the tray option. Uninstall removes
+both managed launchers/environments, while leaving user login-startup settings alone.
+
+For **WSL2**, an optional [portable Windows app](../companion/README.md#windows-and-wsl)
+provides the tray on the Windows host without separately installing Windows Python.
+`TRAY=1` is rejected inside WSL; the normal Linux CLI install remains available.
+
 ## Installed files
 
 This is a user install; do not run it with sudo. It creates:
@@ -80,6 +166,8 @@ This is a user install; do not run it with sudo. It creates:
 - `~/.local/share/dwork/lib/dwork.py`: the runtime.
 - `~/.local/share/dwork/venv/`: an isolated Python environment containing PyYAML.
 - `~/.local/share/dwork/examples/` and `docs/`: the shipped guides and examples.
+- With `TRAY=1`, `~/.local/bin/dwork-tray` and the separate
+  `~/.local/share/dwork/tray-venv/` companion environment.
 - `~/.local/share/bash-completion/completions/dwork` and
   `~/.local/share/zsh/site-functions/_dwork`: native completion files.
 
@@ -109,7 +197,7 @@ Claude Code, Cursor, and other agents through the skills CLI or manual copying.
 If dependency setup or an upgrade is interrupted, retry `make install` with the
 same prefix and completion directories, or remove the marked partial installation
 with `make uninstall`. Current installers record the previous and planned generated
-launcher/completion hashes before replacing those files atomically. This permits
+CLI/tray launcher and completion hashes before replacing those files atomically. This permits
 recovery from a mixed old/new installation without accepting unrelated user edits.
 Modified launchers/completions still block overwrite/removal. Reinstallation also
 rejects linked license destinations before writing, preserving their targets.

@@ -390,6 +390,9 @@ replace the PNG and restart; distributed wheels/ZIPs need rebuilding to include
 repository artwork changes. An extracted Windows ZIP also permits replacing
 `_internal/dwork_tray/assets/tray.png` directly before restarting. Do not imply
 that editing the checkout updates an existing installed or extracted copy.
+For an unchanged Windows icon, inspect the running EXE path and its `build-info.json`
+revision. Older frozen builds draw in code and require a new complete app ZIP;
+copying artwork alone cannot update those EXEs.
 
 Windows `--check` validates the backend and reads selected WSL JSON status without
 an icon or mutations. Polling checks running names first and reports stopped/missing
@@ -400,13 +403,32 @@ Quit stops observations; it never terminates a distribution. The Linux observer
 bounds its own read session; a hung WSL subsystem can delay remote cleanup. A
 terminal-handoff timeout may occur after opening, so inspect before retrying.
 
-The default CLI install includes no GUI dependencies. Companion installation,
+The default CLI install includes no GUI dependencies. The source bootstrap accepts
+`TRAY=1` in its environment, and `make install TRAY=1` includes the separate native
+companion package without launching it or enabling startup. This requires `VENV=1`
+without staging. A dedicated managed `tray-venv` installs the matching local CLI
+and companion; on native Linux it exposes system site-packages for matching
+PyGObject/GTK/indicator bindings, leaving the CLI environment isolated. Missing
+bindings report guidance, never install system packages. Existing tray selections
+persist during updates; `TRAY=0` does not remove the companion. The shared uninstaller
+protects edited/linked tray launchers and removes only its owned files, leaving
+login-startup settings untouched. WSL rejects the native option and points to the
+optional portable Windows tray instead. Companion installation,
 launch, and login startup are separate choices, not implied by generating YAML.
 Login startup is offered only on native Linux/macOS, disabled until an explicit
 menu toggle or `dwork-tray --autostart enable`; disable removes only an exact entry
 owned by that installation. Windows omits the menu item and refuses `--autostart`
-without writes. Edited or
-linked entries require deliberate inspection. Quit tray does not stop workloads,
+without writes. A Windows user may instead explicitly create an ordinary shortcut
+in `shell:startup` with the portable EXE and fixed WSL selection arguments; remove
+that shortcut to opt out. This is an OS-managed manual setting, not an implemented
+Windows autostart command. A target under `\\wsl.localhost` can itself auto-start
+the distribution serving its files; if the selected distribution remains unavailable,
+start it deliberately and Refresh. Do not create the shortcut without authorization.
+On native Linux/macOS, `dwork-tray --autostart enable`, `status`, and `disable` manage
+only the current installation's next-login entry without opening an icon or
+starting/stopping the current tray. Disable before uninstalling/moving if the user
+wants the entry removed. The installed companion interpreter is recorded, not the
+bootstrap's temporary checkout. Edited or linked entries require deliberate inspection. Quit tray does not stop workloads,
 close operation terminals, or disable next-login startup. Stop remains a separate
 explicit CLI action, preserving registration/locking/ownership/confirmation rules.
 

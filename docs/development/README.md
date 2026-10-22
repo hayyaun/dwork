@@ -228,7 +228,17 @@ mypy; core modules retain normal checking.
 and temporary directories. It checks prerequisite failures, literal paths and
 arguments, and cleanup after success or failure without downloading or installing
 into the user's environment. The regular installer tests cover the delegated
-installation behavior.
+installation behavior. Optional `TRAY=1` regressions cover bootstrap rejection
+before downloads on WSL/invalid modes, separate environments, exact-source CLI and
+companion installation, retained selections, protected tray launchers, and interrupted
+upgrade recovery. Environment/dependency commands are faked; no tray is launched
+and login settings remain unchanged. Root source archives include companion artwork
+so an extracted source installation can also offer the tray option. Package
+verification checks those archive inputs. Native Linux/macOS package CI also
+installs/removes the managed tray in a temporary prefix and checks only help,
+version, package metadata, and image loading; it never starts a GUI or enables login
+startup. Linux uses the system Python matching its GI/indicator packages for that
+smoke test.
 
 `test_packaging_checks.py` creates disposable local Git repositories and verifies
 exact committed archive contents even if a branch moves after validation, executable

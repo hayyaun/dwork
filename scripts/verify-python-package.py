@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import venv
 
@@ -33,6 +34,24 @@ def main():
         if len(artifacts) != 2:
             raise RuntimeError("Expected exactly one wheel and one sdist")
         run(sys.executable, "-m", "twine", "check", "--strict", *artifacts)
+        # The extracted source installer offers TRAY=1 without the Git checkout.
+        # Keep the companion project and runtime artwork in the root sdist.
+        with tarfile.open(next(dist.glob("*.tar.gz"))) as archive:
+            names = archive.getnames()
+            for relative in (
+                "companion/pyproject.toml",
+                "companion/README.md",
+                "companion/LICENSE",
+                "companion/src/dwork_tray/__main__.py",
+                "companion/src/dwork_tray/assets/tray.png",
+                "companion/src/dwork_tray/assets/tray.svg",
+            ):
+                member = next((name for name in names if name.endswith("/" + relative)), None)
+                if (
+                    member is None
+                    or archive.extractfile(member).read() != (ROOT / relative).read_bytes()
+                ):
+                    raise RuntimeError("Source archive lacks matching tray input: " + relative)
         workspace = work / "workspace"
         workspace.mkdir()
         config = workspace / "dwork.yml"

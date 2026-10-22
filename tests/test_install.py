@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 REPO = Path(__file__).resolve().parents[1]
 INSTALLER = REPO / "scripts/install.py"
@@ -52,6 +53,8 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         executable = self.prefix / "bin/dwork"
         self.assertTrue(os.access(executable, os.X_OK))
+        self.assertFalse((self.prefix / "bin/dwork-tray").exists())
+        self.assertFalse((self.prefix / "share/dwork/tray-venv").exists())
         result = subprocess.run(
             [str(executable), "--help"], cwd="/tmp", text=True, capture_output=True
         )
@@ -390,6 +393,253 @@ class InstallTests(unittest.TestCase):
         result = self.installer("install", "--venv", "0", prefix=Path("relative"))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("absolute", result.stderr)
+
+
+class TrayInstallTests(unittest.TestCase):
+    """Fake only environment/dependency commands; real files exercise ownership."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="dwork-tray-install-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.prefix = self.root / "prefix with spaces"
+        self.args = SimpleNamespace(
+            prefix=str(self.prefix),
+            destdir="",
+            venv="1",
+            tray="1",
+            bash_completion_dir="",
+            zsh_completion_dir="",
+        )
+        spec = importlib.util.spec_from_file_location("dwork_tray_installer_test", INSTALLER)
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+        self.commands = []
+        self.addCleanup(patch.stopall)
+        patch.object(self.module.platform, "release", return_value="native-linux").start()
+        patch.object(sys, "platform", "linux").start()
+        patch.dict(os.environ, {"WSL_DISTRO_NAME": "", "HOME": str(self.root)}).start()
+        patch.object(self.module, "checked", side_effect=self.checked).start()
+        self.config = self.root / ".config/autostart"
+        self.config.mkdir(parents=True)
+        (self.config / "unrelated.desktop").write_text("keep existing startup settings")
+
+    def checked(self, command):
+        command = [str(arg) for arg in command]
+        self.commands.append(command)
+        if command[1:3] == ["-m", "venv"]:
+            python = Path(command[-1]) / "bin/python"
+            python.parent.mkdir(parents=True, exist_ok=True)
+            python.write_text("not an executable: tests must never launch the tray")
+
+    def install(self):
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.module.install(self.args)
+        return output.getvalue()
+
+    def uninstall(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.module.uninstall(self.args)
+
+    def test_opt_in_uses_a_separate_environment_and_exact_source_without_launching(self):
+        output = self.install()
+        core_environment, tray_environment = [c for c in self.commands if c[1:3] == ["-m", "venv"]]
+        self.assertNotIn("--system-site-packages", core_environment)
+        self.assertIn("--system-site-packages", tray_environment)
+        self.assertEqual(self.commands[-1][-2:], [str(REPO), str(REPO / "companion")])
+        self.assertIn("-m dwork_tray", (self.prefix / "bin/dwork-tray").read_text())
+        self.assertIn(
+            shlex.quote(str(self.prefix / "share/dwork/tray-venv/bin/python")),
+            (self.prefix / "bin/dwork-tray").read_text(),
+        )
+        self.assertIn("not launched", output)
+        self.assertEqual(list(self.config.iterdir()), [self.config / "unrelated.desktop"])
+        # Only venv creation, dependency installation, and the non-GUI GI probe run.
+        self.assertTrue(
+            all(
+                c[1:3] == ["-m", "venv"] or c[1:4] == ["-m", "pip", "install"] or c[1] == "-c"
+                for c in self.commands
+            )
+        )
+
+    def test_default_updates_retain_the_opted_in_tray_and_uninstall_removes_both(self):
+        self.install()
+        self.commands.clear()
+        self.args.tray = "0"
+        self.install()
+        self.assertEqual(self.commands[-1][-2:], [str(REPO), str(REPO / "companion")])
+        record = json.loads((self.prefix / "share/dwork/.dwork-install.json").read_text())
+        self.assertTrue(record["tray"])
+        other = self.prefix / "bin/another-tool"
+        other.write_text("preserve")
+        self.uninstall()
+        self.assertFalse((self.prefix / "bin/dwork").exists())
+        self.assertFalse((self.prefix / "bin/dwork-tray").exists())
+        self.assertFalse((self.prefix / "share/dwork").exists())
+        self.assertEqual(other.read_text(), "preserve")
+        self.assertEqual(
+            (self.config / "unrelated.desktop").read_text(), "keep existing startup settings"
+        )
+
+    def test_cli_only_install_preserves_an_unrelated_tray_command(self):
+        self.args.tray = "0"
+        path = self.prefix / "bin/dwork-tray"
+        path.parent.mkdir(parents=True)
+        path.write_text("separately installed companion")
+        self.install()
+        self.assertFalse((self.prefix / "share/dwork/tray-venv").exists())
+        self.assertFalse(any(c[-1] == str(REPO / "companion") for c in self.commands))
+        self.uninstall()
+        self.assertEqual(path.read_text(), "separately installed companion")
+
+    def test_macos_tray_uses_an_isolated_environment_and_requires_python_313(self):
+        with patch.object(sys, "platform", "darwin"):
+            with patch.object(sys, "version_info", (3, 12)):
+                with self.assertRaisesRegex(self.module.InstallError, "3.13"):
+                    self.install()
+                self.assertFalse(self.prefix.exists())
+            with patch.object(sys, "version_info", (3, 13)):
+                self.install()
+        environments = [c for c in self.commands if c[1:3] == ["-m", "venv"]]
+        self.assertEqual(len(environments), 2)
+        self.assertTrue(all("--system-site-packages" not in c for c in environments))
+        self.assertFalse(any(c[1] == "-c" for c in self.commands))
+
+    def test_linked_managed_tray_environment_is_rejected_before_writes(self):
+        self.install()
+        data = self.prefix / "share/dwork"
+        marker = (data / ".dwork-install.json").read_bytes()
+        environment = data / "tray-venv"
+        outside = self.root / "outside-environment"
+        environment.rename(outside)
+        environment.symlink_to(outside, target_is_directory=True)
+        self.commands.clear()
+        with self.assertRaisesRegex(self.module.InstallError, "linked install path"):
+            self.install()
+        self.assertEqual(self.commands, [])
+        self.assertEqual((data / ".dwork-install.json").read_bytes(), marker)
+        self.assertTrue((outside / "bin/python").is_file())
+
+    def test_make_forwards_the_explicit_tray_option(self):
+        capture = self.root / "capture-python"
+        capture.write_text("#!" + sys.executable + "\nimport sys\nprint(repr(sys.argv[1:]))\n")
+        capture.chmod(0o755)
+        result = subprocess.run(
+            ["make", "install", "TRAY=1", "PYTHON=" + str(capture), "PREFIX=" + str(self.prefix)],
+            cwd=REPO,
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("'--tray', '1'", result.stdout)
+        self.assertFalse(self.prefix.exists())
+
+    def test_unrelated_or_linked_tray_launchers_are_rejected_before_writes(self):
+        path = self.prefix / "bin/dwork-tray"
+        path.parent.mkdir(parents=True)
+        outside = self.root / "outside"
+        outside.write_text("preserve")
+        for linked in (False, True):
+            with self.subTest(linked=linked):
+                if linked:
+                    path.symlink_to(outside)
+                else:
+                    path.write_text("unrelated")
+                with self.assertRaises(self.module.InstallError):
+                    self.install()
+                self.assertFalse((self.prefix / "share/dwork").exists())
+                self.assertEqual(self.commands, [])
+                self.assertEqual(outside.read_text(), "preserve")
+                path.unlink()
+
+    def test_edited_or_linked_owned_launcher_blocks_update_and_uninstall(self):
+        self.install()
+        path = self.prefix / "bin/dwork-tray"
+        original = path.read_bytes()
+        marker = self.prefix / "share/dwork/.dwork-install.json"
+        before = marker.read_bytes()
+        outside = self.root / "personal-launcher"
+        outside.write_text("user changes")
+        for linked in (False, True):
+            with self.subTest(linked=linked):
+                path.unlink()
+                if linked:
+                    path.symlink_to(outside)
+                else:
+                    path.write_text("user changes")
+                for action in (self.install, self.uninstall):
+                    with self.assertRaises(self.module.InstallError):
+                        action()
+                    self.assertEqual(marker.read_bytes(), before)
+                    self.assertTrue((self.prefix / "bin/dwork").is_file())
+                    self.assertEqual(path.read_text(), "user changes")
+                self.assertEqual(outside.read_text(), "user changes")
+        path.unlink()
+        path.write_bytes(original)
+
+    def test_unsupported_modes_fail_before_any_environment_or_file_writes(self):
+        for changes in ({"venv": "0"}, {"destdir": str(self.root / "stage")}):
+            with self.subTest(changes=changes):
+                args = SimpleNamespace(**{**vars(self.args), **changes})
+                with self.assertRaises(self.module.InstallError):
+                    self.module.install(args)
+                self.assertFalse(self.prefix.exists())
+                self.assertFalse((self.root / "stage").exists())
+                self.assertEqual(self.commands, [])
+        for distribution, kernel in (("Ubuntu", "generic"), ("", "microsoft-standard-WSL2")):
+            with (
+                patch.dict(os.environ, {"WSL_DISTRO_NAME": distribution}),
+                patch.object(self.module.platform, "release", return_value=kernel),
+            ):
+                with self.assertRaisesRegex(self.module.InstallError, "portable Windows"):
+                    self.install()
+                self.assertFalse(self.prefix.exists())
+                self.assertEqual(self.commands, [])
+
+    def test_missing_desktop_dependencies_leave_a_recoverable_marked_install(self):
+        def failing(command):
+            self.checked(command)
+            if str(command[1]) == "-c":
+                raise subprocess.CalledProcessError(1, command)
+
+        with patch.object(self.module, "checked", side_effect=failing):
+            with self.assertRaisesRegex(self.module.InstallError, "prerequisites"):
+                self.install()
+        marker = self.prefix / "share/dwork/.dwork-install.json"
+        self.assertIn("pending", json.loads(marker.read_text()))
+        self.assertFalse((self.prefix / "bin/dwork-tray").exists())
+        self.assertFalse((self.prefix / "bin/dwork").exists())
+        self.args.tray = "0"
+        self.install()
+        self.assertTrue((self.prefix / "bin/dwork-tray").is_file())
+
+    def test_interrupted_addition_of_tray_allows_retry_or_uninstall(self):
+        for recovery in ("retry", "uninstall"):
+            with self.subTest(recovery=recovery):
+                self.args.prefix = str(self.root / recovery)
+                prefix = Path(self.args.prefix)
+                self.args.tray = "0"
+                self.install()
+                self.args.tray = "1"
+                original = self.module.atomic_write
+
+                def interrupt(path, text, mode=0o644):
+                    original(path, text, mode)
+                    if path == prefix / "bin/dwork-tray":
+                        raise OSError("interrupted after tray launcher publication")
+
+                with patch.object(self.module, "atomic_write", side_effect=interrupt):
+                    with self.assertRaisesRegex(OSError, "interrupted"):
+                        self.install()
+                marker = prefix / "share/dwork/.dwork-install.json"
+                self.assertIn("tray_launcher_sha256", json.loads(marker.read_text())["pending"])
+                self.args.tray = "0"
+                if recovery == "retry":
+                    self.install()
+                    self.assertTrue(json.loads(marker.read_text())["tray"])
+                self.uninstall()
+                self.assertFalse((prefix / "bin/dwork-tray").exists())
+                self.assertFalse((prefix / "share/dwork").exists())
 
 
 if __name__ == "__main__":
