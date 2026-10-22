@@ -164,6 +164,38 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y build-essential debhelper python3-yaml python3-jsonschema bash-completion zsh lintian
       - run: python3 scripts/build-deb.py
       - run: lintian dist/debian/*.deb
+      - name: Check Debian completion archive permissions
+        run: |
+          python3 - <<'PY'
+          import io
+          from pathlib import Path
+          import subprocess
+          import tarfile
+
+          packages = list(Path("dist/debian").glob("dwork_*_all.deb"))
+          if len(packages) != 1:
+              raise SystemExit("Expected exactly one built Debian package")
+          data = subprocess.check_output(["dpkg-deb", "--fsys-tarfile", str(packages[0])])
+          with tarfile.open(fileobj=io.BytesIO(data)) as archive:
+              members = {member.name.removeprefix("./").rstrip("/"): member for member in archive}
+              for path, mode in {
+                  "usr/share": 0o755,
+                  "usr/share/zsh": 0o755,
+                  "usr/share/zsh/vendor-completions": 0o755,
+                  "usr/share/zsh/vendor-completions/_dwork": 0o644,
+              }.items():
+                  member = members.get(path)
+                  if member is None:
+                      raise SystemExit(f"Debian archive is missing {path}")
+                  print(f"{member.uid}:{member.gid} {member.mode:04o} {path}")
+                  expected_directory = path != "usr/share/zsh/vendor-completions/_dwork"
+                  if (
+                      (member.uid, member.gid, member.mode) != (0, 0, mode)
+                      or member.isdir() != expected_directory
+                      or (not expected_directory and not member.isfile())
+                  ):
+                      raise SystemExit(f"Insecure Debian completion archive metadata: {path}")
+          PY
       - run: |
           sudo apt-get install -y ./dist/debian/dwork_*_all.deb
           /usr/bin/dwork --help
@@ -173,6 +205,17 @@ jobs:
           printf 'version: 1\ncompose:\n  enabled: false\n' > /tmp/dwork-deb-smoke/dwork.yml
           cd /tmp/dwork-deb-smoke
           /usr/bin/dwork --dry-run
+      - name: Prepare secure Zsh directory permissions on the hosted runner
+        run: |
+          # The hosted image makes /usr/share world-writable. Restore only the
+          # completion ancestors so compaudit can retain the installed entry.
+          # https://github.com/actions/runner-images/blob/main/images/ubuntu/scripts/build/configure-system.sh
+          for directory in /usr/share /usr/share/zsh /usr/share/zsh/vendor-completions; do
+            test -d "$directory"
+            test ! -L "$directory"
+            test "$(stat -c '%u:%g' "$directory")" = 0:0
+          done
+          sudo chmod 0755 -- /usr/share /usr/share/zsh /usr/share/zsh/vendor-completions
       - name: Check installed Debian Zsh completion
         run: |
           command -v zsh

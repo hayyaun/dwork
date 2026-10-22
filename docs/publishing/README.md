@@ -19,7 +19,9 @@ range aligned when advancing the CLI release, and verify both wheels together.
 
 Platform unit tests fake tool discovery as well as process dispatch; source tests
 must pass without Windows tools on Linux/macOS. Homebrew keeps strict stable audit
-and uses `pkgshare` for formula-owned completion sources.
+and uses `pkgshare` for formula-owned completion sources. Debian verification
+checks archive ownership/modes and normalizes only the hosted runner's three
+world-writable completion ancestors before auditing installed discovery.
 
 The source-test CI step runs each test file with unittest's `--failfast` option,
 then fails if any file failed. This reports each file's first traceback before

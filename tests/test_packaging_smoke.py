@@ -18,8 +18,10 @@ class PackagingSmokeTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="dwork-compinit-smoke-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
-        self.secure = self.root / "secure"
-        self.insecure = self.root / "insecure"
+        self.shared = self.root / "shared"
+        self.shared.mkdir(mode=0o700)
+        self.secure = self.shared / "secure"
+        self.insecure = self.shared / "insecure"
         self.secure.mkdir(mode=0o700)
         self.insecure.mkdir(mode=0o700)
         self.insecure.chmod(0o777)
@@ -61,6 +63,20 @@ class PackagingSmokeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
         self.assertFalse((self.root / ".zcompdump").exists())
+
+    def test_world_writable_completion_tree_blocks_discovery_until_secured(self):
+        # Match the hosted runner image recursive chmod of /usr/share: both
+        # completion directories and their ancestors become world-writable.
+        self.shared.chmod(0o777)
+        self.secure.chmod(0o777)
+        blocked = self.smoke()
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn(str(self.shared), blocked.stdout)
+        self.assertIn("was not discovered", blocked.stderr)
+        self.shared.chmod(0o755)
+        self.secure.chmod(0o755)
+        secure = self.smoke()
+        self.assertEqual(secure.returncode, 0, secure.stderr)
 
     def test_ci_fails_when_the_dwork_completion_itself_is_insecure(self):
         self.secure.chmod(0o777)

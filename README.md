@@ -140,7 +140,7 @@ The skill inspects your existing commands and Compose services.
 
 ## Explore more
 
-- [Bash and Zsh completion](docs/completion/README.md)
+- [Bash and Zsh completion, including macOS Bash 3.2](docs/completion/README.md)
 - [Terminal options and background tasks](docs/terminals/README.md)
 - [Browser selection and readiness checks](docs/browsers/README.md)
 - [Optional tray companion](docs/companion/README.md), including a portable Windows app for WSL and a [replaceable icon](docs/companion/README.md#tray-icon)

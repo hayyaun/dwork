@@ -20,7 +20,9 @@ requires the user's authorization. If Zsh refuses completion initialization,
 inspect `compaudit` output and directory ownership/permissions; do not bypass its
 audit or change those permissions merely to generate workspace YAML. When
 reporting package completion failures, include the selected shell version,
-installation method, completion path, and audit findings.
+installation method, completion path, and audit findings. A correctly installed
+completion can still be excluded when its parent directories are writable by
+other users; inspect ancestors before recommending reinstallation.
 
 Use the exact filename `dwork.yml`. The nearest file in the current directory or
 its parents wins; files are not merged. `--project-directory` or an explicit

@@ -402,7 +402,13 @@ checksum, and installs/tests a temporary formula generated from the shared recip
 It verifies pull-request merge commits without fetching remote `main`. Stable
 mode retains the pinned release and strict publishing audit. Checkout mode runs
 style/install/test; its temporary local URL is not a publishable formula. No
-Homebrew packages are published by this workflow. The Debian noninteractive Zsh smoke check uses `compinit -i -D` to exclude insecure
+Homebrew packages are published by this workflow. GitHub's Ubuntu runner image intentionally makes `/usr/share` world-writable.
+The Debian job first verifies root ownership and normal modes in the `.deb`, then
+restores mode 0755 on only `/usr/share`, `/usr/share/zsh`, and its
+`vendor-completions` directory in the disposable runner. This is nonrecursive
+test-environment setup; the installer does not change host directory permissions.
+See [the runner image setup](https://github.com/actions/runner-images/blob/main/images/ubuntu/scripts/build/configure-system.sh).
+The Debian noninteractive Zsh smoke check uses `compinit -i -D` to exclude insecure
 completion directories while retaining the security audit; it still requires the
 installed dwork completion to be discovered. It reports the selected Zsh, function
 search paths, audit findings, and registration; failures also report installed
