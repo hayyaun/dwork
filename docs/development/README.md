@@ -130,7 +130,8 @@ Failure messages render these typed outcomes. Container recovery suggestions com
 only from confirmed container-stop actions, never from parsing user-facing text,
 task titles, or ANSI sequences. Completed container changes are not rolled back.
 The models/results are internal and in-memory; they add no config keys, registry
-fields, JSON CLI output, retry/resume interface, or new permissions. Python wheels
+fields, retry/resume interface, or new permissions. The separate, explicit
+[JSON observation API](../json/README.md) adds read-only status for clients. Python wheels
 declare all parsing, storage, policy, planning, and preparation modules; Make/native installers copy
 the same runtime module set.
 
@@ -147,8 +148,8 @@ make test
 ```
 
 `make quality` is read-only with respect to tracked files: Ruff checks `lib/`,
-`scripts/`, and `tests/` for E4/E7/E9/F errors, Ruff checks formatting with a
-100-column target and Python 3.10 syntax, mypy checks `lib/` and `scripts/`, and
+`scripts/`, `tests/`, and `companion/src/` for E4/E7/E9/F errors, Ruff checks formatting with a
+100-column target and Python 3.10 syntax, mypy checks `lib/`, `scripts/`, and `companion/src/`, and
 Homebrew stable-formula parity is checked. Tool caches are ignored. Ruff, mypy,
 and PyYAML stubs are pinned in the `quality` extra so local and CI rules agree.
 Runtime dependencies and the installed CLI remain unchanged.
@@ -174,6 +175,31 @@ and [mypy gradual adoption](https://mypy.readthedocs.io/en/stable/existing_code.
 To use mypy from Windows against a WSL UNC checkout, give its documented
 `--cache-dir` a local temporary directory if the shared filesystem cannot provide
 SQLite locking. CI and ordinary Linux development use the default cache location.
+
+## Optional companion boundaries
+
+[`dwork_status.py`](../../lib/dwork_status.py) constructs versioned read-only
+snapshots without exposing task tokens, sockets, command arguments, or saved
+Compose environment/options. It copies registry entries before refreshing locks.
+The [schema](../../schemas/status.schema.json) and [contract](../json/README.md)
+are independent of human table rendering and mutation planning.
+
+[`companion/`](../../companion/) is a separate distribution with GUI dependencies.
+Shared menu/state/worker logic consumes JSON through the CLI; mutating actions run
+that CLI in unowned operation terminals through the existing native adapters.
+Completion markers request a fresh observation only. Main-thread UI dispatch uses
+public GLib/AppHelper calls. User login entries are opt-in and exact-content ownership
+checks preserve edited, linked, and other-installation entries. Native Windows/WSL
+host transport is not implemented in this phase. See the [companion guide](../companion/README.md).
+
+`test_status_json.py` covers privacy, read-only routing, unknown/target/service states,
+and live lock observation. `test_tray.py` uses fake UI and subprocesses for worker/UI
+separation, callbacks, refresh, terminal handoff, opt-in login ownership, unsupported
+platforms/backends, protocol failure, and Quit semantics. The separate companion
+package CI installs matching wheels and checks non-GUI entry points; macOS checks
+real pystray menu descriptors without starting an icon. Desktop rendering and native
+login/Automation behavior still need manual native-host verification. Optional UI
+framework stubs are excluded narrowly from mypy; core modules retain normal checking.
 
 ## Tests
 

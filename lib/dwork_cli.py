@@ -1,6 +1,7 @@
 """CLI routing, shell completion, diagnostics, and friendly exit handling."""
 
 from pathlib import Path
+import json
 import sys
 
 from dwork_common import DworkError, LAUNCHERS, color, colored_name
@@ -10,6 +11,7 @@ import dwork_config
 import dwork_docker
 import dwork_registry
 import dwork_scan
+import dwork_status
 import dwork_terminals
 import dwork_workspaces
 
@@ -78,10 +80,11 @@ _dwork_complete() {
         choices='bash zsh'
     else
         case "$cmd" in
-            list|ls) choices='--names --help' ;;
+            list|ls) choices='--names --json --help' ;;
             init|scan|down) choices='--dry-run --help' ;;
             completion) choices='--help' ;;
-            validate|register|reg|status|ps|doctor) choices='--help -f --file -p --project-name --project-directory --env-file --profile' ;;
+            status|ps) choices='--json --help -f --file -p --project-name --project-directory --env-file --profile' ;;
+            validate|register|reg|doctor) choices='--help -f --file -p --project-name --project-directory --env-file --profile' ;;
             *) choices='--dry-run --help -f --file -p --project-name --project-directory --env-file --profile' ;;
         esac
     fi
@@ -122,10 +125,11 @@ _dwork() {
         choices=(bash zsh)
     else
         case "$cmd" in
-            list|ls) choices=(--names --help) ;;
+            list|ls) choices=(--names --json --help) ;;
             init|scan|down) choices=(--dry-run --help) ;;
             completion) choices=(--help) ;;
-            validate|register|reg|status|ps|doctor) choices=(--help -f --file -p --project-name --project-directory --env-file --profile) ;;
+            status|ps) choices=(--json --help -f --file -p --project-name --project-directory --env-file --profile) ;;
+            validate|register|reg|doctor) choices=(--help -f --file -p --project-name --project-directory --env-file --profile) ;;
             *) choices=(--dry-run --help -f --file -p --project-name --project-directory --env-file --profile) ;;
         esac
     fi
@@ -242,6 +246,7 @@ def main():
         print("       dwork down [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
+        print("       dwork list --json | status --json [Docker Compose global options]")
         print(
             "Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status."
         )
@@ -325,13 +330,22 @@ def main():
     if mode == "doctor":
         return doctor(directory, options)
     if mode == "list":
+        if options == ["--json"] and not preview:
+            print(json.dumps(dwork_status.registered_snapshot(), ensure_ascii=True))
+            return 0
         if options == ["--names"] and not preview:
             for entry in sorted(dwork_registry.read_registry(), key=lambda e: e["name"]):
                 print(entry["name"])
             return 0
         if options or preview:
-            raise DworkError("Usage: dwork list [--names]")
+            raise DworkError("Usage: dwork list [--names | --json]")
         return dwork_registry.list_registrations(dwork_registry.read_registry())
+    if mode == "status" and "--json" in options:
+        if preview or options.count("--json") != 1:
+            raise DworkError("Usage: dwork status --json [Docker Compose global options]")
+        options.remove("--json")
+        print(json.dumps(dwork_status.current_snapshot(directory, options), ensure_ascii=True))
+        return 0
     if mode == "status":
         return dwork_workspaces.switch_workspace(directory, options, mode, preview, [])
     if mode == "rename":

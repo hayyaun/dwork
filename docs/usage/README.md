@@ -351,3 +351,11 @@ See [development and tests](../development/README.md).
 - [Compose configuration](https://docs.docker.com/reference/cli/docker/compose/config/)
 - [Compose project names](https://docs.docker.com/compose/how-tos/project-name/)
 - [Start existing containers](https://docs.docker.com/reference/cli/docker/container/start/)
+
+## Companion and machine-readable status
+
+Use `dwork list --json` for saved workspace observations or `dwork status --json`
+for the current resolved workspace/group. Both are read-only; see the
+[versioned JSON contract](../json/README.md). The optional, separately installed
+[tray companion](../companion/README.md) uses that interface and opens the existing
+CLI in operation terminals. It does not add unattended approvals or own shutdown.

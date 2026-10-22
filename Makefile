@@ -20,10 +20,10 @@ test:
 	@"$(PYTHON)" -B -m unittest discover -s tests -v
 
 quality:
-	@"$(PYTHON)" -m ruff check lib scripts tests
-	@"$(PYTHON)" -m ruff format --check lib scripts tests
+	@"$(PYTHON)" -m ruff check lib scripts tests companion/src
+	@"$(PYTHON)" -m ruff format --check lib scripts tests companion/src
 	@"$(PYTHON)" -m mypy
 	@"$(PYTHON)" scripts/prepare-homebrew-checkout.py --check-stable
 
 format:
-	@"$(PYTHON)" -m ruff format lib scripts tests
+	@"$(PYTHON)" -m ruff format lib scripts tests companion/src

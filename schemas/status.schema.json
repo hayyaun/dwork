@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "dwork read-only status protocol version 1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "scope": {
+      "enum": [
+        "registered",
+        "current"
+      ]
+    },
+    "docker": {
+      "type": "object",
+      "properties": {
+        "available": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "target": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "context": {
+              "type": "string"
+            },
+            "daemon": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "context",
+            "daemon"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "available",
+        "target",
+        "error"
+      ]
+    },
+    "workspaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "directory_available": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "context": {
+                "type": "string"
+              },
+              "daemon": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "context",
+              "daemon"
+            ]
+          },
+          "temporary_locked": {
+            "type": "boolean"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "project": {
+                  "type": "string"
+                },
+                "directory": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "services": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "protected": {
+                  "type": "boolean"
+                },
+                "kept": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "project",
+                "directory",
+                "enabled",
+                "services",
+                "locked",
+                "protected",
+                "kept"
+              ]
+            }
+          },
+          "containers": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "running": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "running",
+                  "total"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tasks": {
+            "type": "object",
+            "properties": {
+              "running": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unresolved": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "running",
+              "unresolved"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "status",
+          "directory_available",
+          "target",
+          "temporary_locked",
+          "members",
+          "containers",
+          "tasks"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "scope",
+    "docker",
+    "workspaces"
+  ]
+}

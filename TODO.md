@@ -60,10 +60,16 @@
 - [x] Load completion automatically when `dwork.sh` is sourced in interactive Bash/Zsh, respecting existing Zsh initialization, noninteractive use, and missing dependencies; test repeated sourcing and real Tab input.
 - [x] Document existing exit codes: 0 for success, 1 for failures, and 130 for interruption.
 - [x] Add `--version` with one version source shared by source/Make installs, package metadata, and release validation.
-- [ ] Add JSON output and explicit noninteractive behavior preserving confirmation controls.
+- [ ] Add explicit noninteractive mutation behavior preserving confirmation controls. Read-only version-1 list/status JSON is complete; no unattended mutation/approval mode was added.
 - [x] Add source and package CI for Linux and macOS.
 - [x] Add a tag-triggered workflow to build and verify Python, Debian, Fedora, and Arch release assets, generate checksums, and create a draft GitHub release.
 - [ ] Add a project changelog and real Linux/WSL desktop smoke tests.
+
+## Optional tray companion
+
+- [x] Add a separate experimental native Linux/macOS companion package, read-only JSON protocol/schema, shared menu/worker logic, supported native UI dispatch, operation-terminal CLI handoff, periodic/completion refresh, opt-in protected login entries, Quit-only semantics, and regression/package checks.
+- [ ] Verify actual indicator display/menu/operation terminals/login startup on native GNOME/KDE and Cocoa hosts; headless/menu/unit checks are not full desktop validation.
+- [ ] Add a Windows-host companion adapter for an explicitly selected WSL distribution using `wsl.exe` and Windows Terminal; do not execute native Windows workspaces.
 
 ## Packaging publication
 

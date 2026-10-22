@@ -12,6 +12,8 @@
 - [Browser launching and HTTP readiness](browsers/README.md)
 - [Copy an example](../examples/README.md)
 - [Publish packages](publishing/README.md)
+- [Optional tray companion](companion/README.md)
+- [Read-only JSON status interface](json/README.md)
 - [Develop and test](development/README.md)
 - [Introduce dwork](promotion/README.md)
 

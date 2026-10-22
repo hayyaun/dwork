@@ -177,7 +177,7 @@ and shell environment choices before invoking dwork. See the bundled reference f
 verification scope.
 
 Typed activation plans/actions/results are an internal refactor, not new YAML
-fields, a changed registry format, JSON CLI output, or a resume API. A rendered
+fields, a changed registry format, or a resume API. A rendered
 plan does not authorize execution. Keep registration/group/activation consent
 separate from task/browser consent, and retain the live lock recheck before stops.
 When explaining partial failures, distinguish completed, already-finished, skipped,
@@ -197,6 +197,19 @@ and completion directories to retry, or uninstall the marked partial installatio
 Do not bypass ownership hashes or linked-path rejection to force recovery; genuine
 launcher/completion edits remain protected. These fixes require a build containing
 the hardening changes and are not implied by the unchanged release version alone.
+
+For the optional tray companion, keep it separate from workspace configuration.
+The initial native Linux/macOS companion needs GUI dependencies; ordinary CLI
+installs remain lightweight. Never install/launch it or enable login startup merely
+to generate YAML. Use its explicit `--check` diagnostic for backend guidance when
+requested. Linux needs AppIndicator/Ayatana and compatible indicator host support;
+GNOME extensions and system dependencies require their own authorization. Windows-host
+support is planned only for WSL, with no native Windows workspace execution.
+Tray actions use the existing CLI in terminals and keep its confirmation semantics;
+Quit closes only the tray. Login startup is opt-in and edited/linked entries remain
+protected. Version-1 `list --json`/`status --json` are read-only observations, not
+approval or ownership tokens. Old published 0.3.0 builds lack these new interfaces;
+check runtime support instead of scraping tables or bypassing checks.
 
 Explain the chosen commands, services, prerequisites, and verification result.
 Tell the user that a normal `dwork` invocation asks before registering a new

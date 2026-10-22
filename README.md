@@ -263,6 +263,18 @@ schema-capable YAML extension, it enables field/value completion, hover help,
 and configuration diagnostics. Existing files can add the same comment.
 [Editor setup, local/offline association, and validation limits →](docs/configuration/README.md#editor-autocomplete)
 
+## Optional tray companion
+
+An experimental, separately installed `dwork-tray` companion lists registered
+workspaces and status on native Linux/macOS. It opens operation terminals for the
+existing CLI, preserving confirmations and ownership checks. Login startup is
+opt-in; Quit closes only the tray. Linux needs AppIndicator/Ayatana and a compatible
+host (GNOME may need indicator support). Windows-host support for WSL is planned.
+[Setup and current verification limits →](docs/companion/README.md)
+
+`dwork list --json` and `dwork status --json` provide the versioned read-only
+[status interface](docs/json/README.md). Ordinary CLI installs stay GUI-free.
+
 ## A few useful controls
 
 - Keep shared infrastructure running: `DWORK_KEEP_PROJECTS=infra,monitoring dwork`.

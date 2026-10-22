@@ -365,3 +365,29 @@ does not substitute for that evidence. Pinned Ruff/mypy checks are development-o
 they neither authorize activation nor replace confirmation/ownership regression tests. Python 3.14 and Intel checks run on release tags or manual
 Package verification runs. Do not describe passing routine CI as Intel validation
 or real GUI verification.
+
+## Optional tray and JSON observations
+
+The separate development `dwork-tray` package targets native Linux/macOS first.
+It lists saved workspaces, refreshes status periodically/after operations, and opens
+existing CLI commands in operation terminals. Native Linux requires AppIndicator or
+Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
+A dependency/menu test is not proof of desktop rendering. Windows-host support is
+planned only as transport to dwork in a selected WSL distribution, never as native
+Windows workspace execution.
+
+The default CLI install includes no GUI dependencies. Companion installation,
+launch, and login startup are separate choices, not implied by generating YAML.
+Login startup is disabled until an explicit menu toggle or `dwork-tray --autostart
+enable`; disable removes only an exact entry owned by that installation. Edited or
+linked entries require deliberate inspection. Quit tray does not stop workloads,
+close operation terminals, or disable next-login startup. Stop remains a separate
+explicit CLI action, preserving registration/locking/ownership/confirmation rules.
+
+Builds containing this feature offer `dwork list --json` and `dwork status --json`
+(with Compose global options for current status). Successful stdout is one version-1
+JSON document. Diagnostics remain on stderr, and 0/1/130 exit codes remain. Docker
+unavailable/different-target counts are unknown (`null`), not zero. Task credentials,
+sockets, command arguments, and saved environment/options are not exported. Status
+is an observation, not authorization or readiness. Older 0.3.0 releases do not have
+this API; never scrape formatted tables as a substitute or add unattended approvals.
