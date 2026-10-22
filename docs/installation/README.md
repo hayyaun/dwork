@@ -84,6 +84,24 @@ On macOS, run `make install PYTHON="$(brew --prefix python@3.14)/bin/python3.14"
 to avoid selecting an older system Python. Apple's Command Line Tools provide Git
 and Make (`xcode-select --install` if they are missing).
 
+## Windows tray for WSL2
+
+The optional [portable Windows tray 0.2.0](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip)
+runs on the Windows host and connects to `dwork-cli` 0.4.x in a selected WSL
+distribution. No separate Windows Python or development tooling is required.
+Download the ZIP and release [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS),
+verify its hash, and extract the complete app folder. That folder can stay in Linux.
+
+Follow the [Windows/WSL setup steps](../companion/README.md#set-up-the-portable-app)
+to select the Linux interpreter, check the connection, and launch the EXE.
+The guide also shows a [desktop shortcut for manual launch](../companion/README.md#start-it-again-without-remembering-the-arguments),
+so the WSL arguments do not have to be remembered each time. Check Windows' hidden
+notification icons (`^`) if the tray is not immediately visible.
+
+`install.sh` installs the Linux CLI in WSL; it does not download or start this
+Windows app. `TRAY=1` is for the native Linux/macOS companion and is rejected inside
+WSL. Installing or launching the portable app does not enable Windows sign-in startup.
+
 ## Optional native tray
 
 The default installer remains CLI-only. On native Linux or macOS, opt in to the

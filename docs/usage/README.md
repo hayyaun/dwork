@@ -110,13 +110,47 @@ or the directory name for a host-only workspace or a group of child workspaces.
 See [workspace registration](../workspaces/README.md) for naming, Docker targets,
 configuration changes, shared infrastructure, and moved directories.
 
-`dwork scan` includes the current directory and its descendants. All valid
-`dwork.yml` workspaces are added first. It then asks whether to review remaining
-Compose-only directories in a checkbox picker: use arrow keys to move, Space to
+`dwork scan` includes the current directory and its descendants. Current source
+checkouts after v0.4.1 also accept one or more directory paths:
+
+```sh
+dwork scan .
+dwork scan ~/projects ~/work/client-projects --dry-run
+dwork scan ~/projects ~/work/client-projects
+```
+
+Published v0.4.1 packages scan the current directory without positional paths.
+All explicit roots are checked before registration; repeated paths resolve to one
+root, and overlapping scans add each workspace only once. Use `--` before a path
+beginning with a hyphen, such as `dwork scan -- -archive`.
+Roots are scanned in argument order. Within each root, valid `dwork.yml`
+workspaces are added first, then it asks whether to review remaining Compose-only directories in a checkbox picker: use arrow keys to move, Space to
 toggle, and Enter to register the selected directories. Nothing is checked by
 default; Esc cancels selection. The command never starts/stops containers or opens
 development terminals. Use `dwork scan --dry-run` to preview without writing or
 prompting. See [recursive scanning](../workspaces/README.md#scan-a-directory-tree).
+
+### Start named workspaces
+
+Current source checkouts after v0.4.1 accept registered workspace names with `up`:
+
+```sh
+dwork up api frontend --dry-run
+dwork up api frontend
+```
+
+This starts the selected saved workspaces while leaving all other workspaces
+running. It uses their saved directories and Compose selections and retains
+ownership, health, activation/group, and task/browser checks and confirmations.
+An explicit name identifies a registration, including all members of a saved
+group; it is not a path or a Compose service name. Names come from `dwork list`.
+The full batch is validated and preflighted first; repeated names are activated
+once in argument order. Applicable activation/group consents are collected before
+any workspace starts, and declining one cancels the batch. Task/browser prompts
+remain separate. `--dry-run` may appear before, among, or after the names.
+Without names, `dwork up` still activates the current directory with its usual
+shutdown of eligible outgoing workspaces. Published v0.4.1 packages support only
+that no-name form.
 
 `lock NAME...` and `unlock NAME...` change only your local registration state.
 They protect containers and tracked commands through switches and `down`, for
@@ -139,6 +173,21 @@ group, and terminal-task confirmations still apply.
 dwork down --dry-run
 dwork down
 ```
+
+Current source checkouts after v0.4.1 can restrict the plan to named registrations:
+
+```sh
+dwork down api frontend --dry-run
+dwork down api frontend
+```
+
+Only eligible workloads owned by those registrations enter the stop plan; other
+registered workspaces stay running. Saved groups include all their members.
+The whole name batch is validated before stopping anything, and `--dry-run` may
+appear before, among, or after the names.
+Locks, service selections, the current Docker target, ownership checks, and the
+existing shutdown confirmation still apply. Without names, all eligible registered
+workspaces are selected as before. Published v0.4.1 packages retain the no-name form.
 
 Run from any directory. `down` stops running, restarting, and paused containers
 managed by all registered workspaces on the current Docker target in one Docker

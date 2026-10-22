@@ -49,24 +49,47 @@ def completion_script(shell):
         script = r"""# Bash completion for dwork. Source this file from ~/.bashrc.
 _dwork_complete() {
     local cur="${COMP_WORDS[COMP_CWORD]}" prev="${COMP_WORDS[COMP_CWORD-1]}"
-    local cmd="${COMP_WORDS[1]}" choices candidate
+    local cmd="${COMP_WORDS[1]}" choices candidate index compose_mode=0 named_mode=0 literal=0
     COMPREPLY=()
+    if [[ "$cmd" == scan ]]; then
+        for (( index=2; index<COMP_CWORD; index++ )); do
+            [[ "${COMP_WORDS[index]}" == -- ]] && literal=1
+        done
+    fi
     if (( COMP_CWORD == 1 )); then
         choices='@COMMANDS@ --help --version --dry-run'
-    elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
+    elif [[ "$literal" == 0 && ( "$prev" == -f || "$prev" == --file || "$prev" == --env-file ) ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -f -- "$cur")
         return
-    elif [[ "$prev" == --project-directory ]]; then
+    elif [[ "$literal" == 0 && "$prev" == --project-directory ]]; then
         while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -d -- "$cur")
         return
-    elif [[ "$cmd" == lock || "$cmd" == unlock ]]; then
-        if [[ "$cur" != -* ]]; then
+    elif [[ "$cmd" == scan ]]; then
+        if [[ "$cur" != -* || "$literal" == 1 ]]; then
+            while IFS= read -r candidate; do COMPREPLY+=("$candidate"); done < <(compgen -d -- "$cur")
+            return
+        fi
+        choices='--dry-run --help'
+    elif [[ "$cmd" == lock || "$cmd" == unlock || "$cmd" == up || "$cmd" == down ]]; then
+        if [[ "$cmd" == up ]]; then
+            for (( index=2; index<COMP_CWORD; index++ )); do
+                [[ "${COMP_WORDS[index]}" == --dry-run ]] && continue
+                if [[ "${COMP_WORDS[index]}" == -* && "${COMP_WORDS[index]}" != -- ]]; then
+                    compose_mode=1
+                else
+                    named_mode=1
+                fi
+                break
+            done
+        fi
+        if [[ "$cur" != -* && "$compose_mode" == 0 ]]; then
             while IFS= read -r candidate; do
                 [[ "$candidate" == "$cur"* ]] && COMPREPLY+=("$candidate")
             done < <(dwork list --names 2>/dev/null)
             return
         fi
         choices='--dry-run --help'
+        [[ "$cmd" == up && "$named_mode" == 0 ]] && choices+=' -f --file -p --project-name --project-directory --env-file --profile'
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( COMP_CWORD == 2 )) && [[ "$cur" != -* ]]; then
             while IFS= read -r candidate; do
@@ -96,23 +119,46 @@ complete -o bashdefault -o default -F _dwork_complete dwork
         script = r"""#compdef dwork
 # Source this file after compinit in ~/.zshrc.
 _dwork() {
-    local cmd="${words[2]}" prev="${words[CURRENT-1]}"
+    local cmd="${words[2]}" prev="${words[CURRENT-1]}" index compose_mode=0 named_mode=0 literal=0
     local -a names choices
+    if [[ "$cmd" == scan ]]; then
+        for (( index=3; index<CURRENT; index++ )); do
+            [[ "${words[index]}" == -- ]] && literal=1
+        done
+    fi
     if (( CURRENT == 2 )); then
         choices=(@COMMANDS@ --help --version --dry-run)
-    elif [[ "$prev" == -f || "$prev" == --file || "$prev" == --env-file ]]; then
+    elif [[ "$literal" == 0 && ( "$prev" == -f || "$prev" == --file || "$prev" == --env-file ) ]]; then
         _files
         return
-    elif [[ "$prev" == --project-directory ]]; then
+    elif [[ "$literal" == 0 && "$prev" == --project-directory ]]; then
         _files -/
         return
-    elif [[ "$cmd" == lock || "$cmd" == unlock ]]; then
-        if [[ "$PREFIX" != -* ]]; then
+    elif [[ "$cmd" == scan ]]; then
+        if [[ "$PREFIX" != -* || "$literal" == 1 ]]; then
+            _files -/
+            return
+        fi
+        choices=(--dry-run --help)
+    elif [[ "$cmd" == lock || "$cmd" == unlock || "$cmd" == up || "$cmd" == down ]]; then
+        if [[ "$cmd" == up ]]; then
+            for (( index=3; index<CURRENT; index++ )); do
+                [[ "${words[index]}" == --dry-run ]] && continue
+                if [[ "${words[index]}" == -* && "${words[index]}" != -- ]]; then
+                    compose_mode=1
+                else
+                    named_mode=1
+                fi
+                break
+            done
+        fi
+        if [[ "$PREFIX" != -* && "$compose_mode" == 0 ]]; then
             names=("${(@f)$(dwork list --names 2>/dev/null)}")
             (( ${#names} )) && compadd -- "${names[@]}"
             return
         fi
         choices=(--dry-run --help)
+        [[ "$cmd" == up && "$named_mode" == 0 ]] && choices+=(-f --file -p --project-name --project-directory --env-file --profile)
     elif [[ "$cmd" == switch || "$cmd" == sw || "$cmd" == forget || "$cmd" == rm || "$cmd" == rename ]]; then
         if (( CURRENT == 3 )) && [[ "$PREFIX" != -* ]]; then
             names=("${(@f)$(dwork list --names 2>/dev/null)}")
@@ -219,9 +265,30 @@ def doctor(directory, options):
     return 1 if failures else 0
 
 
+def positional_arguments(options, preview, usage):
+    """Parse selectors/roots without treating their values as Compose options."""
+    values = []
+    literal = False
+    for value in options:
+        if not literal and value == "--":
+            literal = True
+        elif not literal and value == "--dry-run":
+            if preview:
+                raise DworkError(usage)
+            preview = True
+        elif not literal and value.startswith("-"):
+            raise DworkError(usage)
+        else:
+            values.append(value)
+    return values, preview
+
+
 def main():
     options = list(sys.argv[1:])
-    if "--version" in options:
+    version_options = (
+        options[: options.index("--")] if options[:1] == ["scan"] and "--" in options else options
+    )
+    if "--version" in version_options:
         if options != ["--version"]:
             raise DworkError("Usage: dwork --version")
         print("dwork " + __version__)
@@ -237,18 +304,19 @@ def main():
         print("       dwork init [--dry-run]")
         print("       dwork validate [Docker Compose global options]")
         print("       dwork register [NAME] [Docker Compose global options]")
-        print("       dwork scan [--dry-run]")
+        print("       dwork scan [PATH...] [--dry-run]")
         print("       dwork list | forget NAME")
         print("       dwork switch NAME [--dry-run]")
         print("       dwork rename NAME NEW_NAME")
         print("       dwork lock NAME... [--dry-run]")
         print("       dwork unlock NAME... [--dry-run]")
-        print("       dwork down [--dry-run]")
+        print("       dwork up [NAME...] [--dry-run]")
+        print("       dwork down [NAME...] [--dry-run]")
         print("       dwork status | doctor [Docker Compose global options]")
         print("       dwork list --names | completion bash|zsh")
         print("       dwork list --json | status --json [Docker Compose global options]")
         print(
-            "Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace, ps=status."
+            "Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace or start named workspaces, ps=status."
         )
         print("register: remember without switching; list: show remembered directories and status.")
         print("init: create a minimal local dwork.yml without overwriting; --dry-run previews it.")
@@ -259,6 +327,10 @@ def main():
             "scan: recursively register dwork.yml workspaces, then optionally select Compose-only directories."
         )
         print("switch: activate a remembered workspace; forget: remove only its registration.")
+        print("up NAME...: start named registered workspaces together; leave all others running.")
+        print(
+            "down NAME...: stop only the named registrations; no names keeps the existing all-workspace scope."
+        )
         print(
             "lock/unlock: add/remove local temporary protection until explicitly unlocked; preserve dwork.yml locks."
         )
@@ -367,19 +439,50 @@ def main():
         print("Renamed " + colored_name(name) + " to " + colored_name(new_name) + ".")
         return 0
     if mode == "scan":
-        if options:
-            raise DworkError("Usage: dwork scan [--dry-run]")
+        paths, preview = positional_arguments(
+            options, preview, "Usage: dwork scan [PATH...] [--dry-run]"
+        )
+        roots = list(dict.fromkeys(Path(path).expanduser().resolve() for path in paths))
+        roots = roots or [directory]
+        for root in roots:
+            if not root.is_dir():
+                raise DworkError(
+                    "Scan root is not an available directory: " + str(root) + "; nothing changed."
+                )
+
+        def scan():
+            entries = dwork_registry.read_registry()
+            result = 0
+            for root in roots:
+                result = dwork_scan.scan_workspaces(root, entries, preview) or result
+            return result
+
         if preview:
-            return dwork_scan.scan_workspaces(directory, dwork_registry.read_registry(), True)
+            return scan()
         with dwork_registry.registry_lock():
-            return dwork_scan.scan_workspaces(directory, dwork_registry.read_registry(), False)
+            return scan()
     if mode == "down":
-        if options:
-            raise DworkError("Usage: dwork down [--dry-run]")
+        names, preview = positional_arguments(
+            options, preview, "Usage: dwork down [NAME...] [--dry-run]"
+        )
         if preview:
-            return dwork_workspaces.down_workspaces(dwork_registry.read_registry(), True)
+            return dwork_workspaces.down_workspaces(dwork_registry.read_registry(), True, names)
         with dwork_registry.registry_lock():
-            return dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False)
+            return dwork_workspaces.down_workspaces(dwork_registry.read_registry(), False, names)
+    if mode == "up" and options and (not options[0].startswith("-") or options[0] == "--"):
+        names, preview = positional_arguments(
+            options, preview, "Usage: dwork up [NAME...] [--dry-run]"
+        )
+        if not names:
+            raise DworkError("Usage: dwork up [NAME...] [--dry-run]")
+        if preview:
+            return dwork_workspaces.up_registered_workspaces(
+                dwork_registry.read_registry(), names, True
+            )
+        with dwork_registry.registry_lock():
+            return dwork_workspaces.up_registered_workspaces(
+                dwork_registry.read_registry(), names, False
+            )
     name = None
     if mode in ("switch", "forget"):
         if not options or options[0].startswith("-"):

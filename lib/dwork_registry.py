@@ -90,6 +90,18 @@ def refresh_locks(entries):
     return changed
 
 
+def select_registrations(entries, names):
+    """Resolve a complete, ordered name batch before any workload operation."""
+    names = list(dict.fromkeys(names))
+    by_name = {entry["name"]: entry for entry in entries}
+    missing = [name for name in names if name not in by_name]
+    if missing:
+        raise DworkError(
+            "Unknown workspace(s): " + ", ".join(missing) + ". Run dwork list; nothing changed."
+        )
+    return [by_name[name] for name in names]
+
+
 def set_temporary_locks(entries, names, locked, preview=False):
     """Validate the whole batch before saving; callers serialize real updates."""
     names = list(dict.fromkeys(names))

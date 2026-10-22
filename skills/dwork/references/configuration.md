@@ -133,9 +133,33 @@ They work from any directory without Docker or workspace-directory access.
 `--dry-run` before or after the names previews without writing state. All names
 are validated before any changes; an unknown name fails the whole request.
 
+Source checkouts after v0.4.1 accept registered names with `dwork up NAME...`
+and `dwork down NAME...`. Named `up` starts only the selected registrations and
+leaves all other workspaces running, using saved directories, Compose options,
+ownership checks, health gates, and applicable activation/group/task/browser
+confirmations. Named `down` limits the existing shutdown plan and confirmation to
+selected registrations, including all members of saved groups; locks, managed
+service selections, and Docker-target restrictions still apply. Names are registry
+names, not paths or service names. Validate/preflight the complete `up` batch
+before any startup; applicable activation/group consents are collected first,
+and declining one cancels the batch. Task/browser prompts remain separate. `down`
+validates its entire name batch before stopping anything. A single `--dry-run`
+can appear before, among, or after names. The no-name forms retain their existing behavior:
+`up` switches to the current workspace; `down` selects all eligible registrations.
+Published v0.4.1 packages lack these named forms; inspect installed help before use.
+Generating configuration does not authorize either live operation.
+
 `dwork scan` recursively registers `dwork.yml` workspaces, then offers a Space/Enter
 checkbox picker for unregistered Compose-only directories. It does not activate
-anything. `dwork scan --dry-run` previews without writing or prompting.
+anything. `dwork scan --dry-run` previews without writing or prompting. Source
+checkouts after v0.4.1 also accept `dwork scan .` and several positional roots,
+for example `dwork scan ~/projects ~/work/client-projects --dry-run`. Each root
+retains the normal traversal boundaries and exclusions. Explicit roots are
+resolved/deduplicated and validated before registration; overlapping roots do not
+register a workspace twice. Explicit symlink roots resolve to their targets,
+while linked descendants stay skipped. `--` ends option parsing for leading-hyphen
+paths. Published v0.4.1 packages scan the current directory without positional roots. Scanning writes registrations;
+use a preview when discovery is needed without authorization to change the registry.
 Scanning stops below repository/project markers such as `.git`, `dwork.yml`,
 Compose files, or project manifests. Start a scan inside a nested directory to
 find workspaces below an existing repository boundary.
@@ -389,6 +413,18 @@ and `--wsl-python /ABS/PATH`, optionally `--wsl-user USER`; omission uses the
 selected distribution's default user and registry. `wsl.exe`, Windows Terminal,
 and Windows PowerShell are required. No native Windows workspace execution occurs.
 The Linux tray itself remains unsupported inside WSL/WSLg.
+
+For requested setup, use the
+[portable setup steps](https://github.com/hayyaun/dwork/blob/main/docs/companion/README.md#set-up-the-portable-app)
+and [manual restart options](https://github.com/hayyaun/dwork/blob/main/docs/companion/README.md#start-it-again-without-remembering-the-arguments).
+From the selected user's Linux home, verify that the chosen absolute Linux
+interpreter can run `-m dwork list --json` without relying on the source directory.
+The private interpreter from Make/install.sh alone does not guarantee an importable
+`dwork` package; use the guide's supported environment choices. Retain the selected
+WSL distribution, interpreter, and any explicit `--wsl-user` on relaunch so the
+same account and registry are used. Quit the old tray before starting its replacement.
+A manual restart or desktop shortcut is separate from login startup; enable startup
+only when requested. No separate Windows Python installation is needed for the ZIP.
 
 The replaceable tray image is `companion/src/dwork_tray/assets/tray.png`, loaded
 relative to the package rather than the working directory. Its sibling `tray.svg`

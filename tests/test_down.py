@@ -170,7 +170,7 @@ class DownTests(unittest.TestCase):
         result, changes, _ = self.run_cli("down", containers=[legacy.container("a", "api")])
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
-        for args in ("down all", "down --all", "down -f compose.yaml"):
+        for args in ("down --all", "down -f compose.yaml"):
             result, changes, calls = self.run_cli(args)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Usage: dwork down", result.stderr)

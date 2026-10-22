@@ -32,8 +32,12 @@ From the extracted folder in PowerShell:
 ```
 
 The folder may remain in Linux and run through its WSL UNC path. Windows Terminal
-and Windows PowerShell provide the interactive operation window. See the guide for
-selection options and verification limits.
+and Windows PowerShell provide the interactive operation window. See the
+[Windows setup steps](../docs/companion/README.md#set-up-the-portable-app) for the
+Linux CLI interpreter check, complete ZIP extraction, launch, and verification limits.
+A [desktop shortcut](../docs/companion/README.md#start-it-again-without-remembering-the-arguments)
+can save the launch arguments without enabling startup. Look in Windows' hidden
+notification icons (`^`) if the icon is not immediately visible.
 
 The shared tray icon is [`src/dwork_tray/assets/tray.png`](src/dwork_tray/assets/tray.png).
 Its sibling `tray.svg` is the editable design source.

@@ -68,7 +68,24 @@ dwork scan --dry-run
 dwork scan
 ```
 
-Searches the starting directory and descends through collections of projects.
+Current source checkouts after v0.4.1 also accept directory paths without changing
+your shell's working directory:
+
+```sh
+dwork scan .
+dwork scan ~/projects ~/work/client-projects --dry-run
+dwork scan ~/projects ~/work/client-projects
+```
+
+Each root uses the same scan boundaries and exclusions and is scanned in argument
+order. Roots are resolved and validated before any registrations are written; repeated canonical roots are
+searched once. Explicit overlapping roots are allowed, with duplicate workspaces
+skipped. An explicit symlink root resolves to its target; linked directories found
+below a root are skipped. Use `--` before a leading-hyphen path, for example
+`dwork scan -- -archive`. `--dry-run` may appear anywhere before that separator.
+Published v0.4.1 packages use the current directory and do not accept positional paths.
+
+Searches each starting directory and descends through collections of projects.
 When it finds a repository/project marker, it checks that directory for `dwork.yml`
 or Compose files, then stops descending there and continues with sibling directories.
 The boundary markers are:
@@ -84,7 +101,7 @@ This is a filename-based heuristic, not proof that a repository has no nested
 workspaces. It also applies to the starting directory. To find workspaces below
 a detected boundary, start another scan from the desired subdirectory.
 
-Symlinked directories and these exact directory names are
+Symlinked descendant directories and these exact directory names are
 skipped at every depth, without traversing their contents:
 
 - Version control: `.git`, `.hg`, `.svn`.
@@ -210,6 +227,30 @@ is registered as one workspace containing those children. Switching it activates
 the group together and retains the group confirmation prompt. A child Compose
 project cannot also be claimed by a separate registration on the same Docker target.
 
+## Start named workspaces together
+
+Current source checkouts after v0.4.1 support:
+
+```sh
+dwork up app frontend --dry-run
+dwork up app frontend
+```
+
+The names select existing registrations from `dwork list`, using each saved
+configuration and Compose selection. All other workspaces stay running; named
+`up` does not plan outgoing shutdown. Existing ownership checks, health gates,
+and applicable activation/group/task/browser confirmations still apply. A saved
+group name selects its registered members together. All names and configurations
+are validated and preflighted before startup; repeated names are activated once
+in argument order. Applicable activation/group consents are collected for the batch
+before starting anything. Declining one cancels the batch; task/browser prompts
+remain separate. `--dry-run` may appear before, among, or after the names.
+
+With no names, `dwork up` keeps the current-directory switch behavior described
+above, including eligible outgoing shutdown. These named operations do not create
+a persistent group or change registrations. Published v0.4.1 packages support the
+no-name form only.
+
 ## What can stop
 
 dwork identifies a Docker target using the context name and Docker daemon ID.
@@ -283,7 +324,21 @@ dwork down --dry-run
 dwork down
 ```
 
-Stops all registered container workloads on the current Docker target together,
+To stop selected registrations with a source checkout after v0.4.1:
+
+```sh
+dwork down app frontend --dry-run
+dwork down app frontend
+```
+
+Names select only the eligible containers and tracked commands owned by those
+registrations, including saved group members. Other registrations stay running;
+locks, service selections, Docker-target restrictions, and the normal stop-plan
+confirmation remain in force. The entire name batch is validated before stopping
+anything; `--dry-run` may appear before, among, or after the names. Published
+v0.4.1 packages retain the no-name form.
+
+Without names, stops all registered container workloads on the current Docker target together,
 including workloads from unavailable directories. It respects recorded service
 selections and `DWORK_KEEP_PROJECTS`. Unregistered containers and containers on other
 Docker targets are untouched, and locked workspaces remain running. Containers, networks, volumes,

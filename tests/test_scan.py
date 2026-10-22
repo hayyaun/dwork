@@ -45,6 +45,53 @@ class ScanTests(unittest.TestCase):
     def entries(self):
         return json.loads(self.state.read_text())["workspaces"]
 
+    def test_explicit_roots_dedupe_aliases_and_preserve_requested_nested_roots(self):
+        first = self.root / "first with spaces"
+        nested = first / "nested"
+        second = self.root / "second"
+        for directory in (first, nested, second):
+            self.configured(directory)
+        alias = self.root / "alias"
+        alias.symlink_to(first, target_is_directory=True)
+        result, changes, calls = self.run_cli(
+            "scan 'first with spaces' alias 'first with spaces/nested' second --dry-run"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count("Would register:"), 3)
+        self.assertEqual((changes, calls), ([], []))
+        self.assertFalse(self.state.parent.exists())
+
+    def test_explicit_dot_and_dry_run_positions_are_read_only(self):
+        self.configured(self.root / "app")
+        for args in ("scan . --dry-run", "scan --dry-run .", "scan . --dry-run ."):
+            result, changes, calls = self.run_cli(args)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Would register: app", result.stdout)
+            self.assertEqual((changes, calls), ([], []))
+            self.assertFalse(self.state.parent.exists())
+
+    def test_all_explicit_roots_validate_before_any_registration(self):
+        self.configured(self.root / "first")
+        (self.root / "file").write_text("not a directory")
+        for invalid in ("missing", "file"):
+            result, changes, calls = self.run_cli("scan first " + invalid)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Scan root is not an available directory", result.stderr)
+            self.assertEqual((changes, calls), ([], []))
+            self.assertFalse(self.state.parent.exists())
+
+    def test_separator_accepts_literal_flag_named_scan_directories(self):
+        for name in ("-root", "--version"):
+            self.configured(self.root / name)
+            result, changes, calls = self.run_cli("scan -- " + name)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(str(self.root / name), result.stdout)
+            self.assertEqual((changes, calls), ([], []))
+        self.assertEqual(
+            {entry["path"] for entry in self.entries()},
+            {str(self.root / "-root"), str(self.root / "--version")},
+        )
+
     def test_recurses_through_container_directories_and_skips_symlinks(self):
         self.configured(self.root / "first")
         self.configured(self.root / "deep/a/b")

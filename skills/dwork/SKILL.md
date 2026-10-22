@@ -32,6 +32,10 @@ Check the installed package version or source tag before using them with an
 older installation; updating the skill alone does not update dwork.
 Stopping outgoing tracked commands during switches is available in 0.4.0+;
 verify the installed runtime includes this behavior before promising it.
+Source checkouts after v0.4.1 add positional `scan PATH...`, start-only
+`up NAME...`, and selected `down NAME...`. Check the installed command's help
+before using them; published v0.4.1 packages lack these additions. See the bundled
+reference for their scope and unchanged confirmation/ownership rules.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
 available; follow the installation guide for the selected release and platform.
@@ -229,6 +233,10 @@ GNOME extensions and system dependencies require their own authorization. An opt
 without a separate Windows Python setup. It accepts explicit `--wsl-distribution` and absolute
 Linux `--wsl-python` arguments; `--wsl-user` selects an account or omission uses
 the distribution default. Install the core CLI only in the selected WSL interpreter.
+For requested Windows/WSL setup or relaunch, follow the
+[portable setup steps](https://github.com/hayyaun/dwork/blob/main/docs/companion/README.md#set-up-the-portable-app)
+and [manual restart options](https://github.com/hayyaun/dwork/blob/main/docs/companion/README.md#start-it-again-without-remembering-the-arguments),
+with the interpreter/user checks in the bundled reference.
 Do not bypass stopped-distribution checks, scrape tables, or manage native Windows
 workspaces. Windows `--check` also reads WSL status; Windows app-managed login startup is absent; an explicitly requested manual
 Startup-folder shortcut remains available.

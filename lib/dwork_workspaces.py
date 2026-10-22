@@ -1,6 +1,6 @@
 """Workspace switching and shutdown, including plans and confirmations."""
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 import os
 import shlex
@@ -54,9 +54,22 @@ def keep_projects():
     return {n.strip() for n in os.environ.get("DWORK_KEEP_PROJECTS", "").split(",") if n.strip()}
 
 
-def plan_shutdown(entries, target, containers, keep, exclude_workspace=None, task_records=None):
+def plan_shutdown(
+    entries,
+    target,
+    containers,
+    keep,
+    exclude_workspace=None,
+    task_records=None,
+    include_workspaces=None,
+):
     """Select the same owned resources for down and switch, except the destination."""
-    candidates = [e for e in entries if e["path"] != exclude_workspace]
+    candidates = [
+        e
+        for e in entries
+        if e["path"] != exclude_workspace
+        and (include_workspaces is None or e["path"] in include_workspaces)
+    ]
     managed = dwork_registry.registered_services(candidates, target)
     selected = []
     for item in containers:
@@ -73,8 +86,10 @@ def plan_shutdown(entries, target, containers, keep, exclude_workspace=None, tas
     if task_records is None:
 
         def controller_error(record, error):
-            if record["workspace"] != exclude_workspace and not task_protection(
-                record, entries, keep
+            if (
+                record["workspace"] != exclude_workspace
+                and (include_workspaces is None or record["workspace"] in include_workspaces)
+                and not task_protection(record, entries, keep)
             ):
                 raise DworkError(
                     "Cannot inspect tracked task "
@@ -89,7 +104,9 @@ def plan_shutdown(entries, target, containers, keep, exclude_workspace=None, tas
         )
     selected_tasks, protected_tasks = [], []
     for record in task_records:
-        if record["workspace"] == exclude_workspace:
+        if record["workspace"] == exclude_workspace or (
+            include_workspaces is not None and record["workspace"] not in include_workspaces
+        ):
             continue
         reason = task_protection(record, entries, keep)
         if reason:
@@ -391,16 +408,28 @@ def execute_activation(
         raise
 
 
-def down_workspaces(entries, preview):
-    """Stop registered containers and locally supervised tasks after confirmation."""
+def down_workspaces(entries, preview, names=None):
+    """Stop selected registered resources, or the existing all-workspace scope."""
+    selected = dwork_registry.select_registrations(entries, names) if names else entries
+    if names:
+        for entry in selected:
+            dwork_registry.check_ownership(entries, entry)
     locks_changed = dwork_registry.refresh_locks(entries)
-    has_compose = any(e["target"] is not None for e in entries)
+    has_compose = any(e["target"] is not None for e in selected)
     target = dwork_docker.docker_target() if has_compose else None
     containers = dwork_docker.inventory() if has_compose else []
     if has_compose:
         dwork_docker.show_target()
     keep = keep_projects()
-    plan = plan_shutdown(entries, target, containers, keep)
+    plan = plan_shutdown(
+        entries,
+        target,
+        containers,
+        keep,
+        include_workspaces={e["path"] for e in selected} if names else None,
+    )
+    if names:
+        print("Selected workspaces: " + ", ".join(colored_name(e["name"]) for e in selected))
     print(
         "Down plan: "
         + str(len(plan.containers))
@@ -438,8 +467,24 @@ def down_workspaces(entries, preview):
     return 0
 
 
-def registry_command(directory, options, mode, preview, name, entries):
-    if mode in ("switch", "forget"):
+@dataclass(frozen=True)
+class PreparedActivation:
+    plan: ActivationPlan
+    candidate: dict[str, Any]
+    existing: dict[str, Any] | None
+    discovered: bool
+    locks_changed: bool
+    shutdown_target: dict[str, Any] | None
+    keep: set[str]
+    confirm_activation: bool
+    skip_activation_confirmation: bool
+    start_only: bool
+
+
+def registry_command(
+    directory, options, mode, preview, name, entries, *, start_only=False, prepare_only=False
+):
+    if mode in ("switch", "forget") or (mode == "up" and name is not None):
         entry = next((e for e in entries if e["name"] == name), None)
         if entry is None:
             raise DworkError("Unknown workspace: " + str(name) + ". Run dwork list.")
@@ -462,7 +507,16 @@ def registry_command(directory, options, mode, preview, name, entries):
         try:
             os.chdir(directory)
             with dwork_config.compose_environment(entry["environment"]):
-                return switch_workspace(directory, entry["options"], mode, preview, entries, name)
+                return switch_workspace(
+                    directory,
+                    entry["options"],
+                    mode,
+                    preview,
+                    entries,
+                    name,
+                    start_only=start_only,
+                    prepare_only=prepare_only,
+                )
         finally:
             os.chdir(original)
     return switch_workspace(directory, options, mode, preview, entries, name)
@@ -485,7 +539,9 @@ def prepare_launches(plan: ActivationPlan) -> ActivationPlan:
     )
 
 
-def switch_workspace(directory, options, mode, preview, entries, name=None):
+def switch_workspace(
+    directory, options, mode, preview, entries, name=None, *, start_only=False, prepare_only=False
+):
     known = next((e for e in entries if e["path"] == str(directory)), None)
     direct = bool(known and known.get("direct", False))
     workspaces, discovered = (
@@ -555,14 +611,18 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             "Workspace registration no longer matches its directory; register it again."
         )
     # A host-only destination must also shut down outgoing Compose workspaces.
-    has_compose = bool(active) or any(e["target"] is not None for e in entries)
+    has_compose = bool(active) or (not start_only and any(e["target"] is not None for e in entries))
     shutdown_target = target if active else (dwork_docker.docker_target() if has_compose else None)
     containers = dwork_docker.inventory() if has_compose else []
     if has_compose:
         dwork_docker.show_target()
     keep = keep_projects()
-    shutdown = plan_shutdown(
-        entries, shutdown_target, containers, keep, exclude_workspace=str(directory)
+    shutdown = (
+        ShutdownPlan([], [], [])
+        if start_only
+        else plan_shutdown(
+            entries, shutdown_target, containers, keep, exclude_workspace=str(directory)
+        )
     )
     plan = build_activation_plan(
         directory.resolve(),
@@ -590,7 +650,7 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
     for warning in plan.warnings:
         print(color("Warning: " + warning, "warning", sys.stderr), file=sys.stderr)
     print(
-        "Switch plan: "
+        ("Start plan: " if start_only else "Switch plan: ")
         + str(len(shutdown.containers))
         + " stop(s), "
         + str(len(starts))
@@ -601,11 +661,14 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
         + " browser URL(s)."
     )
     print("Tracked commands to stop: " + str(len(shutdown.tasks)))
-    if has_compose:
-        print(
-            "Scope: container stops affect only other registered workspaces on this Docker target."
-        )
-    print("Tracked command stops affect other registered workspaces on this machine.")
+    if start_only:
+        print("Other registered workspaces are left running.")
+    else:
+        if has_compose:
+            print(
+                "Scope: container stops affect only other registered workspaces on this Docker target."
+            )
+        print("Tracked command stops affect other registered workspaces on this machine.")
     if existing is None:
         print("Would register workspace: " + colored_name(name) + " -> " + str(directory))
     print("Protected projects (DWORK_KEEP_PROJECTS): " + (", ".join(sorted(keep)) or "none"))
@@ -674,33 +737,110 @@ def switch_workspace(directory, options, mode, preview, entries, name=None):
             "Workspace activation confirmation: "
             + ("skipped (confirm: false)" if skip_activation_confirmation else "required")
         )
+    prepared = PreparedActivation(
+        plan,
+        candidate,
+        existing,
+        discovered,
+        locks_changed,
+        shutdown_target,
+        keep,
+        confirm_activation,
+        skip_activation_confirmation,
+        start_only,
+    )
+    if prepare_only:
+        return prepared
     if preview:
         return 0
+    return apply_prepared_activation(prepared, entries)
+
+
+def confirm_prepared_activation(prepared, *, named=False):
+    prompt = (
+        "Apply the listed workspace plan for " + colored_name(prepared.candidate["name"]) + "?"
+        if named
+        else "Apply the listed workspace plan?"
+    )
     if (
-        confirm_activation
-        and not skip_activation_confirmation
-        and not dwork_common.confirm_action("Apply the listed workspace plan?")
+        prepared.confirm_activation
+        and not prepared.skip_activation_confirmation
+        and not dwork_common.confirm_action(prompt)
     ):
         print("Cancelled; nothing changed.")
-        return 0
-    if discovered:
+        return False
+    if prepared.discovered:
         try:
-            answer = input("Switch all listed projects together? (y/N) ")
+            answer = input(
+                "Start all listed projects in " + prepared.candidate["name"] + " together? (y/N) "
+                if prepared.start_only
+                else "Switch all listed projects together? (y/N) "
+            )
         except EOFError:
             answer = ""
         if answer.strip().lower() != "y":
             print("Cancelled; nothing changed.")
-            return 0
+            return False
+    return True
+
+
+def apply_prepared_activation(prepared, entries, *, confirmed=False):
+    if not confirmed and not confirm_prepared_activation(prepared):
+        return 0
+    candidate, existing, plan = prepared.candidate, prepared.existing, prepared.plan
     if existing is None:
         if not dwork_registry.confirm_registration(candidate):
             print("Cancelled; no workspace registered and no containers or terminals changed.")
             return 0
         entries.append(candidate)
-    shutdown, changed = recheck_shutdown(shutdown, entries, shutdown_target, keep)
-    locks_changed = changed or locks_changed
-    if existing is None or locks_changed:
+    if prepared.start_only:
+        shutdown = plan.shutdown
+        changed = dwork_registry.refresh_locks(entries)
+    else:
+        shutdown, changed = recheck_shutdown(
+            plan.shutdown, entries, prepared.shutdown_target, prepared.keep
+        )
+    if existing is None or changed or prepared.locks_changed:
         dwork_registry.save_registry(entries)
     if existing is None:
-        print("Registered " + colored_name(name) + " at " + str(directory) + ".")
+        print("Registered " + colored_name(candidate["name"]) + " at " + str(plan.directory) + ".")
     execute_activation(replace(plan, shutdown=shutdown), entries)
+    return 0
+
+
+def up_registered_workspaces(entries, names, preview):
+    """Prepare and approve all named destinations before starting any of them."""
+    selected = dwork_registry.select_registrations(entries, names)
+    for entry in selected:
+        if not Path(entry["path"]).is_dir():
+            raise DworkError(
+                "Workspace directory unavailable: "
+                + entry["path"]
+                + ". Forget it and register the new location after a move."
+            )
+    prepared = [
+        registry_command(
+            Path(entry["path"]),
+            [],
+            "up",
+            preview,
+            entry["name"],
+            entries,
+            start_only=True,
+            prepare_only=True,
+        )
+        for entry in selected
+    ]
+    if preview:
+        return 0
+    if not all(confirm_prepared_activation(item, named=True) for item in prepared):
+        return 0
+    original = Path.cwd()
+    try:
+        for entry, item in zip(selected, prepared, strict=True):
+            os.chdir(item.plan.directory)
+            with dwork_config.compose_environment(entry["environment"]):
+                apply_prepared_activation(item, entries, confirmed=True)
+    finally:
+        os.chdir(original)
     return 0

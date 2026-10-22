@@ -19,7 +19,8 @@
 `dwork` switches your development workspace. It resumes a project's existing
 containers, waits for healthy dependencies, and opens your commands and browser URLs.
 Switches stop eligible registered workspaces; locked workspaces and unregistered
-projects stay running.
+projects stay running. Use `dwork scan` to find and remember existing projects;
+see [getting started](#get-started).
 
 ## Install
 
@@ -58,14 +59,28 @@ dwork-tray --autostart enable
 ```
 
 [Check or disable login startup](docs/companion/README.md#startup-at-login-is-opt-in).
-An optional [portable Windows tray for WSL2](docs/companion/README.md#windows-and-wsl)
+An optional [portable Windows tray for WSL2](docs/companion/README.md#set-up-the-portable-app)
 is available as a [ZIP in v0.4.1](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
 with no separate Windows Python installation;
 [Windows sign-in startup uses an optional shortcut](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
 
 ## Get started
 
-From your project directory:
+Find existing projects from their parent directory:
+
+```sh
+cd ~/projects
+dwork scan         # Remember dwork.yml workspaces; optionally select Compose projects
+dwork list         # See the saved names
+dwork switch my-app
+```
+
+Scanning registers projects without starting or stopping workloads. Current source
+checkouts after v0.4.1 also accept `dwork scan .` or several roots, such as
+`dwork scan ~/projects ~/work/client-projects`.
+[Scanning rules and previews](docs/workspaces/README.md#scan-a-directory-tree).
+
+To configure an individual project:
 
 ```sh
 cd your-project
@@ -93,6 +108,17 @@ dwork lock my-app      # Keep it running through switches and shutdowns
 dwork unlock my-app    # Release the temporary lock
 dwork down             # Stop eligible registered workspaces and tracked commands
 ```
+
+Current source checkouts after v0.4.1 also accept explicit workspace names:
+
+```sh
+dwork up my-app docs    # Start these saved workspaces, keeping all others running
+dwork down my-app       # Stop only this workspace's eligible workloads
+```
+
+Without names, `up` still switches to the current directory and `down` still stops
+all eligible registered workloads. Existing confirmations, locks, and ownership
+checks apply. Published v0.4.1 packages retain their earlier syntax.
 
 [All commands](docs/usage/README.md) ·
 [Workspace names, scanning, and locks](docs/workspaces/README.md)

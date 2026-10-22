@@ -61,11 +61,23 @@ class CompletionTests(unittest.TestCase):
     def test_bash_prefix_flags_and_file_paths_with_spaces(self):
         script = self.script("bash")
         (self.root / "compose dev.yaml").write_text("")
+        (self.root / "scan-root").mkdir()
+        (self.root / "scan-file").write_text("")
         setup = "source " + shlex.quote(str(script)) + "\ndwork() { printf 'alpha\\nbeta\\n'; }\n"
         for words, index, expected in (
             ("dwork sw al", 2, ["alpha"]),
             ("dwork lock al", 2, ["alpha"]),
             ("dwork unlock alpha be", 3, ["beta"]),
+            ("dwork up al", 2, ["alpha"]),
+            ("dwork up alpha be", 3, ["beta"]),
+            ("dwork up --dry-run be", 3, ["beta"]),
+            ("dwork down alpha be", 3, ["beta"]),
+            ("dwork down --dry-run al", 3, ["alpha"]),
+            ("dwork up alpha --p", 3, [""]),
+            ("dwork up --p", 2, ["--project-name", "--project-directory", "--profile"]),
+            ("dwork scan scan-", 2, ["scan-root"]),
+            ("dwork scan scan-root scan-", 3, ["scan-root"]),
+            ("dwork scan -- -f scan-", 4, ["scan-root"]),
             ("dwork lock --dry-run be", 3, ["beta"]),
             ("dwork unlock alpha --d", 3, ["--dry-run"]),
             ("dwork rename al", 2, ["alpha"]),
@@ -125,6 +137,7 @@ class CompletionTests(unittest.TestCase):
         import struct
         import termios
 
+        (self.root / "scan-root").mkdir()
         for shell, mode in (
             ("bash", "manual"),
             ("zsh", "manual"),
@@ -218,6 +231,9 @@ class CompletionTests(unittest.TestCase):
                     for typed, result in (
                         (b"dwork sw al\t\n", b"EXECUTED:sw alpha"),
                         (b"dwork lock al\tbe\t\n", b"EXECUTED:lock alpha beta"),
+                        (b"dwork up al\tbe\t\n", b"EXECUTED:up alpha beta"),
+                        (b"dwork down --d\tal\tbe\t\n", b"EXECUTED:down --dry-run alpha beta"),
+                        (b"dwork scan scan-r\t\n", b"EXECUTED:scan scan-root"),
                         (b"dwork unlock --d\tal\tbe\t\n", b"EXECUTED:unlock --dry-run alpha beta"),
                         (b"dwork sc\t--d\t\n", b"EXECUTED:scan --dry-run"),
                         (b"dwork rm be\t\n", b"EXECUTED:rm beta"),

@@ -100,18 +100,82 @@ with a ZIP and `SHA256SUMS.windows`; verified ZIPs join draft releases. The extr
 `_internal` files. It may remain inside Linux and execute through its Windows UNC
 path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.
 
-From PowerShell in that folder, substitute the selected distribution and Linux
-interpreter containing a CLI build with the version-1 JSON interface:
+#### Set up the portable app
 
-```powershell
-.\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --check
-.\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python
+1. In the chosen WSL distribution, select a Python environment with `dwork-cli`
+   0.4.x installed. From your Linux home directory, check that it works independently
+   of a source checkout:
+
+   ```sh
+   cd ~
+   /home/YOU/dwork-env/bin/python -m dwork --version
+   /home/YOU/dwork-env/bin/python -m dwork list --json
+   ```
+
+   Replace the interpreter path with your environment's absolute Linux path.
+   `install.sh` / `make install` launch a private runtime directly; their Python
+   environment alone does not install the importable `dwork` module needed by this
+   bridge. If needed, download and verify the CLI wheel from the same release,
+   then install it in a separate **Linux** environment:
+
+   ```sh
+   python3 -m venv "$HOME/dwork-env"
+   "$HOME/dwork-env/bin/python" -m pip install /path/to/dwork_cli-0.4.1-py3-none-any.whl
+   ```
+
+   An existing pipx/uv or editable development environment is also suitable when
+   the two checks above pass. Registrations are shared through the chosen Linux
+   user's state directory; installing another CLI environment does not register
+   or activate workspaces.
+
+2. Download the portable ZIP and `SHA256SUMS` linked above. Compare the ZIP's
+   SHA-256 with its entry in the manifest before extracting it. For example,
+   PowerShell provides `Get-FileHash .\dwork-tray-0.2.0-windows-x64.zip -Algorithm SHA256`;
+   Linux provides `sha256sum dwork-tray-0.2.0-windows-x64.zip`.
+   Extract the **complete** `dwork-tray` folder to a stable location. Keep the
+   sibling helper and `_internal` directory together with the EXE.
+
+3. Start the selected distribution deliberately and confirm Windows Terminal and
+   Windows PowerShell are available. From PowerShell in the extracted folder, run:
+
+   ```powershell
+   .\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --wsl-user YOU --check
+   .\dwork-tray.exe --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --wsl-user YOU
+   ```
+
+   Substitute your distribution, interpreter, and Linux user. For a folder kept
+   in Linux, PowerShell can invoke the full UNC path from any directory:
+
+   ```powershell
+   & '\\wsl.localhost\Ubuntu\home\YOU\apps\dwork-tray\dwork-tray.exe' --wsl-distribution Ubuntu --wsl-python /home/YOU/dwork-env/bin/python --wsl-user YOU
+   ```
+
+`--check` reads status without opening the tray or activating a workspace. On an
+ordinary launch, look in the Windows notification area, including its **Show hidden
+icons** (`^`) overflow menu. Opening the tray menu lists registered workspaces;
+**Quit tray** removes only the tray icon.
+
+#### Start it again without remembering the arguments
+
+Use the same launch command after **Quit tray** or a Windows restart; this version
+saves no selection preferences. You can create an ordinary **desktop shortcut**
+whose target is the quoted EXE path followed by the same WSL arguments:
+
+```text
+"\\wsl.localhost\Ubuntu\home\YOU\apps\dwork-tray\dwork-tray.exe" --wsl-distribution Ubuntu --wsl-python "/home/YOU/dwork-env/bin/python" --wsl-user YOU
 ```
+
+Set the shortcut's **Start in** to the extracted app folder. Double-click it when
+wanted. A desktop shortcut does not enable login startup; [sign-in startup](#windowswsl-start-at-sign-in-with-a-shortcut)
+is a separate opt-in choice. The extracted app may stay in Linux; a shortcut only
+points to it. Quit the previous instance before launching another copy or updating.
+For an update, extract the new complete ZIP into a new folder, run `--check`, then
+update your launch command or shortcut target. Keep the old folder until the new
+copy works; a source-code update does not replace an extracted app.
 
 The ZIP is unsigned and includes its source revision, checksum, and dependency
 notices. The CLI and workspace execution remain inside WSL. A Linux tray inside
 WSL/WSLg remains unsupported; native Windows workspace management is not added.
-Restarting uses the same selection arguments; this version saves no preferences.
 
 `--wsl-distribution NAME` and `--wsl-python /ABSOLUTE/LINUX/PATH` are required on
 Windows. `--wsl-user USER` optionally chooses a Linux user; omission uses the
