@@ -3,6 +3,9 @@
 The optional ZIP includes the tray, terminal helper, Python runtime, libraries,
 resources, notices, and source revision. It connects to the CLI in WSL and needs
 no separately installed Windows Python. [Usage](../../docs/companion/README.md).
+[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes
+[dwork-tray 0.2.0 for Windows x64](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
+covered by its [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS).
 
 The `Portable Windows tray` workflow builds on Windows CI with Python 3.13 x64 and
 PyInstaller 6.22.3. The documented multi-program spec collects two console-capable

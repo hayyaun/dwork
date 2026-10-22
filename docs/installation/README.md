@@ -26,8 +26,7 @@ brew install python@3.14
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
 ```
 
-This installs the latest source from `main`, including changes since the published
-0.3.0 packages. The [bootstrap script](../../install.sh) checks Git, Make, and
+This installs the latest source from `main`. The [bootstrap script](../../install.sh) checks Git, Make, and
 Python, clones into a temporary directory, and runs the existing `make install`
 target. It removes the temporary checkout on success or failure. The installed
 command does not depend on that checkout. System dependencies and the optional
@@ -206,34 +205,38 @@ recognize an interrupted upgrade's pending ownership record.
 
 ## Python, Homebrew, and Debian packages
 
-[GitHub release v0.3.0](https://github.com/hayyaun/dwork/releases/tag/v0.3.0)
+[GitHub release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1)
 provides verified packages. Check downloaded files against its
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.3.0/SHA256SUMS)
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS)
 before installing. Public Homebrew tap, PyPI, AUR, and apt repository publication
 remain pending; channel instructions are in [packaging/](../../packaging/README.md).
 
-- Python: download the [wheel](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_cli-0.3.0-py3-none-any.whl)
-  or [source distribution](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_cli-0.3.0.tar.gz).
-  Install the local wheel with `pipx install ./dwork_cli-0.3.0-py3-none-any.whl`
-  or `uv tool install ./dwork_cli-0.3.0-py3-none-any.whl`.
+- Python: download the [wheel](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork_cli-0.4.1-py3-none-any.whl)
+  or [source distribution](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork_cli-0.4.1.tar.gz).
+  Install the local wheel with `pipx install ./dwork_cli-0.4.1-py3-none-any.whl`
+  or `uv tool install ./dwork_cli-0.4.1-py3-none-any.whl`.
   The distribution is named `dwork-cli`, while the command remains `dwork`.
   Checkout installation with `pipx install .` or `uv tool install .` also works;
   registry installation by name must wait for publication.
-- Homebrew: test the prepared v0.3.0 formula in a local tap using the
-  [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.3.0 includes
+- Homebrew: test the prepared v0.4.1 formula in a local tap using the
+  [Homebrew guide](../../packaging/homebrew/README.md). Stable v0.4.1 includes
   macOS support; a public tap is separate and has not been published.
-- Debian/Ubuntu: download the [`.deb`](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork_0.3.0-1_all.deb)
+- Debian/Ubuntu: download the [`.deb`](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork_0.4.1-1_all.deb)
   and install the verified local file with apt. To build it yourself, use
   `python3 scripts/build-deb.py`; see the
   [Debian guide](../../packaging/debian/README.md) for prerequisites.
 - Fedora 44 and Arch: the release provides an
-  [RPM](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork-0.3.0-1.fc44.noarch.rpm)
-  and [Arch package](https://github.com/hayyaun/dwork/releases/download/v0.3.0/dwork-0.3.0-1-any.pkg.tar.zst).
+  [RPM](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-0.4.1-1.fc44.noarch.rpm)
+  and [Arch package](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-0.4.1-1-any.pkg.tar.zst).
   These target Fedora 44 and the current Arch rolling distribution respectively.
 
 Use one installation method at a time. Remove an old sourced function when
 switching to an executable, as described below. The optional agent skill is
 installed separately for every distribution method.
+
+The optional [portable Windows tray 0.2.0 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip)
+is also attached to v0.4.1 and covered by the same checksum manifest. It connects
+to CLI 0.4.x in WSL; see [selection and launch](../companion/README.md#windows-and-wsl).
 
 ## Runtime dependencies
 

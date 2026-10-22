@@ -90,8 +90,12 @@ An optional portable Windows ZIP bundles the tray, terminal helper, Python runti
 and tray libraries. It connects to the existing CLI in WSL. No separate Windows
 Python, pip, venv, or compiler setup is required to use it.
 
-The **Portable Windows tray** CI workflow produces `release-assets-windows`, with
-a ZIP and `SHA256SUMS.windows`; verified ZIPs also join draft releases. The extracted
+[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes the
+[portable tray 0.2.0 ZIP](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip),
+covered by the release
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS).
+The **Portable Windows tray** CI workflow also produces `release-assets-windows`
+with a ZIP and `SHA256SUMS.windows`; verified ZIPs join draft releases. The extracted
 `dwork-tray` folder contains `dwork-tray.exe`, `dwork-tray-terminal.exe`, and shared
 `_internal` files. It may remain inside Linux and execute through its Windows UNC
 path, such as `\\wsl.localhost\Ubuntu\home\YOU\...`.

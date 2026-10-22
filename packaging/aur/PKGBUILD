@@ -1,6 +1,6 @@
 # Maintainer: Hayyan Hami (hayyaun)
 pkgname=dwork
-pkgver=0.3.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Switch development workspaces, resume existing containers, and launch terminals'
 arch=('any')
@@ -19,7 +19,7 @@ optdepends=(
   'xterm: launch development terminals on X11'
 )
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('67fdb571b2350b998230c551e4b49091667ac1b857706d94de31d65c0226710c')
+sha256sums=('0e8768e0bb0249ac01d0fa0ff412088ae34ce1bfcae265c698498637c9e12f7a')
 
 check() {
   cd "$srcdir/$pkgname-$pkgver"
@@ -29,7 +29,7 @@ check() {
 package() {
   cd "$srcdir/$pkgname-$pkgver"
   make install VENV=0 PREFIX=/usr DESTDIR="$pkgdir" PYTHON=/usr/bin/python
-  # v0.3.0 provides sourceable scripts; package entries for native discovery.
+  # Install explicit entries for native shell completion discovery.
   install -Dm644 "$pkgdir/usr/share/dwork/completions/dwork.bash" \
     "$pkgdir/usr/share/bash-completion/completions/dwork"
   install -d "$pkgdir/usr/share/zsh/site-functions"

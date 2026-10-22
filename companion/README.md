@@ -22,7 +22,8 @@ dwork-tray
 Linux needs PyGObject and AppIndicator/Ayatana introspection plus a compatible tray
 host; GNOME may need indicator extension support. macOS needs Python 3.13+ and Cocoa.
 
-An optional portable Windows ZIP includes the tray, terminal helper, and runtime.
+An optional [portable Windows ZIP in v0.4.1](https://github.com/hayyaun/dwork/releases/download/v0.4.1/dwork-tray-0.2.0-windows-x64.zip)
+includes tray 0.2.0, the terminal helper, and runtime.
 It connects to the existing CLI in WSL; no separate Windows Python setup is needed.
 From the extracted folder in PowerShell:
 

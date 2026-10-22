@@ -41,7 +41,7 @@ with venv/pip support (3.10+ on Linux/WSL2, 3.13+ on macOS), and accepts `PREFIX
 and `PYTHON` environment choices. It leaves shell startup files alone and prints
 any needed PATH setup. Its temporary checkout is removed; uninstall requires a
 fresh or existing checkout and `make uninstall` with the same prefix. Do not
-confuse this source installation with the older published release packages.
+confuse a checkout of `main` with a versioned release package.
 Companion 0.2.0 pairs with CLI 0.4.x on native Linux/macOS; updating the skill
 alone does not update either package. The native source installer offers `TRAY=1` (also `make install TRAY=1`) to include
 `dwork-tray` as a separate package/environment. This is an explicit installation
@@ -61,8 +61,8 @@ requires sourcing after Oh My Zsh/`compinit`. Python installs, older source
 checkouts, and prefixes outside the shell's search path need explicit setup.
 Do not assume older published assets include the new paths or loader behavior;
 see the bundled reference before suggesting a shell change.
-Verified 0.3.0 packages are available from
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0); select the
+Verified 0.4.1 packages and the optional portable Windows tray 0.2.0 are available from
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.4.1); select the
 appropriate platform package and verify its checksum before installation.
 Source build/test prerequisites differ from installed runtime dependencies:
 Git is required by the source installer and package regression tests, but the

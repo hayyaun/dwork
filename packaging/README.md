@@ -1,22 +1,23 @@
 # Distribution packaging
 
-- [AUR](aur/README.md): v0.3.0 recipe with native completion entries; submission pending.
-- [Homebrew](homebrew/README.md): v0.3.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
+- [AUR](aur/README.md): v0.4.1 recipe with native completion entries; submission pending.
+- [Homebrew](homebrew/README.md): v0.4.1 formula, shared recipe template, and exact-checkout verification; public tap pending.
 - [Python / PyPI](python/README.md): v0.4.1 wheel/sdist and console entry point; TestPyPI/PyPI publication pending.
 - [Debian / Ubuntu](debian/README.md): v0.4.1-1 debhelper packaging; no signed apt repository.
 - [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
-Verified v0.3.0 Python, Debian/Ubuntu, Fedora 44, and Arch packages are published in
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.3.0), with
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.3.0/SHA256SUMS).
-The release points to commit `33310a7`. Historical release verification does not
+Verified v0.4.1 Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus the
+portable Windows tray 0.2.0 ZIP, are published in
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.4.1), with
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.4.1/SHA256SUMS).
+The release points to commit `9982923`. Historical release verification does not
 prove that later checkout changes pass. Existing tags and downloads remain immutable.
 `make install` stays supported. These recipes and CI jobs do not publish packages
 to PyPI, a Homebrew tap, AUR, or an apt repository.
 
 ## Current verification paths
 
-The current source prepares CLI 0.4.1 and separate companion 0.2.0. Native
+CLI 0.4.1 and the separate companion 0.2.0 are versioned independently. Native
 companion dependencies target CLI 0.4.x; the portable Windows package embeds its
 own runtime and uses the matching CLI in WSL. Published assets and pinned channel
 recipes are updated only after the tagged release is built and verified.
@@ -32,7 +33,7 @@ wheels/sdists from its checkout, verifies installed behavior outside the source
 tree, and builds/lints/smoke-tests Debian packages. Homebrew has two source modes
 on Linux and Apple Silicon macOS, adding Intel on tags/manual runs:
 
-- **Stable:** pinned v0.3.0 archive, style, source installation, formula test, strict audit.
+- **Stable:** pinned v0.4.1 archive, style, source installation, formula test, strict audit.
 - **Checkout:** checksummed `git archive HEAD` matching the expected full CI commit,
   generated local formula, style, source installation, and formula test. No remote
   HEAD substitution or checksum bypass is used. This temporary source is not published.

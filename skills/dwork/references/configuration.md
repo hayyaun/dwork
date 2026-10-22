@@ -111,7 +111,7 @@ are not tracked. Tracking does not follow commands that daemonize into other gro
 or sessions. Switches share the shutdown planner and executor with `down`, excluding
 the selected registration and all its group members. Outgoing commands stop before
 the batch container stop and any destination startup. A shutdown failure aborts
-activation. This switch behavior was added after 0.3.0; check installed-runtime support.
+activation. This switch behavior requires 0.4.0 or newer; check installed-runtime support.
 Tasks already running in the selected workspace stay running, and approved configured
 tasks are still launched again. Missing outgoing directories retain their saved
 ownership and last known lock policy for shutdown in both operations.
@@ -128,7 +128,7 @@ commands, including every registered member of a group. A temporary lock lasts
 until explicitly released, survives shell restarts, renaming, and re-registration,
 and is discarded by `forget`. It is stored in the local registry; users sharing
 no registry do not share this policy. These commands require a runtime containing
-this feature (added after 0.3.0); older versions do not enforce the registry flag.
+this feature (0.4.0+); older versions do not enforce the registry flag.
 They work from any directory without Docker or workspace-directory access.
 `--dry-run` before or after the names previews without writing state. All names
 are validated before any changes; an unknown name fails the whole request.
@@ -326,7 +326,7 @@ endpoint. Do not interchange these fields.
 
 ## Preview
 
-Configuration helpers added after 0.3.0:
+Configuration helpers available in 0.4.0+:
 
 - `dwork --version` reports the shared package version without reading workspace state.
 - `dwork init [--dry-run]` creates/previews a deterministic local starter. Standard
@@ -379,7 +379,9 @@ Windows host connected to one explicitly selected WSL distribution.
 It lists saved workspaces, refreshes status periodically/after operations, and opens
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
 Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
-A dependency/menu test is not proof of desktop rendering. An optional portable Windows ZIP bundles the tray, helper, and runtime. It connects
+A dependency/menu test is not proof of desktop rendering. An optional portable Windows ZIP bundles the tray, helper, and runtime.
+[Release v0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) includes
+tray 0.2.0 and a checksum manifest. It connects
 to the matching CLI in a selected Linux interpreter; no separate Windows Python
 setup is needed. The extracted folder may remain on Linux and execute through its
 Windows UNC path. The app accepts explicit selection with `--wsl-distribution NAME`

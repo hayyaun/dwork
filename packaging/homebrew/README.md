@@ -1,11 +1,12 @@
 # Homebrew (macOS / Linux / WSL2)
 
-`dwork.rb` is generated from `dwork.rb.in` and `stable.json` and is a complete tap formula for the v0.3.0 tag, with fixed
+`dwork.rb` is generated from `dwork.rb.in` and `stable.json` and is a complete tap formula for the v0.4.1 tag, with fixed
 source and PyYAML checksums. It uses Homebrew's documented Python virtualenv
-helpers and the shared Make installer. Stable v0.3.0 supports Apple Terminal on
+helpers and the shared Make installer. Stable v0.4.1 supports Apple Terminal on
 macOS, native Linux terminals, and Windows Terminal from WSL2. The formula also
 declares the supported `--HEAD` option for development builds of the main branch.
-The separate public Homebrew tap has not been published.
+The v0.4.1 tagged source archive is available independently of release build
+assets. The separate public Homebrew tap has not been published.
 
 ## Test in a local tap
 
@@ -95,7 +96,7 @@ Both source modes use that template so installation and test logic stay aligned.
 Stable keeps its original URL-inferred version; checkout archives set the package
 version explicitly because their filenames identify commits.
 The standalone stable formula continues to work when copied into a public tap.
-Source changes do not update the published 0.3.0 archive or authorize installation,
+Source changes do not update the v0.4.1 tagged archive or authorize installation,
 activation, or any ownership/confirmation changes.
 
 ## Publish your tap

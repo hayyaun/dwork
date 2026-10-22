@@ -83,8 +83,8 @@
 
 ## Packaging publication
 
-- [x] Fix platform-independent transport/bootstrap/completion/installer fixtures, secure noninteractive Zsh verification, and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
-- [ ] Verify and publish 0.4.1 with companion 0.2.0, then update pinned channel recipes to the immutable release archive. Routine checks for v0.4.0 passed; its tag remains unchanged after Fedora/Arch release tests identified a missing Git build/test dependency. Declare that dependency and verify the corrected release builds before publication.
+- [x] Fix platform-independent transport/bootstrap/completion/installer fixtures, native Git build/test dependencies, secure noninteractive Zsh verification, and strict Homebrew completion-path auditing, with regressions and unchanged runtime prerequisites.
+- [x] Verify and publish [0.4.1](https://github.com/hayyaun/dwork/releases/tag/v0.4.1) with portable companion 0.2.0, and update pinned channel recipes to the verified release archive. Tag `v0.4.1` points to `9982923`; all 16 expanded package checks and all five release jobs passed. All six public package downloads match SHA256SUMS, including the Windows ZIP whose source revision and icon match the tag. The earlier v0.4.0 tag remains unchanged after its missing Git build/test dependency was corrected in 0.4.1.
 
 - [x] Prepare and commit Homebrew, PyPI, and Debian packaging support.
 - [x] Verify Python wheel/sdist builds and installation locally, including installed CLI checks outside the source tree.
@@ -95,10 +95,10 @@
 - [x] Review and publish the resulting [GitHub release](https://github.com/hayyaun/dwork/releases/tag/v0.3.0) and its verified assets. All five public package downloads match SHA256SUMS.
 - [ ] Create and publish the Homebrew tap, then verify installation from it.
 - [ ] Publish `dwork-cli` to TestPyPI, verify installation, then publish to PyPI.
-- [x] Build and verify Debian/Ubuntu packages and attach them to the matching release (0.3.0-1).
+- [x] Build and verify Debian/Ubuntu packages and attach them to the matching releases (0.3.0-1 and 0.4.1-1).
 - [ ] Evaluate a signed apt repository or PPA.
 - [ ] When AUR registration reopens, create the account, add an SSH public key, recheck package-name availability, and submit the prepared recipe.
-- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.3.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
+- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.4.1 downloads are documented; registry, tap, AUR, and apt publication remain pending.
 
 Keep the existing-container-only promise. Builds, deployments, and a large GUI are outside the current roadmap.
 

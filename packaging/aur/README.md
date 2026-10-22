@@ -1,6 +1,6 @@
 # dwork AUR packaging
 
-Upstream release: https://github.com/hayyaun/dwork/releases/tag/v0.3.0
+Prepared upstream version: [0.4.1](https://github.com/hayyaun/dwork/tree/v0.4.1).
 
 This directory prepares the stable `dwork` AUR package. It has not been submitted.
 AUR new-account registration was temporarily closed on 2026-10-20.
@@ -10,7 +10,7 @@ On Arch Linux, build as an ordinary user:
 ```sh
 makepkg --printsrcinfo > .SRCINFO
 makepkg -s
-sudo pacman -U dwork-0.3.0-1-any.pkg.tar.zst
+sudo pacman -U dwork-0.4.1-1-any.pkg.tar.zst
 dwork --help
 ```
 
@@ -18,12 +18,12 @@ Inspect `PKGBUILD` and the generated package before installing. Never run makepk
 as root. The recipe uses distribution Python/YAML, downloads no pip dependencies,
 and includes the MIT license in `/usr/share/licenses/dwork/LICENSE`.
 
-The prepared recipe now uses the verified v0.3.0 source archive and adds native
-Bash/Zsh completion entries from that release's sourceable scripts. Bash files
-go into `/usr/share/bash-completion/completions`, and the Zsh autoload entry goes
-into `/usr/share/zsh/site-functions`. Existing shell completion setup discovers
-them without a dwork-specific rc line. This recipe update is not an AUR submission;
-the historical validation below covers 0.1.0, not this updated build.
+The prepared recipe uses the checksum-verified v0.4.1 source archive and installs
+native Bash/Zsh completion entries. Bash files go into
+`/usr/share/bash-completion/completions`, and the Zsh autoload entry goes into
+`/usr/share/zsh/site-functions`. Existing shell completion setup discovers them
+without a dwork-specific rc line. Git is a check dependency for the local-repository
+source tests; it is not a runtime dependency.
 
 Once you have an AUR account, add your SSH public key in its settings, then clone
 `ssh://aur@aur.archlinux.org/dwork.git` into a separate empty directory. Recheck
@@ -37,7 +37,7 @@ and test dependencies in the container, builds as an ordinary user, generates
 .SRCINFO, runs namcap, installs the package inside the container and smoke-tests
 it. It is not intended to run on your host system.
 
-## Submit after registration reopens
+## Submit when an account is available
 
 1. Register at https://aur.archlinux.org/register and verify your email.
 2. Add an SSH **public** key in your AUR account settings. Keep the private key
@@ -65,7 +65,7 @@ fingerprints published at https://aur.archlinux.org/ before accepting it.
 
 ```sh
 git add PKGBUILD .SRCINFO
-git commit -m "Add dwork 0.3.0"
+git commit -m "Add dwork 0.4.1"
 git push origin master
 ```
 
@@ -91,6 +91,27 @@ docker run --rm --mount type=bind,source="$(pwd)",target=/recipe \
 The script writes `.SRCINFO` and the built package into this directory. It uses
 `makepkg --force` only inside its disposable container copy, allowing repeated
 validation when a previous build artifact is present.
+
+## Verification scope for this update
+
+The prepared 0.4.1 AUR recipe was verified on 2026-10-22 in the official
+`archlinux:base-devel` container using the exact v0.4.1 tagged source archive.
+Its SHA-256 was checked, and `.SRCINFO` was regenerated with
+`makepkg --printsrcinfo` as an ordinary user and matched the prepared metadata.
+
+`makepkg` ran all 409 source tests (6 skipped) and built `dwork-0.4.1-1-any.pkg.tar.zst`.
+The updated verification helper selected that built package, ran namcap on the
+recipe and package, and installed it with pacman inside the container. Bash/Zsh
+completion entries, Zsh discovery, `dwork --help`, and a host-only `--dry-run`
+outside the source tree all passed. The build, source tests, completion discovery,
+and dry-run used the ordinary builder account; no package was installed on the host.
+
+Namcap completed without errors but warned about the non-world-readable installer
+ownership marker, references to the bundled private Python modules, and detection
+of the launcher's `sh` dependency. These warnings remain recorded in the verification
+log and were not suppressed. Installed help and dry-run checks passed with the
+bundled modules. This validates the prepared AUR recipe; submission remains pending.
+Native desktop GUI behavior still requires testing in a real desktop session.
 
 ## Validation recorded on 2026-10-20
 
