@@ -40,6 +40,9 @@ CLI 0.5.0+ adds positional `scan PATH...`, start-only `up NAME...`, and selected
 `down NAME...`. Check the installed command's help before using them;
 published v0.4.1 packages lack these additions. See the bundled
 reference for their scope and unchanged confirmation/ownership rules.
+Scanning registers valid `dwork.yml` workspaces first, then offers Compose-only
+projects (including those with `compose.yml`) for selection; it never starts or
+stops workloads.
 CLI 0.6.0+ adds flat reusable groups of registered
 workspaces. Check installed `--help` before using `group` or `--group`; published
 v0.5.0 packages lack them. Read [reusable group guidance](references/configuration.md#reusable-named-groups)

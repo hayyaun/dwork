@@ -71,7 +71,9 @@ dwork list           # Show their names
 dwork switch my-app  # Use a name from the list
 ```
 
-Scanning saves projects without starting or stopping anything. Switching shows
+`scan` finds `dwork.yml` workspaces and lets you select existing Compose projects,
+including those with `compose.yml`. See [Describe your workspace](#describe-your-workspace).
+It saves projects without starting or stopping anything. Switching shows
 the plan and asks for confirmation.
 
 For a new config, use [agent setup](#let-your-coding-agent-set-it-up) or run `dwork init` inside your

@@ -85,8 +85,9 @@ below a root are skipped. Use `--` before a leading-hyphen path, for example
 Published v0.4.1 packages use the current directory and do not accept positional paths.
 
 Searches each starting directory and descends through collections of projects.
-When it finds a repository/project marker, it checks that directory for `dwork.yml`
-or Compose files, then stops descending there and continues with sibling directories.
+When it finds a repository/project marker, it checks that directory for
+[`dwork.yml`](../../README.md#describe-your-workspace) or Compose files such as
+`compose.yml`, then stops descending there and continues with sibling directories.
 The boundary markers are:
 
 - Version control: `.git` (file or directory), `.hg`, `.svn`.

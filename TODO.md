@@ -56,6 +56,8 @@
 ## CLI and releases
 
 - [x] Make scanning visible early in the README and accept one or more explicit positional scan roots, preserving no-argument traversal, exclusions, registration behavior, and previews.
+  Keep both `dwork.yml` and Compose discovery explicit in the quick start, with a
+  link to the workspace configuration example.
 - [x] Add start-only `up NAME...` and selected `down NAME...` for registered workspaces while preserving no-name behavior, confirmations, locks, ownership checks, and regression coverage.
 - [x] Shorten the main README into a getting-started guide and add a curl one-line
   source installer that reuses the managed Make installation, with cleanup,
