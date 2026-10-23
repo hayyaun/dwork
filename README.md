@@ -144,5 +144,5 @@ The skill inspects your existing commands and Compose services.
 - [Browser selection and readiness checks](docs/browsers/README.md)
 - [Optional tray companion](docs/companion/README.md), including a portable Windows app for WSL and a [replaceable icon](docs/companion/README.md#tray-icon)
 - [Development, tests, and package build prerequisites](docs/development/README.md)
-- [Landing website source](site/) · [Preview and publishing guide](docs/website/README.md)
+- [Landing website source](site/) · [Preview and publishing guide](docs/website/README.md), including SVG navigation icons
 - [All documentation](docs/README.md)

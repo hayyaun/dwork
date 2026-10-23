@@ -35,11 +35,12 @@ pre:focus-visible { outline-offset: -3px; }
 .site-header { display: flex; justify-content: space-between; align-items: center; min-height: 108px; gap: 2rem; border-bottom: 1px solid var(--line); }
 .wordmark { display: inline-flex; align-items: center; gap: .65rem; font: 700 1.8rem/1 var(--mono); letter-spacing: -.07em; text-decoration: none; }
 .wordmark .cursor { color: var(--green); }
+.icon { display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -.15em; }
 .brand-logo { width: 32px; height: 32px; flex-shrink: 0; }
 nav { display: flex; align-items: center; gap: 2rem; font-size: .85rem; }
 nav a { text-decoration: none; color: var(--muted); }
 nav .github-link { color: var(--text); }
-.github-link span { color: var(--green); margin-left: .3rem; }
+.github-link .icon { color: var(--green); margin-left: .3rem; }
 .hero { display: grid; grid-template-columns: 1fr 1.02fr; gap: 4.5rem; align-items: center; padding-block: 6.5rem 6rem; }
 .eyebrow { display: flex; align-items: center; gap: .65rem; color: var(--green); font: .69rem/1.7 var(--mono); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1.5rem; }
 .status-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; flex-shrink: 0; }
@@ -50,7 +51,7 @@ h1 span { color: var(--green); }
 .button-primary { background: var(--green); color: var(--bg); border: 1px solid var(--green); }
 .button-primary:hover { color: var(--bg); background: #c6f3a6; }
 .text-link { font-size: .85rem; font-weight: 500; text-decoration: none; }
-.text-link span { color: var(--green); margin-left: .35rem; }
+.text-link .icon { color: var(--green); margin-left: .35rem; }
 .platforms { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; font: .7rem/1.7 var(--mono); color: var(--muted); }
 .platforms > span:not(.license) { color: #536256; }
 .license { border-left: 1px solid var(--line); padding-left: .8rem; margin-left: .15rem; }
@@ -77,7 +78,7 @@ h1 span { color: var(--green); }
 .workflow-grid h3 { margin-bottom: .75rem; }
 .workflow-grid p, .setup-step p, .config-copy > p:not(.eyebrow) { color: var(--muted); font-size: .88rem; }
 .scope-note { display: flex; gap: 1rem; border-top: 1px solid var(--line); margin-top: 2.75rem; padding-top: 1.5rem; color: var(--muted); font-size: .76rem; }
-.scope-note > span { color: var(--green); }
+.scope-note > .icon { color: var(--green); margin-top: .3em; }
 .setup-step { display: grid; grid-template-columns: .7fr 1.3fr; gap: 5rem; padding-block: 2.4rem; border-top: 1px solid var(--line); }
 .setup-step > div { min-width: 0; }
 .setup-step:last-child { padding-bottom: 0; }
@@ -106,7 +107,7 @@ h1 span { color: var(--green); }
 .doc-index { color: var(--muted); font: .65rem var(--mono); }
 .doc-link h3 { font-size: 1rem; }
 .doc-link p { color: var(--muted); font-size: .77rem; margin-top: .4rem; }
-.doc-link > span:last-child { color: var(--green); margin-left: auto; }
+.doc-link > .icon { color: var(--green); margin-left: auto; }
 .site-footer { display: flex; gap: 2rem; align-items: center; padding-block: 2rem; border-top: 1px solid var(--line); }
 .site-footer .wordmark { font-size: 1.3rem; }
 .site-footer .brand-logo { width: 26px; height: 26px; }

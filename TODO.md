@@ -63,6 +63,9 @@
 
 ## CLI and releases
 
+- [x] Replace landing-page Unicode arrows with decorative SVG icons for consistent
+  rendering across browsers and operating systems.
+
 - [x] Add a buildless landing website under `site/`, with installation, quick start,
   configuration, reference links, the original tray logo, and a GitHub Pages
   Actions workflow; document manual preview and publication without changing

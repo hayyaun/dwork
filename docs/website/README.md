@@ -42,6 +42,10 @@ Verify that deployment before adding the URL as a live website in project links.
 
 ## Maintain the page
 
+Navigation arrows use decorative inline SVGs with `currentColor`, explicit sizing,
+and `aria-hidden`. Keep them as vectors rather than Unicode arrow characters,
+which some platforms render as emoji.
+
 - [`site/index.html`](../../site/index.html): content, navigation, installation
   command, examples, and links to the GitHub reference guides.
 - [`site/styles.css`](../../site/styles.css): colors, typography, responsive layout,
