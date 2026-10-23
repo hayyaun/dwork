@@ -12,8 +12,11 @@ The site is plain HTML, CSS, and JavaScript. It has no build step or package
 dependencies. From the repository root, start a local server manually:
 
 ```sh
-python3 -m http.server 8000 --directory site
+make serve
 ```
+
+This runs `python3 -m http.server 8000 --directory site` by default;
+use `make serve PYTHON=/path/to/python3` to select another interpreter.
 
 Open [http://localhost:8000](http://localhost:8000). Stop the server with Ctrl+C.
 Before publishing, check the page at desktop and mobile widths, keyboard navigation,

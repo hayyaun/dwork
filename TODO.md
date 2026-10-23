@@ -70,11 +70,14 @@
 
 - [x] Add a buildless landing website under `site/`, with installation, quick start,
   configuration, reference links, the original tray logo, and a GitHub Pages
-  Actions workflow; document manual preview and publication without changing
+  Actions workflow; document manual preview with `make serve` and publication without changing
   repository settings.
 - [x] Check the landing page at desktop/mobile widths, anchor navigation, logo
   loading, clipboard copying, and keyboard access to overflowing code samples.
 - [ ] Enable GitHub Pages Actions and verify the first public deployment.
+- [x] Create a GitHub social preview matching the README artwork, with crop-safe
+  content and a 1280 × 640 PNG export under 1 MB; retain OS logos and include the
+  project's tray icon as a minimal footer accent.
 - [x] Add a short video demonstration to the README's Get started section using
   GitHub's supported video attachment playback.
 - [x] Make scanning visible early in the README and accept one or more explicit positional scan roots, preserving no-argument traversal, exclusions, registration behavior, and previews.

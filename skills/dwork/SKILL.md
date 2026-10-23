@@ -27,6 +27,8 @@ the [website guide](https://github.com/hayyaun/dwork/blob/main/docs/website/READ
 covers local preview and publication. The site reuses the companion's original tray
 artwork for its app logo and transparent favicon, with inline SVG navigation arrows to avoid
 platform-dependent emoji rendering. Source availability does not mean the site is live.
+Project artwork and the current social preview, with OS logos and the tray glyph, are in the
+[promotion guide](https://github.com/hayyaun/dwork/blob/main/docs/promotion/README.md).
 
 Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
@@ -92,6 +94,9 @@ appropriate platform package and verify its checksum before installation.
 Source build/test prerequisites differ from installed runtime dependencies:
 Git is required by the source installer and package regression tests, but the
 CLI wheel and native packages do not require it at runtime.
+For the repository's landing website, `make serve` previews `site/` at
+`http://localhost:8000` using `PYTHON` (default `python3`). Leave starting it to
+the user unless they explicitly request a server launch.
 
 Read [the bundled configuration reference](references/configuration.md) before
 writing YAML. It includes the supported version, fields, and examples and works

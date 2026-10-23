@@ -2,6 +2,24 @@
 
 [Project home](../../README.md) · [Examples](../../examples/README.md)
 
+## Social preview image
+
+Use [github-social-card-v2.png](../assets/github-social-card-v2.png) for the repository's
+social preview. The opaque PNG is 1280 × 640 pixels and 729,086 bytes, below GitHub's
+1 MB limit, with generous margins around the title and supporting copy.
+
+Upload it in the repository's **Settings → General → Social preview → Edit →
+Upload an image**. See [GitHub's social preview guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/customizing-your-repositorys-social-media-preview)
+for supported formats and sizing.
+
+The card uses the existing README hero's dark terminal artwork and green accents.
+Small OS logos sit beside the platform names, and the project's
+[tray glyph](../../companion/src/dwork_tray/assets/tray.png) appears discreetly
+beside the repository URL.
+It was created with the built-in image generator and exported to the upload size.
+The [generation and refinement prompts](../assets/github-social-card-prompt.md)
+record the exact copy, visual references, and crop constraints.
+
 ## One-line introduction
 
 Switch development projects with one command: resume existing Docker containers,

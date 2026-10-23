@@ -6,10 +6,10 @@ TRAY ?= 0
 BASH_COMPLETION_DIR ?= $(PREFIX)/share/bash-completion/completions
 ZSH_COMPLETION_DIR ?= $(PREFIX)/share/zsh/site-functions
 
-.PHONY: help install uninstall test quality format
+.PHONY: help install uninstall test quality format serve
 
 help:
-	@printf '%s\n' 'make install                   Install for the current user (no sudo)' 'make install TRAY=1            Also install the optional native tray (no launch/startup)' 'make uninstall                 Remove this installation' 'make test                      Run the test suite' 'make quality                   Check lint, formatting, types, and formula parity' 'make format                    Format Python sources (writes files)' 'make install VENV=0 PREFIX=/usr DESTDIR=/path/to/stage  Package-manager staging'
+	@printf '%s\n' 'make install                   Install for the current user (no sudo)' 'make install TRAY=1            Also install the optional native tray (no launch/startup)' 'make uninstall                 Remove this installation' 'make test                      Run the test suite' 'make quality                   Check lint, formatting, types, and formula parity' 'make format                    Format Python sources (writes files)' 'make serve                     Preview site at http://localhost:8000' 'make install VENV=0 PREFIX=/usr DESTDIR=/path/to/stage  Package-manager staging'
 
 install:
 	@"$(PYTHON)" scripts/install.py install --prefix "$(PREFIX)" --destdir "$(DESTDIR)" --venv "$(VENV)" --tray "$(TRAY)" --bash-completion-dir "$(BASH_COMPLETION_DIR)" --zsh-completion-dir "$(ZSH_COMPLETION_DIR)"
@@ -28,3 +28,6 @@ quality:
 
 format:
 	@"$(PYTHON)" -m ruff format lib scripts tests companion/src
+
+serve:
+	@"$(PYTHON)" -m http.server 8000 --directory site
