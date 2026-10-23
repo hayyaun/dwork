@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>dwork workspace switcher</title>
+  <rect width="32" height="32" rx="6" fill="#121715"/>
+  <g fill="none" stroke="#f5f7fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 10 13 5V27L5 22Z"/>
+    <path d="M19 5 27 10V22L19 27Z"/>
+  </g>
+</svg>

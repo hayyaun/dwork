@@ -17,5 +17,6 @@
 - [Read-only JSON status interface](json/README.md)
 - [Develop and test](development/README.md)
 - [Introduce dwork](promotion/README.md)
+- [Preview, maintain, and publish the landing website](website/README.md)
 
 - [Distribution packaging](../packaging/README.md): Python, Homebrew, Debian, and AUR.

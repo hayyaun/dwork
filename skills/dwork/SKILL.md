@@ -22,6 +22,10 @@ The [project README](https://github.com/hayyaun/dwork) covers getting started,
 workspace configuration, and optional agent setup in that order. Use the bundled
 reference for advanced commands.
 The README's Get started section also includes a short video demonstration.
+For a concise project overview, see the repository's `site/` landing-page source;
+the [website guide](https://github.com/hayyaun/dwork/blob/main/docs/website/README.md)
+covers local preview and publication. The site reuses the companion's original tray
+artwork for its app logo and favicon. Source availability does not mean the site is live.
 
 Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
