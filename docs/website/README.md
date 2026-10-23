@@ -40,7 +40,7 @@ Other branches do not deploy. Enabling Pages, pushing, and publishing are separa
 actions; they are not performed by a local preview.
 
 After a successful deployment, the expected project URL is
-[https://hayyaun.github.io/dwork/](https://hayyaun.github.io/dwork/).
+[https://dwork.hayyaun.ir/](https://dwork.hayyaun.ir/).
 Verify that deployment before adding the URL as a live website in project links.
 
 ## Maintain the page
@@ -84,3 +84,20 @@ and confirmations clear. Avoid advertising an unpublished package channel or a
 source-only configuration field as a released feature. Use relative paths for
 site assets so the page works under GitHub Pages' `/dwork/` project path, and use
 GitHub links for Markdown documentation.
+
+## Search and social previews
+
+The canonical URL, Open Graph URL, social-image URLs, and sitemap use
+`https://dwork.hayyaun.ir/`. Update all of them together if the domain changes.
+`site/index.html` includes the description, crawl directives, Open Graph metadata,
+and an X/Twitter large-image card. `site/robots.txt` allows crawling and points to
+`site/sitemap.xml`, which lists the single landing page without fragment URLs.
+These hints do not guarantee indexing or a particular social preview.
+
+`site/social-card.png` is an unchanged copy of
+[`github-social-card-v2.png`](../assets/github-social-card-v2.png), at 1280 × 640.
+Refresh the site copy and image dimensions/alt text when updating that artwork.
+Only files inside `site/` are deployed, so referencing `docs/assets/` directly
+would not publish the image. After deployment, verify the canonical page, image,
+robots file, and sitemap return successfully over HTTPS. Social platforms may
+cache older previews until they fetch the page again.

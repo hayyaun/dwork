@@ -144,6 +144,6 @@ The skill inspects your existing commands and Compose services.
 - [Browser selection and readiness checks](docs/browsers/README.md)
 - [Optional tray companion](docs/companion/README.md), including a portable Windows app for WSL and a [replaceable icon](docs/companion/README.md#tray-icon)
 - [Development, tests, and package build prerequisites](docs/development/README.md)
-- [Landing website source](site/) with a transparent favicon · [Preview and publishing guide](docs/website/README.md); run `make serve` to preview at http://localhost:8000
+- [Landing website source](site/) with a transparent favicon · [Preview, publishing, and SEO guide](docs/website/README.md); run `make serve` to preview at http://localhost:8000
 - [Social preview artwork](docs/assets/github-social-card-v2.png) · [Project media](docs/promotion/README.md)
 - [All documentation](docs/README.md)

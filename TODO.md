@@ -63,6 +63,9 @@
 
 ## CLI and releases
 
+- [x] Add canonical/search metadata, Open Graph and X social-image tags, a published
+  social-card copy, robots.txt, and a single-page sitemap for the custom domain.
+
 - [x] Keep the website favicon background transparent while preserving the tray artwork.
 
 - [x] Replace landing-page Unicode arrows with decorative SVG icons for consistent
