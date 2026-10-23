@@ -63,6 +63,8 @@
 
 ## CLI and releases
 
+- [x] Keep the website favicon background transparent while preserving the tray artwork.
+
 - [x] Replace landing-page Unicode arrows with decorative SVG icons for consistent
   rendering across browsers and operating systems.
 

@@ -54,8 +54,8 @@ which some platforms render as emoji.
   enhancement only.
 - [`site/logo.svg`](../../site/logo.svg): the original tray artwork reused for
   the app logo.
-- [`site/favicon.svg`](../../site/favicon.svg): the same tray artwork on a dark
-  background for browser-tab contrast.
+- [`site/favicon.svg`](../../site/favicon.svg): the same tray artwork with a
+  transparent background.
 - [`.github/workflows/pages.yml`](../../.github/workflows/pages.yml): deployment
   triggers, Pages permissions, and the uploaded directory.
 
