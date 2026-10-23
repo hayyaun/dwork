@@ -60,18 +60,6 @@ no separate Windows Python is needed.
 [Windows setup](docs/companion/README.md#set-up-the-portable-app) ·
 [Optional sign-in startup](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
 
-## Let your coding agent set it up
-
-Install the optional agent skill with Node.js 22.20+:
-
-```sh
-npx skills add hayyaun/dwork --skill dwork -g
-```
-
-Then ask your agent: **"Use the dwork skill to create dwork.yml for this project."**
-The skill inspects your existing commands and Compose services.
-[Agent setup and usage](docs/skills/README.md)
-
 ## Get started
 
 Find your projects, then switch to one:
@@ -86,7 +74,7 @@ dwork switch my-app  # Use a name from the list
 Scanning saves projects without starting or stopping anything. Switching shows
 the plan and asks for confirmation.
 
-For a new config, use the agent setup above or run `dwork init` inside your
+For a new config, use [agent setup](#let-your-coding-agent-set-it-up) or run `dwork init` inside your
 project. Existing Compose projects work without a `dwork.yml`.
 
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
@@ -124,6 +112,18 @@ Missing containers or failed health checks block dependent tasks.
 
 [Copy a full-stack, Compose-only, or host-only example](examples/README.md) ·
 [Configuration reference](docs/configuration/README.md)
+
+## Let your coding agent set it up
+
+Install the optional agent skill with Node.js 22.20+:
+
+```sh
+npx skills add hayyaun/dwork --skill dwork -g
+```
+
+Then ask your agent: **"Use the dwork skill to create dwork.yml for this project."**
+The skill inspects your existing commands and Compose services.
+[Agent setup and usage](docs/skills/README.md)
 
 ## Explore more
 

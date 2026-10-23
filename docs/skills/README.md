@@ -19,8 +19,8 @@ to work inside the dwork source repository or download its docs on each use.
 Installing the skill and installing the `dwork` command are separate steps.
 Install the command using the [normal installation](../installation/README.md)
 to preview and run the generated configuration.
-For the short setup path, follow [agent setup](../../README.md#let-your-coding-agent-set-it-up)
-and [Get started](../../README.md#get-started) in the project README.
+For concise walkthroughs, see [Get started](../../README.md#get-started) and
+[agent setup](../../README.md#let-your-coding-agent-set-it-up) in the project README.
 
 ## Install for your agents
 
