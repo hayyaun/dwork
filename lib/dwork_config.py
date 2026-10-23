@@ -161,6 +161,7 @@ def resolve_workspace(
         config.locked,
         browsers,
         confirm=config.confirm,
+        registration_name=config.name,
     )
 
 

@@ -12,6 +12,14 @@
 
 - [x] Add pinned Ruff lint/format and gradual mypy checks in local/CI quality gates; verify the exact checkout through Homebrew alongside stable-release checks using one recipe template, checksum manifests, and offline archive regressions.
 
+## Workspace naming
+
+- [x] Add optional top-level `name` for new registrations/scans, with strict shared
+  validation, editor schema support, explicit/saved-name precedence, unchanged
+  omitted defaults, scan collision suffixes, Compose identity, confirmations,
+  and ownership checks. Regression tests and user/agent guidance included;
+  available in current source, not released in v0.6.0.
+
 ## Switching policies
 
 - [x] Add persistent per-workspace protection with `locked: true`, respecting it during switches and shutdowns while retaining `DWORK_KEEP_PROJECTS`.

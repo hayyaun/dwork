@@ -12,6 +12,15 @@
       "type": "integer",
       "const": 1
     },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*(?![\\s\\S])",
+      "description": "Optional default registration name. Explicit register NAME and existing saved names take precedence. Does not change the Compose project identity.",
+      "examples": [
+        "my-app",
+        "api.dev"
+      ]
+    },
     "confirm": {
       "description": "Ask before applying a single-workspace activation plan. Registration, group, task, browser, and shutdown confirmations are separate.",
       "type": "boolean",

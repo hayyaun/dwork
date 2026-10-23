@@ -49,7 +49,16 @@ Names are unique across the registry. They may contain letters, digits, dots,
 underscores, and hyphens, and must start with a letter or digit. The default is the
 Compose project name for a single Compose workspace, otherwise the directory name.
 For directories whose default names contain spaces, choose a name explicitly.
-Registering an existing directory updates its entry and can rename it.
+Registering an existing directory updates its entry and can rename it when a new
+name is supplied explicitly.
+
+Current source also supports optional [`name` in dwork.yml](../configuration/README.md#name)
+for new registrations and scans (not in v0.6.0 packages). Explicit command names
+and existing saved names take precedence. Omitting it keeps the defaults above.
+It does not change Compose project identity or container/task ownership. Changing
+YAML alone never renames a saved entry; use `dwork rename OLD NEW` or
+`dwork register NEW`. Scans retain their existing collision suffixes; child YAML
+names do not name discovered parent bundles.
 
 Ordinary parent-config discovery remembers the configuration directory, so running
 from a nested directory or a symlink does not create another registration. Explicit

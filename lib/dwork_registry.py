@@ -2,10 +2,14 @@
 
 from pathlib import Path
 import os
-import re
 import sys
 
-from dwork_common import DworkError, color, colored_name
+from dwork_common import (
+    DworkError,
+    color,
+    colored_name,
+    validate_workspace_name as validate_workspace_name,
+)
 import dwork_config
 import dwork_docker
 from dwork_registry_store import (
@@ -21,14 +25,6 @@ from dwork_registry_policy import (
     member_locked,
     registered_services as registered_services,
 )
-
-
-def validate_workspace_name(name):
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
-        raise DworkError(
-            "Workspace name must contain letters, digits, dots, underscores, or hyphens"
-            + " and start with a letter or digit."
-        )
 
 
 def registration(directory, options, workspaces, target, name, direct=False):

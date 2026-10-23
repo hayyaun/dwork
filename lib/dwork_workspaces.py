@@ -615,6 +615,8 @@ def switch_workspace(
     existing = next((e for e in entries if e["path"] == str(directory)), None)
     direct = bool(existing and existing.get("direct", False))
     default_name = workspaces[0].name if len(workspaces) == 1 else directory.name
+    if not discovered and len(workspaces) == 1:
+        default_name = workspaces[0].registration_name or default_name
     name = name or (existing["name"] if existing else default_name)
     dwork_registry.validate_workspace_name(name)
     candidate = dwork_registry.registration(

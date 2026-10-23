@@ -150,6 +150,30 @@ Editor association uses the documented
 
 `version: 1` is required.
 
+## name
+
+```yaml
+version: 1
+name: my-app
+```
+
+Optional default registration name for this workspace, available in current source
+and not in v0.6.0 packages. Use a nonempty string starting with an ASCII letter or
+digit, followed by letters, digits, dots, underscores, or hyphens. Null, numbers,
+spaces, paths, and control characters are rejected before Docker access.
+
+An explicit `dwork register NAME` takes precedence, followed by an existing saved
+registry name, then this field. When omitted, the current Compose-project/directory
+naming default is unchanged. Editing `name` does not rename a saved registration;
+use `dwork rename OLD NEW` or `dwork register NEW` explicitly. Compose project
+identity, container ownership, default terminal titles, and task tracking remain
+unchanged. Child names do not rename a discovered parent directory bundle.
+
+`dwork scan` uses this field for newly discovered configured workspaces, retaining
+its existing `-2`, `-3`, etc. collision suffixes and skipping already registered
+paths. Direct registration still rejects a name owned by another directory.
+Registration and activation confirmations remain unchanged.
+
 ## confirm
 
 ```yaml

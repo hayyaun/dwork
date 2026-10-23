@@ -45,6 +45,30 @@ class ScanTests(unittest.TestCase):
     def entries(self):
         return json.loads(self.state.read_text())["workspaces"]
 
+    def test_yaml_scan_names_keep_suffix_rules_and_saved_names(self):
+        for child in ("a", "b"):
+            directory = self.root / child
+            self.configured(directory)
+            (directory / "dwork.yml").write_text(
+                "version: 1\nname: API.dev_2-\ncompose: {enabled: false}\n"
+            )
+        result, changes, calls = self.run_cli("scan . --dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("API.dev_2--2", result.stdout)
+        self.assertEqual((changes, calls), ([], []))
+        self.assertFalse(self.state.exists())
+        result, changes, calls = self.run_cli()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((changes, calls), ([], []))
+        self.assertEqual([e["name"] for e in self.entries()], ["API.dev_2-", "API.dev_2--2"])
+        before = self.state.read_bytes()
+        (self.root / "a/dwork.yml").write_text(
+            "version: 1\nname: changed\ncompose: {enabled: false}\n"
+        )
+        result, _, _ = self.run_cli()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.state.read_bytes(), before)
+
     def test_explicit_roots_dedupe_aliases_and_preserve_requested_nested_roots(self):
         first = self.root / "first with spaces"
         nested = first / "nested"

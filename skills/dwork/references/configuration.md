@@ -51,6 +51,15 @@ keep using `dwork validate` and environment diagnostics.
 Only these top-level fields are supported:
 
 - `version`: required integer `1`.
+- `name`: optional default registration name in current source, not v0.6.0 packages.
+  Use a nonempty string matching `[A-Za-z0-9][A-Za-z0-9_.-]*` in full. Explicit
+  `register NAME`, then an existing saved name take precedence over YAML; without
+  it the Compose-project/directory default stays unchanged. YAML changes do not
+  rename saved entries: use `rename OLD NEW` or `register NEW` explicitly. It never
+  changes Compose project identity, default terminal titles, or task ownership.
+  Scan uses it for new configured paths with the existing numeric collision
+  suffixes; already registered paths stay untouched. Child names do not name a
+  discovered parent bundle. Check runtime support before writing this field.
 - `confirm`: optional root-level boolean, default `true`; require plan confirmation
   for plain `dwork` in a registered single workspace and `dwork up`. Set `false`
   to skip that activation prompt only.

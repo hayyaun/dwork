@@ -248,7 +248,9 @@ def scan_workspaces(root, entries, preview):
                     if workspace.enabled and target is None:
                         target = dwork_docker.docker_target()
                     base = (
-                        re.sub(r"[^A-Za-z0-9_.-]+", "-", workspace.name).strip("-_.") or "workspace"
+                        workspace.registration_name
+                        or re.sub(r"[^A-Za-z0-9_.-]+", "-", workspace.name).strip("-_.")
+                        or "workspace"
                     )
                     name, suffix = base, 2
                     while any(e["name"] == name for e in entries):

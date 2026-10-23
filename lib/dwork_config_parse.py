@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import math
 
-from dwork_common import DworkError, LAUNCHERS
+from dwork_common import DworkError, LAUNCHERS, validate_workspace_name
 import dwork_browser_launch
 
 
@@ -47,6 +47,7 @@ class WorkspaceConfig:
     confirm: bool
     terminals: tuple[TerminalConfig, ...]
     browsers: tuple[BrowserConfig, ...]
+    name: str | None = None
 
 
 def lock_value(config):
@@ -103,7 +104,9 @@ def decode_config(text):
         location = " at line " + str(mark.line + 1) if mark else ""
         raise DworkError("Invalid dwork.yml" + location + "; nothing changed.")
     return mapping(
-        config, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml"
+        config,
+        ("version", "name", "locked", "confirm", "compose", "terminals", "browsers"),
+        "dwork.yml",
     )
 
 
@@ -117,10 +120,17 @@ def timeout_value(value, where):
 def parse_config(cfg) -> WorkspaceConfig:
     """Validate YAML values; paths and Compose references are resolved separately."""
     cfg = mapping(
-        cfg, ("version", "locked", "confirm", "compose", "terminals", "browsers"), "dwork.yml"
+        cfg,
+        ("version", "name", "locked", "confirm", "compose", "terminals", "browsers"),
+        "dwork.yml",
     )
     if type(cfg.get("version")) is not int or cfg["version"] != 1:
         raise DworkError("dwork.yml: version must be 1.")
+    name = cfg.get("name")
+    if "name" in cfg:
+        if not isinstance(name, str):
+            raise DworkError("dwork.yml: name must be a nonempty workspace name string.")
+        validate_workspace_name(name)
     locked = lock_value(cfg)
     workspace_confirm = cfg.get("confirm", True)
     if type(workspace_confirm) is not bool:
@@ -202,4 +212,5 @@ def parse_config(cfg) -> WorkspaceConfig:
         workspace_confirm,
         tuple(terminals),
         tuple(browsers),
+        name,
     )

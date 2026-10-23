@@ -110,6 +110,12 @@ invent service names, commands, health checks, or folders.
 
 ## Write the configuration
 
+- Optional top-level `name` supplies a default for new registrations/scans only in
+  current source, not published v0.6.0. Verify runtime support before adding it.
+  Explicit `register NAME` and saved registry names win; omitted names retain the
+  Compose-project/directory default. Preserve Compose identity and ownership;
+  changing YAML does not rename saved entries. See the reference for validation,
+  scan suffixes, and discovered-parent behavior.
 - Use `version: 1` and only supported fields. Create `dwork.yml` in the intended
   workspace directory, usually beside its Compose file.
 - Preserve the editor schema comment emitted by `dwork init` and the shipped

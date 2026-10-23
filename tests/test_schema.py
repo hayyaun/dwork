@@ -48,6 +48,35 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaises(DworkError):
             dwork_config.load_workspace(self.root)
 
+    def test_optional_workspace_name_matches_runtime_and_preserves_project_identity(self):
+        for name in ("app", "API.dev_2-", "1", "api."):
+            with self.subTest(name=name):
+                workspace = self.check_config({"version": 1, "name": name}, True)
+                self.assertEqual(workspace.registration_name, name)
+                self.assertEqual(workspace.name, "demo")
+        for name in (
+            None,
+            True,
+            123,
+            [],
+            {},
+            "",
+            " app",
+            "a b",
+            "a/b",
+            "-app",
+            ".app",
+            "é",
+            "a\n",
+            "a\r",
+            "a\0",
+        ):
+            with self.subTest(invalid=name):
+                self.check_config({"version": 1, "name": name}, False)
+        workspace = self.check_config({"version": 1}, True)
+        self.assertIsNone(workspace.registration_name)
+        self.assertEqual(workspace.name, "demo")
+
     def test_schema_is_valid_and_has_no_remote_references(self):
         Draft7Validator.check_schema(SCHEMA)
 

@@ -87,6 +87,12 @@ project. Existing Compose projects work without a `dwork.yml`.
 
 ## Describe your workspace
 
+Current source also accepts an optional top-level `name: my-app` in `dwork.yml`
+as the default for new registrations and `scan`. Omit it to keep the existing
+Compose-project/directory default. Explicit `dwork register NAME` and saved names
+take precedence; this does not rename the Compose project. This field is not in
+v0.6.0 packages yet. See [workspace naming](docs/configuration/README.md#name).
+
 For a backend with a database, put this `dwork.yml` beside your Compose file:
 
 ```yaml

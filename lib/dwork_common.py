@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 import os
+import re
 import sys
 import zlib
 from typing import TextIO
@@ -14,6 +15,14 @@ LAUNCHERS = ("auto", "windows-terminal", "apple-terminal", *LINUX_TERMINALS)
 
 class DworkError(Exception):
     pass
+
+
+def validate_workspace_name(name: str) -> None:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name):
+        raise DworkError(
+            "Workspace name must contain letters, digits, dots, underscores, or hyphens"
+            + " and start with a letter or digit."
+        )
 
 
 def color(value: object, style: str, stream: TextIO | None = None) -> str:
@@ -76,6 +85,7 @@ class Workspace:
     locked: bool = False
     browsers: list[BrowserTask] = field(default_factory=list)
     confirm: bool = True
+    registration_name: str | None = None
 
     def manages(self, service: str) -> bool:
         return self.selected is None or service in self.selected

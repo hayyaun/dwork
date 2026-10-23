@@ -38,6 +38,82 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(changes, [])
 
+    def test_yaml_name_registers_and_switches_without_changing_compose_ownership(self):
+        (self.root / "dwork.yml").write_text("version: 1\nname: friendly\n")
+        self.register()
+        self.assertEqual(self.entries()[0]["name"], "friendly")
+        self.assertEqual(self.entries()[0]["members"][0]["project"], "main")
+        result, changes, _ = self.run_cli(
+            "switch friendly", containers=[legacy.container("a", "main")]
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(changes, [["start", "a"]])
+
+    def test_explicit_and_saved_names_override_yaml_even_after_config_changes(self):
+        config = self.root / "dwork.yml"
+        config.write_text("version: 1\nname: suggested\n")
+        self.register(name="personal")
+        before = self.state.read_bytes()
+        config.write_text("version: 1\nname: changed\n")
+        for command in ("register", "up --dry-run", "switch personal --dry-run"):
+            result, changes, _ = self.run_cli(command)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(changes, [])
+            self.assertEqual(self.state.read_bytes(), before)
+        self.register(name="renamed")
+        self.assertEqual(self.entries()[0]["name"], "renamed")
+
+    def test_yaml_host_name_nested_discovery_and_omitted_default(self):
+        (self.root / "dwork.yml").write_text(
+            "version: 1\nname: host-app\ncompose: {enabled: false}\n"
+        )
+        nested = self.root / "nested"
+        nested.mkdir()
+        self.register(directory=nested)
+        entry = self.entries()[0]
+        self.assertEqual(entry["name"], "host-app")
+        self.assertEqual(entry["path"], str(self.root))
+        self.assertEqual(entry["members"][0]["project"], self.root.name)
+
+    def test_yaml_name_keeps_registration_consent_and_preview_read_only(self):
+        (self.root / "dwork.yml").write_text("version: 1\nname: friendly\nconfirm: false\n")
+        for command in ("--dry-run", ""):
+            result, changes, _ = self.run_cli(command, answer="")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("friendly", result.stdout)
+            self.assertEqual(changes, [])
+            self.assertFalse(self.state.exists())
+        self.assertIn("Register and switch?", result.stdout)
+
+    def test_invalid_yaml_names_fail_before_docker_even_with_explicit_name(self):
+        for value in (None, True, 12, "", "bad/name", "a\n"):
+            (self.root / "dwork.yml").write_text(json.dumps({"version": 1, "name": value}))
+            result, changes, calls = self.run_cli("register valid")
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertEqual((changes, calls), ([], []))
+            self.assertFalse(self.state.exists())
+
+    def test_yaml_name_collision_cannot_replace_another_registration(self):
+        other = self.fixture.base / "other"
+        self.fixture.model(other, "other")
+        self.register(other, name="friendly")
+        before = self.state.read_bytes()
+        (self.root / "dwork.yml").write_text("version: 1\nname: friendly\n")
+        result, changes, _ = self.run_cli("register")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("already registered", result.stderr)
+        self.assertEqual(changes, [])
+        self.assertEqual(self.state.read_bytes(), before)
+
+    def test_child_yaml_name_does_not_name_the_parent_directory_bundle(self):
+        (self.root / "compose.yaml").unlink()
+        child = self.root / "child"
+        self.fixture.model(child, "child-project")
+        (child / "dwork.yml").write_text("version: 1\nname: child-alias\n")
+        self.register()
+        self.assertEqual(self.entries()[0]["name"], "child-project")
+        self.assertEqual(self.entries()[0]["members"][0]["project"], "child-project")
+
     def test_first_run_consent_and_rerun(self):
         for shell in self.fixture.shells:
             with self.subTest(shell=shell):
