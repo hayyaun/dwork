@@ -2,6 +2,8 @@
 
 [Project home](../../README.md) · [Usage](../usage/README.md)
 
+For the short version, see the [installation overview](../../README.md#install).
+
 ## Requirements
 
 Requirements: Git, Make, Python 3.10 or newer, and Python venv/pip support.

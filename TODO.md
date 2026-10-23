@@ -59,7 +59,9 @@
 - [x] Add start-only `up NAME...` and selected `down NAME...` for registered workspaces while preserving no-name behavior, confirmations, locks, ownership checks, and regression coverage.
 - [x] Shorten the main README into a getting-started guide and add a curl one-line
   source installer that reuses the managed Make installation, with cleanup,
-  prerequisite checks, and detailed update/removal instructions.
+  prerequisite checks, and detailed update/removal instructions. Place coding-agent
+  setup after installation and keep the quick start and installation overview
+  brief, preserving essential prerequisites and linking details to the reference guides.
 - [x] Show `dwork list`/`ls` as an aligned workspace table with status, lock, and path columns; preserve the names-only completion API.
 - [x] Add Bash/Zsh shell completions for commands, options, registered workspace names, and file paths.
 - [x] Install native completion files for Debian/Ubuntu, Fedora/Arch, Homebrew, and Make prefixes; test framework discovery, first-Tab Zsh autoload, staging, and safe ownership/removal. Python and unsearched prefixes keep explicit setup.

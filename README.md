@@ -29,114 +29,71 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install
 ```
 
 Installs the latest `main` source for your user with isolated Python dependencies.
-No `sudo` or shell sourcing required. If needed, the installer prints how to add
-`~/.local/bin` to `PATH`.
+No `sudo` or shell sourcing required. If `~/.local/bin` is missing from `PATH`,
+the installer prints the line to add it.
 
-You need Git, Make, curl, and Python with `venv` support: Python 3.10+ on Linux/WSL2,
-or 3.13+ on macOS. Container workspaces also need Docker and Docker Compose;
+Requires Git, Make, curl, and Python with `venv`: **3.10+ on Linux/WSL2** or
+**3.13+ on macOS**. Container workspaces also need Docker and Docker Compose;
 terminal tasks need a [supported terminal](docs/terminals/README.md).
 
 [Inspect the installer](install.sh) ·
-[Install from a checkout, update, or uninstall](docs/installation/README.md) ·
+[Installation, updates, and removal](docs/installation/README.md) ·
 [v0.6.0 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.6.0) ·
 [Releases and package checks](docs/publishing/README.md)
 
 ### Optional tray companion
 
-View saved workspaces and switch between them from your desktop tray. To include
-the separate tray package on **native Linux or macOS**:
+Switch saved workspaces from your desktop tray. On **native Linux or macOS**,
+include the separate tray package during installation:
 
 ```sh
 TRAY=1 sh -c "$(curl -fsSL https://raw.githubusercontent.com/hayyaun/dwork/main/install.sh)"
 ```
 
-[Tray prerequisites and manual launch](docs/installation/README.md#optional-native-tray).
-Installation never launches the tray or enables login startup. After installing,
-native Linux/macOS users can optionally enable it for their next graphical login:
+[Prerequisites and manual launch](docs/installation/README.md#optional-native-tray).
+Installation does not launch the tray or enable login startup. Native Linux/macOS
+users can optionally run `dwork-tray --autostart enable` for their next graphical
+login. [Startup options](docs/companion/README.md#startup-at-login-is-opt-in).
+
+On **Windows/WSL2**, use the [portable ZIP](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip);
+no separate Windows Python is needed.
+[Windows setup](docs/companion/README.md#set-up-the-portable-app) ·
+[Optional sign-in startup](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
+
+## Let your coding agent set it up
+
+Install the optional agent skill with Node.js 22.20+:
 
 ```sh
-dwork-tray --autostart enable
+npx skills add hayyaun/dwork --skill dwork -g
 ```
 
-[Check or disable login startup](docs/companion/README.md#startup-at-login-is-opt-in).
-An optional [portable Windows tray for WSL2](docs/companion/README.md#set-up-the-portable-app)
-is available as a [ZIP in v0.6.0](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip),
-with no separate Windows Python installation;
-[Windows sign-in startup uses an optional shortcut](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).
+Then ask your agent: **"Use the dwork skill to create dwork.yml for this project."**
+The skill inspects your existing commands and Compose services.
+[Agent setup and usage](docs/skills/README.md)
 
 ## Get started
 
-Find existing projects from their parent directory:
+Find your projects, then switch to one:
 
 ```sh
 cd ~/projects
-dwork scan         # Remember dwork.yml workspaces; optionally select Compose projects
-dwork list         # See the saved names
-dwork switch my-app
+dwork scan           # Find and remember workspaces
+dwork list           # Show their names
+dwork switch my-app  # Use a name from the list
 ```
 
-Scanning registers projects without starting or stopping workloads. CLI 0.5.0+
-also accepts `dwork scan .` or several roots, such as
-`dwork scan ~/projects ~/work/client-projects`.
-[Scanning rules and previews](docs/workspaces/README.md#scan-a-directory-tree).
+Scanning saves projects without starting or stopping anything. Switching shows
+the plan and asks for confirmation.
 
-To configure an individual project:
-
-```sh
-cd your-project
-dwork init        # Create a starter dwork.yml without overwriting existing files
-# Add your commands and browser URLs to dwork.yml
-dwork validate    # Check the configuration
-dwork --dry-run   # Preview the switch
-dwork            # Confirm registration and activate this workspace
-```
-
-Already have a Compose project? You can run `dwork` without a `dwork.yml`.
-It shows the plan and asks before switching. Terminal tasks and browser entries
-have separate confirmations.
+For a new config, use the agent setup above or run `dwork init` inside your
+project. Existing Compose projects work without a `dwork.yml`.
 
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
 > Complete your project's initial setup and migrations first.
 
-Remember a project and return to it from anywhere:
-
-```sh
-dwork register my-app  # Save this directory without switching
-dwork list             # See remembered workspaces
-dwork switch my-app    # Activate one from any directory
-dwork lock my-app      # Keep it running through switches and shutdowns
-dwork unlock my-app    # Release the temporary lock
-dwork down             # Stop eligible registered workspaces and tracked commands
-```
-
-CLI 0.5.0+ also accepts explicit workspace names:
-
-```sh
-dwork up my-app docs    # Start these saved workspaces, keeping all others running
-dwork down my-app       # Stop only this workspace's eligible workloads
-```
-
-Without names, `up` still switches to the current directory and `down` still stops
-all eligible registered workloads. Existing confirmations, locks, and ownership
-checks apply. Published v0.4.1 packages retain their earlier syntax.
-
-### Reusable named groups
-
-CLI 0.6.0+ can save a personal group of existing registered
-workspaces, including projects in different directories:
-
-```sh
-dwork group create daily my-app docs
-dwork up --group daily                 # Start members, keeping other workspaces running
-dwork switch --group daily --dry-run   # Preview one switch to the whole group
-```
-
-`down --group daily` stops only eligible member workloads. A group switch protects
-all selected members from its outgoing shutdown. Published v0.5.0 packages do not
-include these group commands; see [group management and safeguards](docs/workspaces/README.md#reusable-named-groups).
-
 [All commands](docs/usage/README.md) ·
-[Workspace names, scanning, and locks](docs/workspaces/README.md)
+[Scanning, groups, and locks](docs/workspaces/README.md)
 
 ## Describe your workspace
 
@@ -167,18 +124,6 @@ Missing containers or failed health checks block dependent tasks.
 
 [Copy a full-stack, Compose-only, or host-only example](examples/README.md) ·
 [Configuration reference](docs/configuration/README.md)
-
-## Let your coding agent set it up
-
-Install the optional agent skill with Node.js 22.20+:
-
-```sh
-npx skills add hayyaun/dwork --skill dwork -g
-```
-
-Then ask your agent: **"Use the dwork skill to create dwork.yml for this project."**
-The skill inspects your existing commands and Compose services.
-[Agent setup and usage](docs/skills/README.md)
 
 ## Explore more
 

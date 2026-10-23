@@ -18,6 +18,9 @@ It never creates, rebuilds, recreates, or removes containers.
 
 ## Discover the project's setup
 
+The [project quick start](https://github.com/hayyaun/dwork#get-started) covers
+finding and switching workspaces; use the bundled reference for advanced commands.
+
 Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
 creates only a deterministic minimal config, detects standard local Compose
@@ -43,7 +46,8 @@ when requested. Group edits change personal registry state, not YAML, and requir
 a request to manage those groups; generating configuration alone does not authorize them.
 When installation is needed, check which package channels are actually published.
 A prepared Homebrew formula in the repository does not mean its public tap is
-available; follow the installation guide for the selected release and platform.
+available; follow the [installation guide](https://github.com/hayyaun/dwork/blob/main/docs/installation/README.md)
+for the selected release and platform, including tray prerequisites and optional startup.
 The repository's curl one-line installer runs the latest `main` source through
 `make install` from a temporary checkout. It needs curl, Git, Make, and Python
 with venv/pip support (3.10+ on Linux/WSL2, 3.13+ on macOS), and accepts `PREFIX`
