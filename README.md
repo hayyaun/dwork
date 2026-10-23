@@ -62,6 +62,10 @@ no separate Windows Python is needed.
 
 ## Get started
 
+Watch the 42-second demo:
+
+https://github.com/user-attachments/assets/2bec83a2-a3e3-4c21-bb5f-c950d206d61e
+
 Find your projects, then switch to one:
 
 ```sh

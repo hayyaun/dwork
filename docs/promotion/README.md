@@ -29,6 +29,9 @@ Code and examples: [github.com/hayyaun/dwork](https://github.com/hayyaun/dwork)
 
 ## Suggested demonstration
 
+The [Get started section](../../README.md#get-started) includes a 42-second video
+demo, hosted as a GitHub attachment for inline playback in the README.
+
 1. Show a backend/database example config.
 2. Run `dwork --dry-run` and explain the plan.
 3. Invoke `dwork` and show the database becoming healthy before the backend opens.

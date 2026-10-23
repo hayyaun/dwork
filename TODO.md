@@ -63,6 +63,8 @@
 
 ## CLI and releases
 
+- [x] Add a short video demonstration to the README's Get started section using
+  GitHub's supported video attachment playback.
 - [x] Make scanning visible early in the README and accept one or more explicit positional scan roots, preserving no-argument traversal, exclusions, registration behavior, and previews.
   Keep both `dwork.yml` and Compose discovery explicit in the quick start, with a
   link to the workspace configuration example.
