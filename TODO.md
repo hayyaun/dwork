@@ -18,7 +18,7 @@
   validation, editor schema support, explicit/saved-name precedence, unchanged
   omitted defaults, scan collision suffixes, Compose identity, confirmations,
   and ownership checks. Regression tests and user/agent guidance included;
-  available in current source, not released in v0.6.0.
+  available in CLI 0.6.1 and later.
 
 ## Switching policies
 
@@ -120,6 +120,11 @@
 
 ## Packaging publication
 
+- [x] Publish [0.6.1](https://github.com/hayyaun/dwork/releases/tag/v0.6.1) with
+  `dwork init` agent guidance and optional workspace names. Tag `v0.6.1` points
+  to `243a86e`. All five release jobs passed, all six public packages match
+  `SHA256SUMS`, and the installed public wheel generates `AGENTS.md`.
+
 - [x] Verify and publish [0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0)
   with workspace groups and companion 0.2.2 native CLI 0.4.x/0.5.x/0.6.x support.
   Immutable tag `v0.6.0` points to `39c5c89`; all 16 expanded package checks and
@@ -153,7 +158,7 @@
 - [x] Build and verify Debian/Ubuntu packages and attach them to the matching releases (0.3.0-1, 0.4.1-1, 0.5.0-1, and 0.6.0-1).
 - [ ] Evaluate a signed apt repository or PPA.
 - [ ] When AUR registration reopens, create the account, add an SSH public key, recheck package-name availability, and submit the prepared recipe.
-- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.6.0 downloads are documented; registry, tap, AUR, and apt publication remain pending.
+- [ ] Update installation instructions only after each channel is published and verified. GitHub 0.6.1 downloads are documented; registry, tap, AUR, and apt publication remain pending.
 
 Keep the existing-container-only promise. Builds, deployments, and a large GUI are outside the current roadmap.
 

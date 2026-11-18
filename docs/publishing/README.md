@@ -2,8 +2,17 @@
 
 [Project home](../../README.md) · [Installation](../installation/README.md)
 
+[GitHub release v0.6.1](https://github.com/hayyaun/dwork/releases/tag/v0.6.1)
+ships the CLI wheel, source distribution, Debian/Ubuntu, Fedora 44, and Arch
+packages, plus the optional portable Windows tray 0.2.2. All five
+[tag release jobs](https://github.com/hayyaun/dwork/actions/runs/44315773075)
+passed for commit `243a86e`. The six public downloads match
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.1/SHA256SUMS)
+and GitHub's sizes and digests. The public wheel was installed in a fresh
+environment and verified to generate the `AGENTS.md` guidance with `dwork init`.
+
 [GitHub release v0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0)
-is published with verified CLI Python wheel/source, Debian/Ubuntu, Fedora 44, Arch,
+was published with verified CLI Python wheel/source, Debian/Ubuntu, Fedora 44, Arch,
 and portable Windows tray 0.2.2 packages, plus
 [SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS).
 All six public package downloads match the manifest and GitHub sizes/digests.

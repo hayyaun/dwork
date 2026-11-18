@@ -461,7 +461,7 @@ It lists saved workspaces, refreshes status periodically/after operations, and o
 existing CLI commands in operation terminals. Native Linux requires AppIndicator or
 Ayatana plus compatible tray-host support; macOS requires Python 3.13+ and Cocoa.
 A dependency/menu test is not proof of desktop rendering. An optional portable Windows ZIP bundles the tray, helper, and runtime.
-[Release v0.6.0](https://github.com/hayyaun/dwork/releases/tag/v0.6.0) includes
+[Release v0.6.1](https://github.com/hayyaun/dwork/releases/tag/v0.6.1) includes
 tray 0.2.2 and a checksum manifest. It connects
 to the matching CLI in a selected Linux interpreter; no separate Windows Python
 setup is needed. The extracted folder may remain on Linux and execute through its

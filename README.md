@@ -38,7 +38,7 @@ terminal tasks need a [supported terminal](docs/terminals/README.md).
 
 [Inspect the installer](install.sh) ·
 [Installation, updates, and removal](docs/installation/README.md) ·
-[v0.6.0 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.6.0) ·
+[v0.6.1 release packages](https://github.com/hayyaun/dwork/releases/tag/v0.6.1) ·
 [Releases and package checks](docs/publishing/README.md)
 
 ### Optional tray companion
@@ -55,7 +55,7 @@ Installation does not launch the tray or enable login startup. Native Linux/macO
 users can optionally run `dwork-tray --autostart enable` for their next graphical
 login. [Startup options](docs/companion/README.md#startup-at-login-is-opt-in).
 
-On **Windows/WSL2**, use the [portable ZIP](https://github.com/hayyaun/dwork/releases/download/v0.6.0/dwork-tray-0.2.2-windows-x64.zip);
+On **Windows/WSL2**, use the [portable ZIP](https://github.com/hayyaun/dwork/releases/download/v0.6.1/dwork-tray-0.2.2-windows-x64.zip);
 no separate Windows Python is needed.
 [Windows setup](docs/companion/README.md#set-up-the-portable-app) ·
 [Optional sign-in startup](docs/companion/README.md#windowswsl-start-at-sign-in-with-a-shortcut).

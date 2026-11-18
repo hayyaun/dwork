@@ -2,21 +2,22 @@
 
 - [AUR](aur/README.md): v0.6.0 recipe with native completion entries; submission pending.
 - [Homebrew](homebrew/README.md): v0.6.0 formula, shared recipe template, and exact-checkout verification; public tap pending.
-- [Python / PyPI](python/README.md): v0.6.0 wheel/sdist recipes and console entry point; TestPyPI/PyPI publication pending.
-- [Debian / Ubuntu](debian/README.md): v0.6.0-1 debhelper packaging; no signed apt repository.
+- [Python / PyPI](python/README.md): v0.6.1 wheel/sdist recipes and console entry point; TestPyPI/PyPI publication pending.
+- [Debian / Ubuntu](debian/README.md): v0.6.1-1 debhelper packaging; no signed apt repository.
 - [Fedora and Arch](../docs/publishing/README.md#automated-github-release-assets): RPM/pacman builds with versions taken from the release tag; AUR publication is separate.
 
-Verified v0.6.0 CLI Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus
+Verified v0.6.1 CLI Python, Debian/Ubuntu, Fedora 44, and Arch packages, plus
 portable Windows tray 0.2.2, are published in
-[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.6.0), with
-[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.0/SHA256SUMS).
-All six downloads match the manifest and GitHub sizes/digests. The immutable tag
-points to `39c5c89`; existing tags and downloads are unchanged. These recipes and
+[GitHub Releases](https://github.com/hayyaun/dwork/releases/tag/v0.6.1), with
+[SHA256SUMS](https://github.com/hayyaun/dwork/releases/download/v0.6.1/SHA256SUMS).
+All six downloads match the manifest and GitHub sizes and digests. The tag
+points to `243a86e`, and the installed CLI generates `AGENTS.md` with `dwork init`.
+These recipes and
 CI jobs do not publish to PyPI, a Homebrew tap, AUR, or an apt repository.
 
 ## Current verification paths
 
-CLI 0.6.0 and companion 0.2.2 are versioned independently. Native companion
+CLI 0.6.1 and companion 0.2.2 are versioned independently. Native companion
 0.2.2 supports CLI 0.4.x, 0.5.x, and 0.6.x (`>=0.4.0,<0.7`); companion 0.2.1
 supports CLI 0.4.x/0.5.x and 0.2.0 supports CLI 0.4.x. Windows embeds its runtime
 and connects to the selected CLI in WSL. Source recipes pin the verified immutable
