@@ -34,11 +34,12 @@ Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
 creates a deterministic minimal config, detects standard local Compose
 filenames, and refuses to replace an existing `dwork.yml`. It does not infer
-project commands. The current source also creates or appends an `AGENTS.md`
-section that tells agents to start development with dwork and maintain the
-config as the project changes. Use `init --dry-run` to preview both files without
-writing. Generating a starter does not authorize activation. Prefer `dwork validate` for standalone schema/path/service
-checks before a switch preview. Compose validation needs its CLI, not the daemon;
+project commands. CLI 0.6.1+ also creates or appends an `AGENTS.md` section that
+tells agents to start development with dwork and maintain the config as the
+project changes. Use `init --dry-run` to preview both files without writing.
+Generating a starter does not authorize activation. Prefer `dwork validate` for
+standalone schema/path/service checks before a switch preview. Compose validation
+needs its CLI, not the daemon;
 it does not check running containers or desktop prerequisites.
 
 The macOS and browser options in this skill require dwork 0.3.0 or newer.
@@ -123,8 +124,8 @@ invent service names, commands, health checks, or folders.
 
 ## Write the configuration
 
-- Optional top-level `name` supplies a default for new registrations/scans only in
-  current source, not published v0.6.0. Verify runtime support before adding it.
+- CLI 0.6.1+ supports optional top-level `name` as a default for new registrations
+  and scans. Verify runtime support before adding it.
   Explicit `register NAME` and saved registry names win; omitted names retain the
   Compose-project/directory default. Preserve Compose identity and ownership;
   changing YAML does not rename saved entries. See the reference for validation,

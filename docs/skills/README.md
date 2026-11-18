@@ -100,7 +100,7 @@ Agent-specific documentation:
 
 ## Use it in your project
 
-The current source's `dwork init` adds a project-local `AGENTS.md` section that
+Since CLI 0.6.1, `dwork init` adds a project-local `AGENTS.md` section that
 directs coding agents to use dwork for development startup and keep `dwork.yml`
 aligned with changes to the project. The optional skill provides more detailed
 setup guidance for configuring the workspace.

@@ -15,7 +15,12 @@ Public Homebrew tap, PyPI, AUR, and apt repository publication remain pending.
 
 ## Release preparation
 
-The current release is CLI **0.6.0** with reusable named workspace groups and native
+CLI **0.6.1** adds project-local `AGENTS.md` guidance to `dwork init` and an
+optional default workspace name in `dwork.yml`. Wheel and source distribution
+checks run the installed `init` and verify the generated guidance. The
+companion remains at **0.2.2**, which supports CLI 0.6.x.
+
+CLI **0.6.0** with reusable named workspace groups and native
 companion **0.2.2** (`dwork-cli>=0.4.0,<0.7`). Group activation preserves existing
 confirmation, ownership, lock, and container-lifecycle rules. The first saved group
 uses registry version 2, which older CLIs reject before mutation; deleting the

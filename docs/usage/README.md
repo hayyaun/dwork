@@ -76,7 +76,7 @@ commands, inspect parents or environment selections, or invoke Docker. Edit
 custom Compose files and tasks afterward. An existing `dwork.yml` path blocks
 initialization before either file changes.
 
-In the current source, `init` also creates `AGENTS.md` in the same directory or
+Since CLI 0.6.1, `init` also creates `AGENTS.md` in the same directory or
 appends a dwork section to its existing UTF-8 Markdown. It preserves the existing
 content and skips the section if already present. The guidance tells agents to
 use dwork to start development and to update and validate `dwork.yml` when the

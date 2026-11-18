@@ -1,3 +1,10 @@
+dwork (0.6.1-1) unstable; urgency=medium
+
+  * Add AGENTS.md guidance on dwork init and preview it with --dry-run.
+  * Support an optional default workspace name in dwork.yml.
+
+ -- Hayyan Hami <hayyaun@users.noreply.github.com>  Wed, 18 Nov 2026 17:04:56 +0330
+
 dwork (0.6.0-1) unstable; urgency=medium
 
   * Add reusable local groups of registered workspaces and shell completion.

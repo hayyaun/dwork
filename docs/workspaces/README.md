@@ -52,8 +52,8 @@ For directories whose default names contain spaces, choose a name explicitly.
 Registering an existing directory updates its entry and can rename it when a new
 name is supplied explicitly.
 
-Current source also supports optional [`name` in dwork.yml](../configuration/README.md#name)
-for new registrations and scans (not in v0.6.0 packages). Explicit command names
+CLI 0.6.1+ supports optional [`name` in dwork.yml](../configuration/README.md#name)
+for new registrations and scans. Explicit command names
 and existing saved names take precedence. Omitting it keeps the defaults above.
 It does not change Compose project identity or container/task ownership. Changing
 YAML alone never renames a saved entry; use `dwork rename OLD NEW` or

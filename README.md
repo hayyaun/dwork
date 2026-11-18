@@ -81,9 +81,9 @@ It saves projects without starting or stopping anything. Switching shows
 the plan and asks for confirmation.
 
 For a new config, use [agent setup](#let-your-coding-agent-set-it-up) or run `dwork init` inside your
-project. The current source creates a starter `dwork.yml` and adds guidance to
-`AGENTS.md` so coding agents know to start the environment with dwork and keep
-the config up to date. Existing Compose projects work without a `dwork.yml`.
+project. This creates a starter `dwork.yml`. Since CLI 0.6.1, it also adds
+guidance to `AGENTS.md` so coding agents know to start the environment with dwork
+and keep the config up to date. Existing Compose projects work without a `dwork.yml`.
 
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
 > Complete your project's initial setup and migrations first.
@@ -93,11 +93,11 @@ the config up to date. Existing Compose projects work without a `dwork.yml`.
 
 ## Describe your workspace
 
-Current source also accepts an optional top-level `name: my-app` in `dwork.yml`
-as the default for new registrations and `scan`. Omit it to keep the existing
+CLI 0.6.1+ accepts an optional top-level `name: my-app` in `dwork.yml` as the
+default for new registrations and `scan`. Omit it to keep the existing
 Compose-project/directory default. Explicit `dwork register NAME` and saved names
-take precedence; this does not rename the Compose project. This field is not in
-v0.6.0 packages yet. See [workspace naming](docs/configuration/README.md#name).
+take precedence; this does not rename the Compose project.
+See [workspace naming](docs/configuration/README.md#name).
 
 For a backend with a database, put this `dwork.yml` beside your Compose file:
 

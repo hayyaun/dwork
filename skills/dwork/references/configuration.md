@@ -51,7 +51,7 @@ keep using `dwork validate` and environment diagnostics.
 Only these top-level fields are supported:
 
 - `version`: required integer `1`.
-- `name`: optional default registration name in current source, not v0.6.0 packages.
+- `name`: optional default registration name in CLI 0.6.1+.
   Use a nonempty string matching `[A-Za-z0-9][A-Za-z0-9_.-]*` in full. Explicit
   `register NAME`, then an existing saved name take precedence over YAML; without
   it the Compose-project/directory default stays unchanged. YAML changes do not
@@ -410,7 +410,7 @@ Configuration helpers available in 0.4.0+:
 - `dwork init [--dry-run]` creates/previews a deterministic local starter. Standard
   local Compose filenames enable Compose; otherwise it is disabled. Task/browser
   lists are empty. It refuses any existing `dwork.yml` path, including links.
-  The current source also creates or appends an `AGENTS.md` section once, preserving
+  CLI 0.6.1+ also creates or appends an `AGENTS.md` section once, preserving
   existing guidance. Both files are previewed with `--dry-run`. Neither mode registers
   or launches anything. Edit custom Compose selections and project commands explicitly.
 - `dwork validate` reuses normal discovery/schema checks, validates task working

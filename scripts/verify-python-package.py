@@ -1,6 +1,7 @@
 """Build, validate, and smoke-test wheels and sdists in isolated environments."""
 
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,8 +13,8 @@ import venv
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(*args, cwd=None):
-    subprocess.run([str(a) for a in args], cwd=cwd, check=True)
+def run(*args, cwd=None, env=None):
+    subprocess.run([str(a) for a in args], cwd=cwd, env=env, check=True)
 
 
 def main():
@@ -55,6 +56,7 @@ def main():
         workspace = work / "workspace"
         workspace.mkdir()
         config = workspace / "dwork.yml"
+        cli_env = {**os.environ, "XDG_STATE_HOME": str(work / "state")}
         expected_version = subprocess.check_output(
             [sys.executable, str(ROOT / "lib/dwork.py"), "--version"], text=True
         ).strip()
@@ -64,9 +66,9 @@ def main():
             python = env / "bin/python"
             command = env / "bin/dwork"
             run(python, "-m", "pip", "install", artifact)
-            run(command, "--help", cwd=workspace)
+            run(command, "--help", cwd=workspace, env=cli_env)
             reported = subprocess.check_output(
-                [str(command), "--version"], cwd=workspace, text=True
+                [str(command), "--version"], cwd=workspace, env=cli_env, text=True
             ).strip()
             metadata_version = subprocess.check_output(
                 [
@@ -79,14 +81,31 @@ def main():
             ).strip()
             if reported != expected_version or metadata_version != expected_version:
                 raise RuntimeError("CLI and package versions disagree")
+            init_workspace = work / f"init-{i}"
+            init_workspace.mkdir()
+            preview = subprocess.check_output(
+                [str(command), "init", "--dry-run"], cwd=init_workspace, env=cli_env, text=True
+            )
+            if "AGENTS.md" not in preview or any(init_workspace.iterdir()):
+                raise RuntimeError("Packaged init must preview AGENTS.md without writing files")
+            run(command, "init", cwd=init_workspace, env=cli_env)
+            guidance = (init_workspace / "AGENTS.md").read_text()
+            if any(
+                instruction not in guidance
+                for instruction in ("`dwork --dry-run`", "update `dwork.yml`", "`dwork validate`")
+            ):
+                raise RuntimeError("Packaged init did not write the expected agent guidance")
+            run(command, "validate", cwd=init_workspace, env=cli_env)
             config.write_text(
                 "version: 1\ncompose:\n  enabled: false\nbrowsers:\n  - url: http://localhost:3000\n"
             )
-            run(command, "--dry-run", cwd=workspace)
-            run(command, "validate", cwd=workspace)
+            run(command, "--dry-run", cwd=workspace, env=cli_env)
+            run(command, "validate", cwd=workspace, env=cli_env)
             # Installed console entry point must preserve source CLI failures.
             config.write_text("version: 99\n")
-            result = subprocess.run([str(command)], cwd=workspace, capture_output=True, text=True)
+            result = subprocess.run(
+                [str(command)], cwd=workspace, env=cli_env, capture_output=True, text=True
+            )
             if (
                 result.returncode != 1
                 or "dwork:" not in result.stderr
@@ -99,7 +118,7 @@ def main():
             output.mkdir(parents=True, exist_ok=True)
             for artifact in artifacts:
                 shutil.copy2(artifact, output / artifact.name)
-        print("Wheel and sdist installs, YAML support, and CLI error handling passed.")
+        print("Wheel and sdist installs, init guidance, YAML support, and CLI errors passed.")
 
 
 if __name__ == "__main__":

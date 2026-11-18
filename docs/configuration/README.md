@@ -9,7 +9,7 @@ Use `dwork init --dry-run` to preview a deterministic starter and `dwork init` t
 create it in the current directory without overwriting an existing path. Standard
 local Compose filenames enable Compose; otherwise the starter disables it. Tasks
 and browser lists start empty, and confirmation keeps its default `true`.
-The current source also adds `AGENTS.md` guidance for starting the environment
+CLI 0.6.1+ also adds `AGENTS.md` guidance for starting the environment
 and keeping `dwork.yml` current. The preview shows this guidance too.
 `dwork validate` checks the selected workspace configuration without registration,
 container inspection, health waits, or launches. Compose references require the
@@ -159,8 +159,8 @@ version: 1
 name: my-app
 ```
 
-Optional default registration name for this workspace, available in current source
-and not in v0.6.0 packages. Use a nonempty string starting with an ASCII letter or
+Optional default registration name for this workspace, available in CLI 0.6.1+.
+Use a nonempty string starting with an ASCII letter or
 digit, followed by letters, digits, dots, underscores, or hyphens. Null, numbers,
 spaces, paths, and control characters are rejected before Docker access.
 
