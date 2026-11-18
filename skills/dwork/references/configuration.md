@@ -409,7 +409,9 @@ Configuration helpers available in 0.4.0+:
 - `dwork --version` reports the shared package version without reading workspace state.
 - `dwork init [--dry-run]` creates/previews a deterministic local starter. Standard
   local Compose filenames enable Compose; otherwise it is disabled. Task/browser
-  lists are empty. It refuses existing paths, including links, and never registers
+  lists are empty. It refuses any existing `dwork.yml` path, including links.
+  The current source also creates or appends an `AGENTS.md` section once, preserving
+  existing guidance. Both files are previewed with `--dry-run`. Neither mode registers
   or launches anything. Edit custom Compose selections and project commands explicitly.
 - `dwork validate` reuses normal discovery/schema checks, validates task working
   directories and Compose service references, and returns 0/1 for success/failure.

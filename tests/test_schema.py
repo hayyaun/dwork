@@ -118,7 +118,11 @@ class SchemaTests(unittest.TestCase):
                 path = directory / "dwork.yml"
                 text = path.read_text()
                 self.assertEqual(text.splitlines()[0], MODELINE)
-                self.assertEqual(preview.getvalue(), "Would create " + str(path) + ":\n" + text)
+                guide = directory / "AGENTS.md"
+                self.assertEqual(
+                    preview.getvalue(),
+                    f"Would create {path}:\n{text}Would create {guide}:\n{guide.read_text()}",
+                )
                 self.validator.validate(dwork_config.read_config(path))
                 self.assertEqual(dwork_config.load_workspace(directory).enabled, enabled)
 

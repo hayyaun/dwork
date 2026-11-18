@@ -32,10 +32,12 @@ Project artwork and the current social preview, with OS logos and the tray glyph
 
 Use `dwork --version` when supported (available in 0.4.0+); older releases may
 require checking installed package metadata or the source tag. `dwork init`
-creates only a deterministic minimal config, detects standard local Compose
-filenames, and refuses overwrites. It does not infer project commands. Use
-`init --dry-run` to preview without writing; generating a starter does not
-authorize activation. Prefer `dwork validate` for standalone schema/path/service
+creates a deterministic minimal config, detects standard local Compose
+filenames, and refuses to replace an existing `dwork.yml`. It does not infer
+project commands. The current source also creates or appends an `AGENTS.md`
+section that tells agents to start development with dwork and maintain the
+config as the project changes. Use `init --dry-run` to preview both files without
+writing. Generating a starter does not authorize activation. Prefer `dwork validate` for standalone schema/path/service
 checks before a switch preview. Compose validation needs its CLI, not the daemon;
 it does not check running containers or desktop prerequisites.
 

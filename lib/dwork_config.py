@@ -3,6 +3,8 @@
 from contextlib import contextmanager
 from pathlib import Path
 import os
+import stat
+import sys
 
 from dwork_common import BrowserTask, DworkError, TerminalTask, Workspace
 from dwork_config_parse import (
@@ -16,6 +18,61 @@ import dwork_docker
 
 
 FILENAMES = ("compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml")
+AGENT_MARKER = b"<!-- dwork:init -->"
+AGENT_GUIDANCE = (
+    b"## Development environment with dwork\n\n" + AGENT_MARKER + b"\n"
+    b"- Use dwork to start this project's development environment. From the directory containing\n"
+    b"  `dwork.yml`, review `dwork --dry-run`, then run `dwork` and respect its confirmation prompts.\n"
+    b"  A switch can stop other registered workspaces. Review those stops with the user before\n"
+    b"  proceeding.\n"
+    b"- When the project structure or development workflow changes, update `dwork.yml` to match.\n"
+    b"  Check Compose files and services, task commands and working directories, health checks,\n"
+    b"  and browser URLs as applicable. Run `dwork validate` after editing it.\n"
+)
+
+
+def init_agent_guidance(path: Path, preview: bool) -> None:
+    """Append local agent instructions without replacing or following an existing file."""
+    try:
+        flags = os.O_RDONLY if preview else os.O_RDWR | os.O_APPEND
+        try:
+            if not stat.S_ISREG(path.lstat().st_mode):
+                raise DworkError("expected a regular file without links")
+            fd = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
+            if preview:
+                print("Would create " + str(path) + ":\n" + AGENT_GUIDANCE.decode(), end="")
+            else:
+                with path.open("xb") as stream:
+                    stream.write(AGENT_GUIDANCE)
+                print("Created " + str(path) + " with dwork guidance.")
+            return
+
+        with os.fdopen(fd, "rb" if preview else "r+b") as stream:
+            metadata = os.fstat(stream.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise DworkError("expected a regular file without links")
+            content = stream.read()
+            if b"\0" in content:
+                raise DworkError("expected UTF-8 Markdown")
+            content.decode("utf-8")
+            if AGENT_MARKER in content.splitlines():
+                print("Dwork guidance already present in " + str(path) + ".")
+                return
+            if preview:
+                print("Would append to " + str(path) + ":\n" + AGENT_GUIDANCE.decode(), end="")
+                return
+
+            newline = b"\r\n" if b"\r\n" in content else b"\n"
+            separator = b""
+            if content and not content.endswith(newline * 2):
+                separator = newline if content.endswith(b"\n") else newline * 2
+            stream.write(separator + AGENT_GUIDANCE.replace(b"\n", newline))
+        print("Added dwork guidance to " + str(path) + ".")
+    except (DworkError, OSError, UnicodeError) as error:
+        print(
+            "Warning: Skipped dwork guidance in " + str(path) + ": " + str(error), file=sys.stderr
+        )
 
 
 def init_workspace(directory, preview=False):
@@ -32,6 +89,7 @@ def init_workspace(directory, preview=False):
     )
     if preview:
         print("Would create " + str(path) + ":\n" + text, end="")
+        init_agent_guidance(directory / "AGENTS.md", preview=True)
         return 0
     # Exclusive creation also protects existing files and links if another process
     # creates the path after the check above.
@@ -40,6 +98,7 @@ def init_workspace(directory, preview=False):
             stream.write(text)
     except FileExistsError:
         raise DworkError("dwork.yml already exists; edit it or run dwork validate.")
+    init_agent_guidance(directory / "AGENTS.md", preview=False)
     print("Created " + str(path) + ". Review it, then run dwork validate.")
     return 0
 

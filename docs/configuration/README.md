@@ -9,6 +9,8 @@ Use `dwork init --dry-run` to preview a deterministic starter and `dwork init` t
 create it in the current directory without overwriting an existing path. Standard
 local Compose filenames enable Compose; otherwise the starter disables it. Tasks
 and browser lists start empty, and confirmation keeps its default `true`.
+The current source also adds `AGENTS.md` guidance for starting the environment
+and keeping `dwork.yml` current. The preview shows this guidance too.
 `dwork validate` checks the selected workspace configuration without registration,
 container inspection, health waits, or launches. Compose references require the
 Compose CLI but no running daemon. See [configuration helpers](../usage/README.md#version-initialization-and-validation).

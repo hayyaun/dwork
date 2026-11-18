@@ -73,9 +73,17 @@ Make installations; it is not a Git commit identifier.
 `version: 1`, Compose enabled if a standard Compose filename exists locally,
 and empty `terminals`/`browsers` lists. It does not parse Compose files, infer
 commands, inspect parents or environment selections, or invoke Docker. Edit
-custom Compose files and tasks afterward. Existing files, directories, and even
-broken symlinks are never overwritten. `init --dry-run` previews the same YAML
-without writing. Neither form registers or activates the workspace.
+custom Compose files and tasks afterward. An existing `dwork.yml` path blocks
+initialization before either file changes.
+
+In the current source, `init` also creates `AGENTS.md` in the same directory or
+appends a dwork section to its existing UTF-8 Markdown. It preserves the existing
+content and skips the section if already present. The guidance tells agents to
+use dwork to start development and to update and validate `dwork.yml` when the
+project structure or development workflow changes. If `AGENTS.md` is linked,
+isn't a regular file, or can't be updated, dwork warns and keeps the new
+`dwork.yml`. `init --dry-run` previews both files without writing. Neither form
+registers or activates the workspace.
 
 `validate` reuses normal config discovery and validation, including ancestor
 configs and discovered children. It checks supported fields, types, task working

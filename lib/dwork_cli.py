@@ -494,7 +494,10 @@ def main():
             "Aliases: ls=list, sw=switch, reg=register, rm=forget, up=current workspace or start named workspaces, ps=status."
         )
         print("register: remember without switching; list: show remembered directories and status.")
-        print("init: create a minimal local dwork.yml without overwriting; --dry-run previews it.")
+        print(
+            "init: create dwork.yml without overwriting and add AGENTS.md guidance; "
+            "--dry-run previews both."
+        )
         print(
             "validate: check configuration and Compose references without inspecting running workloads."
         )

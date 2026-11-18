@@ -81,7 +81,9 @@ It saves projects without starting or stopping anything. Switching shows
 the plan and asks for confirmation.
 
 For a new config, use [agent setup](#let-your-coding-agent-set-it-up) or run `dwork init` inside your
-project. Existing Compose projects work without a `dwork.yml`.
+project. The current source creates a starter `dwork.yml` and adds guidance to
+`AGENTS.md` so coding agents know to start the environment with dwork and keep
+the config up to date. Existing Compose projects work without a `dwork.yml`.
 
 > dwork starts existing containers. It never creates, rebuilds, or removes them.
 > Complete your project's initial setup and migrations first.

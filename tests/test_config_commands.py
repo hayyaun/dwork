@@ -1,6 +1,7 @@
 """Configuration commands use isolated files and fake Docker, never workloads."""
 
 import json
+import os
 import sys
 import unittest
 
@@ -47,6 +48,8 @@ class ConfigCommandTests(unittest.TestCase):
             outputs[0],
         )
         self.assertIn("enabled: false", outputs[0])
+        self.assertIn("Would create " + str(self.root / "AGENTS.md"), outputs[0])
+        self.assertFalse((self.root / "AGENTS.md").exists())
         self.assertFalse((self.root / "dwork.yml").exists())
         self.assertFalse(self.state.exists())
 
@@ -72,6 +75,10 @@ class ConfigCommandTests(unittest.TestCase):
                     + "\nterminals: []\nbrowsers: []\n"
                 )
                 self.assertEqual((directory / "dwork.yml").read_text(), expected)
+                guidance = (directory / "AGENTS.md").read_text()
+                self.assertIn("Use dwork to start this project's development environment", guidance)
+                self.assertIn("update `dwork.yml`", guidance)
+                self.assertIn("`dwork validate`", guidance)
                 self.assertEqual(calls, [])
                 self.assertEqual(changes, [])
         self.assertFalse(self.state.exists())
@@ -97,7 +104,61 @@ class ConfigCommandTests(unittest.TestCase):
                     self.assertEqual(changes, [])
                     self.assertEqual(calls, [])
                 self.assertTrue(path.exists() or path.is_symlink())
+                self.assertFalse((directory / "AGENTS.md").exists())
         self.assertEqual(target.read_text(), "preserve this")
+
+    def test_init_preserves_existing_guidance_and_avoids_duplicates(self):
+        path = self.root / "AGENTS.md"
+        original = b"# Project rules\r\n\r\n- Keep this rule"
+        path.write_bytes(original)
+        path.chmod(0o640)
+
+        preview, _, _ = self.cli("init --dry-run")
+        self.assertEqual(preview.returncode, 0, preview.stderr)
+        self.assertIn("Would append to " + str(path), preview.stdout)
+        self.assertEqual(path.read_bytes(), original)
+
+        result, _, _ = self.cli("init")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        updated = path.read_bytes()
+        self.assertTrue(updated.startswith(original + b"\r\n\r\n## "))
+        self.assertNotIn(b"\n", updated.replace(b"\r\n", b""))
+        self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+
+        # A shared guide can already contain the section before local YAML exists.
+        another = self.root / "another"
+        another.mkdir()
+        existing = another / "AGENTS.md"
+        existing.write_bytes(updated)
+        result, _, _ = self.cli("init", cwd=another)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Dwork guidance already present", result.stdout)
+        self.assertEqual(existing.read_bytes(), updated)
+
+    def test_init_does_not_follow_guidance_links_or_open_special_files(self):
+        target = self.fixture.base / "shared.md"
+        target.write_text("shared rules")
+        for kind in ("symlink", "broken-symlink", "hardlink", "fifo", "directory"):
+            with self.subTest(kind=kind):
+                directory = self.root / kind
+                directory.mkdir()
+                guide = directory / "AGENTS.md"
+                if kind == "symlink":
+                    guide.symlink_to(target)
+                elif kind == "broken-symlink":
+                    guide.symlink_to(self.fixture.base / "missing.md")
+                elif kind == "hardlink":
+                    guide.hardlink_to(target)
+                elif kind == "fifo":
+                    os.mkfifo(guide)
+                else:
+                    guide.mkdir()
+                for args in ("init --dry-run", "init"):
+                    result, _, _ = self.cli(args, cwd=directory)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("Skipped dwork guidance", result.stderr)
+                self.assertTrue((directory / "dwork.yml").is_file())
+        self.assertEqual(target.read_text(), "shared rules")
 
     def test_initialized_host_workspace_validates_without_registry_or_docker(self):
         self.assertEqual(self.cli("init")[0].returncode, 0)
